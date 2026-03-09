@@ -29,10 +29,18 @@ export async function GET(request: NextRequest) {
       return NextResponse.redirect("/admin/integracao?error=Invalid state")
     }
 
-    // Trocar código por token de acesso
+    // Trocar código por token de acesso (com PKCE)
     const clientId = process.env.ML_CLIENT_ID
     const clientSecret = process.env.ML_CLIENT_SECRET
     const redirectUri = process.env.ML_REDIRECT_URI || "http://localhost:3000/api/mercadolivre/callback"
+    const codeVerifier = request.cookies.get("ml_code_verifier")?.value
+
+    if (!codeVerifier) {
+      console.error("Code verifier não encontrado no cookie")
+      return NextResponse.redirect("/admin/integracao?error=PKCE validation failed: code_verifier missing")
+    }
+
+    console.log("[PKCE] Trocando código por token com code_verifier")
 
     const tokenResponse = await fetch("https://api.mercadolibre.com/oauth/token", {
       method: "POST",
@@ -45,6 +53,7 @@ export async function GET(request: NextRequest) {
         client_secret: clientSecret!,
         code,
         redirect_uri: redirectUri,
+        code_verifier: codeVerifier,
       }).toString(),
     })
 
@@ -100,11 +109,15 @@ export async function GET(request: NextRequest) {
       `/admin/integracao?success=Mercado Livre conectado com sucesso!&seller=${userData.id}&expiresAt=${expiresAt.toISOString()}`
     )
 
-    // Limpar state cookie
+    // Limpar state e code_verifier cookies
     response.cookies.set("ml_oauth_state", "", {
       maxAge: 0,
     })
+    response.cookies.set("ml_code_verifier", "", {
+      maxAge: 0,
+    })
 
+    console.log("[PKCE] ✅ OAuth com PKCE completado com sucesso")
     return response
   } catch (error) {
     console.error("Erro no callback do Mercado Livre:", error)
