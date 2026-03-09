@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { PrismaClient } from "@prisma/client"
-import { syncProductToML, syncAllProductsToML } from "@/lib/syncML"
+import { syncProductToML } from "@/lib/syncML"
 
 const prisma = new PrismaClient()
 

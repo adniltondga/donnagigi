@@ -88,7 +88,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Criar nova integração
-    const integration = await prisma.mLIntegration.create({
+    void await prisma.mLIntegration.create({
       data: {
         accessToken: tokenData.access_token,
         refreshToken: tokenData.refresh_token || null,
