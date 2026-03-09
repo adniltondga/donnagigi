@@ -1,13 +1,7 @@
 {
-  "buildCommand": "prisma generate && next build",
   "env": {
     "DATABASE_URL": "@DATABASE_URL",
     "JWT_SECRET": "@JWT_SECRET",
     "NEXT_PUBLIC_APP_URL": "@NEXT_PUBLIC_APP_URL"
-  },
-  "functions": {
-    "src/app/api/**/*.ts": {
-      "runtime": "nodejs18.x"
-    }
   }
 }
