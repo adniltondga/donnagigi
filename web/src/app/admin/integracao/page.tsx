@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { useSearchParams } from "next/navigation"
-import { AlertCircle, CheckCircle, Loader, LogOut } from "lucide-react"
+import { AlertCircle, CheckCircle, Loader, LogOut, Eye, EyeOff } from "lucide-react"
 
 export default function IntegracaoPage() {
   const searchParams = useSearchParams()
@@ -14,6 +14,9 @@ export default function IntegracaoPage() {
     expiresAt?: string
     isExpired?: boolean
   } | null>(null)
+  const [token, setToken] = useState("")
+  const [showToken, setShowToken] = useState(false)
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
   // Verifica parâmetros de sucesso/erro do callback
   useEffect(() => {
@@ -44,6 +47,46 @@ export default function IntegracaoPage() {
   useEffect(() => {
     checkIntegration()
   }, [])
+
+  // Autenticar com token manualmente
+  const handleAuthenticateWithToken = async (e: React.FormEvent) => {
+    e.preventDefault()
+    
+    if (!token.trim()) {
+      setStatus("error")
+      setMessage("Cole um token válido")
+      return
+    }
+
+    setIsSubmitting(true)
+    setStatus("loading")
+
+    try {
+      const res = await fetch("/api/mercadolivre/authenticate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ accessToken: token }),
+      })
+
+      const data = await res.json()
+
+      if (!res.ok) {
+        setStatus("error")
+        setMessage(data.details || data.error || "Erro ao autenticar")
+        return
+      }
+
+      setStatus("success")
+      setMessage(`✅ Conectado como ${data.integration.nickname}!`)
+      setToken("")
+      setTimeout(() => checkIntegration(), 1000)
+    } catch (error) {
+      setStatus("error")
+      setMessage(error instanceof Error ? error.message : "Erro ao conectar")
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
 
   // Iniciar login com Mercado Livre
   const handleLoginML = async () => {
@@ -195,31 +238,78 @@ export default function IntegracaoPage() {
           </div>
         ) : (
           <div className="space-y-4">
-            <p className="text-admin-600">
-              Conecte sua conta do Mercado Livre para sincronizar seus produtos automaticamente.
+            <p className="text-admin-600 mb-4">
+              Escolha uma forma de autenticação para sincronizar seus produtos:
             </p>
 
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-              <p className="text-sm text-blue-800">
-                <span className="font-semibold">Como funciona:</span>
-                <ul className="list-disc list-inside mt-2 space-y-1">
-                  <li>Você será redirecionado para o Mercado Livre</li>
-                  <li>Autorize o acesso à sua conta</li>
-                  <li>Seus produtos serão sincronizados automaticamente</li>
-                </ul>
+            {/* Método 1: Token Manual */}
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 space-y-3">
+              <p className="text-sm font-semibold text-blue-900">
+                📋 Método 1: Cole seu Access Token
+              </p>
+              <p className="text-xs text-blue-800">
+                Se você já tem um access token do Mercado Livre, cole aqui:
+              </p>
+              
+              <form onSubmit={handleAuthenticateWithToken} className="space-y-3">
+                <div className="relative">
+                  <input
+                    type={showToken ? "text" : "password"}
+                    value={token}
+                    onChange={(e) => setToken(e.target.value)}
+                    placeholder="Cole seu Access Token aqui..."
+                    className="w-full px-4 py-2 border border-admin-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-400 pr-10"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowToken(!showToken)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-admin-500 hover:text-admin-700"
+                  >
+                    {showToken ? <EyeOff size={18} /> : <Eye size={18} />}
+                  </button>
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={isSubmitting || !token.trim()}
+                  className="w-full bg-yellow-400 hover:bg-yellow-500 disabled:bg-yellow-300 text-black font-bold px-4 py-2 rounded-lg transition flex items-center justify-center gap-2"
+                >
+                  {isSubmitting && <Loader className="animate-spin" size={18} />}
+                  {isSubmitting ? "Validando..." : "Validar Token"}
+                </button>
+              </form>
+
+              <p className="text-xs text-blue-700">
+                💡 Dica: Gere um token em{" "}
+                <a
+                  href="https://www.mercadolivre.com.br"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="underline font-semibold hover:text-blue-900"
+                >
+                  Mercado Livre
+                </a>
               </p>
             </div>
 
-            <button
-              onClick={handleLoginML}
-              disabled={status === "loading"}
-              className="w-full bg-yellow-400 hover:bg-yellow-500 disabled:bg-yellow-300 text-black font-bold px-4 py-3 rounded-lg transition flex items-center justify-center gap-2"
-            >
-              {status === "loading" && <Loader className="animate-spin" size={18} />}
-              {status === "loading"
-                ? "Redirecionando..."
-                : "Conectar ao Mercado Livre"}
-            </button>
+            {/* Método 2: OAuth */}
+            <div className="bg-green-50 border border-green-200 rounded-lg p-4 space-y-3">
+              <p className="text-sm font-semibold text-green-900">
+                🔐 Método 2: Login OAuth (requer acesso a auth.mercadolibre.com.br)
+              </p>
+              <p className="text-xs text-green-800">
+                Você será redirecionado para autorizar no Mercado Livre:
+              </p>
+              
+              <button
+                onClick={handleLoginML}
+                disabled={status === "loading"}
+                className="w-full bg-green-500 hover:bg-green-600 disabled:bg-green-400 text-white font-bold px-4 py-2 rounded-lg transition flex items-center justify-center gap-2"
+              >
+                {status === "loading" && <Loader className="animate-spin" size={18} />}
+                {status === "loading" ? "Redirecionando..." : "Conectar via OAuth"}
+              </button>
+            </div>
           </div>
         )}
       </div>
