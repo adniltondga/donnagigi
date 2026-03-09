@@ -1,6 +1,17 @@
 import { NextRequest, NextResponse } from "next/server"
+import { randomBytes, createHash } from "crypto"
 
 export const dynamic = "force-dynamic"
+
+// Helper para gerar code_challenge a partir de code_verifier (PKCE)
+function generateCodeChallenge(codeVerifier: string): string {
+  return createHash("sha256")
+    .update(codeVerifier)
+    .digest("base64url")
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/=/g, "")
+}
 
 export async function GET(request: NextRequest) {
   try {
@@ -24,15 +35,26 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    const state = Math.random().toString(36).substring(7)
-    const authUrl = `https://auth.mercadolibre.com.br/authorization?response_type=code&client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&state=${state}`
+    // Gerar PKCE: code_verifier e code_challenge
+    const codeVerifier = randomBytes(64).toString("base64url")
+    const codeChallenge = generateCodeChallenge(codeVerifier)
 
-    console.log("Iniciando autenticação com URL:", authUrl)
+    const state = randomBytes(32).toString("hex")
+    const authUrl = `https://auth.mercadolibre.com.br/authorization?response_type=code&client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&code_challenge=${codeChallenge}&code_challenge_method=S256&state=${state}`
+
+    console.log("[PKCE] Iniciando autenticação com URL:", authUrl)
+    console.log("[PKCE] Code Challenge:", codeChallenge)
 
     const response = NextResponse.redirect(authUrl)
 
-    // Salvar state em cookie por 10 minutos
+    // Salvar state e code_verifier em cookies por 10 minutos (PKCE)
     response.cookies.set("ml_oauth_state", state, {
+      httpOnly: true,
+      secure: false,
+      maxAge: 600,
+      path: "/",
+    })
+    response.cookies.set("ml_code_verifier", codeVerifier, {
       httpOnly: true,
       secure: false,
       maxAge: 600,
