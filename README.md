@@ -1,150 +1,168 @@
-# Donna Gigi - E-commerce de Capinhas de Celular
+# 👜 Donna Gigi - E-commerce Platform
 
-Um site moderno de e-commerce construído com **Next.js**, **React** e **Tailwind CSS**, ideal para vender capinhas de celular no Shopee e Mercado Livre com um painel administrativo robusto.
+Plataforma de e-commerce moderna com Next.js, React, Tailwind CSS, PostgreSQL (NEON) e autenticação segura.
 
-## 🎯 Características
-
-### 🏪 Página Inicial (Catálogo)
-- Mostruário completo de produtos
-- Design moderno com paleta de rosa firme que transmite confiabilidade
-- Links diretos para Shopee e Mercado Livre
-- Layout responsivo para todos os dispositivos
-- Galeria de produtos com imagens de alta qualidade
-
-### 👨‍💼 Painel Administrativo
-- **Login seguro** com credenciais
-- **Dashboard** com estatísticas em tempo real
-- **Gerenciador de Produtos**: Adicionar, editar e deletar capinhas
-- **Gerenciador de Pedidos**: Acompanhamento de vendas
-- **Análise**: Relatórios de vendas e desempenho por plataforma
-- Paleta de cores confortável para os olhos (tons cinza/azul)
-
-## 📋 Credenciais de Acesso (Demo)
-
-```
-Usuário: admin
-Senha: admin123
-```
-
-## 🚀 Como Começar
-
-### Pré-requisitos
-- Node.js 18+
-- npm ou yarn
-
-### Instalação
+## 🚀 Quick Start
 
 ```bash
 # Instalar dependências
 npm install
 
-# Rodar o servidor de desenvolvimento
+# Configurar banco de dados
+npx prisma migrate dev
+
+# Iniciar desenvolvimento
 npm run dev
-
-# Construir para produção
-npm build
-
-# Iniciar servidor de produção
-npm start
 ```
 
-Acesse [http://localhost:3000](http://localhost:3000) para ver a página inicial.
+Acesse: http://localhost:3000
 
-## 📁 Estrutura do Projeto
+## 📚 Documentação
+
+Toda a documentação está organizada em `/docs`:
+
+- **[SETUP_PRODUCAO.md](docs/SETUP_PRODUCAO.md)** - Setup completo de produção
+- **[DEPLOY_VERCEL.md](docs/DEPLOY_VERCEL.md)** - Guia passo a passo para deploy no Vercel
+- **[CONFIGURAR_ENV_VARS.md](docs/CONFIGURAR_ENV_VARS.md)** - Como configurar variáveis de ambiente
+- **[CHECKLIST_PRODUCAO.md](docs/CHECKLIST_PRODUCAO.md)** - Checklist de deployment
+
+## 🏗️ Arquitetura
 
 ```
-donnagigi/
+┌─────────────────────────┐
+│   Next.js Frontend      │
+│   - Pages               │
+│   - Components          │
+│   - Styles (Tailwind)   │
+└────────────┬────────────┘
+             │
+┌────────────▼────────────┐
+│   API Routes            │
+│   - /api/auth/*         │
+│   - JWT + Cookies       │
+└────────────┬────────────┘
+             │
+┌────────────▼────────────┐
+│   Prisma ORM            │
+│   - PostgreSQL (NEON)   │
+│   - Migrations          │
+│   - Type Safety         │
+└─────────────────────────┘
+```
+
+## 🔐 Autenticação
+
+- **Frontend:** Login/Register com validação
+- **Backend:** JWT + HttpOnly Cookies
+- **Segurança:** Bcryptjs para hash de senhas
+- **Middleware:** Proteção de rotas admin
+
+## 👥 Usuários Padrão
+
+| Email | Senha | Role |
+|-------|-------|------|
+| giovana.coutinho@donnagigi.com.br | gi13226014 | Admin |
+| adnilton.santos@donnagigi.com.br | md98yp121556 | Admin |
+
+## 🛠️ Tech Stack
+
+- **Frontend:** React 18, Next.js 14, TypeScript
+- **Styling:** Tailwind CSS, Radix UI
+- **Database:** PostgreSQL (NEON)
+- **ORM:** Prisma
+- **Auth:** JWT, bcryptjs, jose
+- **Charts:** Recharts
+- **Deployment:** Vercel
+
+## 📦 Estrutura do Projeto
+
+```
 ├── src/
 │   ├── app/
-│   │   ├── admin/
-│   │   │   ├── login/page.tsx       # Página de login
-│   │   │   ├── dashboard/page.tsx   # Dashboard principal
-│   │   │   ├── products/page.tsx    # Gerenciador de produtos
-│   │   │   ├── orders/page.tsx      # Gerenciador de pedidos
-│   │   │   ├── analytics/page.tsx   # Análises
-│   │   │   └── layout.tsx           # Layout do admin
-│   │   ├── page.tsx                 # Página inicial (catálogo)
-│   │   ├── layout.tsx               # Layout raiz
-│   │   └── globals.css              # Estilos globais
-│   ├── components/
-│   │   ├── Header.tsx               # Cabeçalho do site
-│   │   ├── ProductCard.tsx          # Card de produto
-│   │   ├── Footer.tsx               # Rodapé
-│   │   └── AdminSidebar.tsx         # Sidebar do admin
-│   ├── types/
-│   │   └── index.ts                 # Tipos TypeScript
-│   └── lib/
-│       └── mockData.ts              # Dados simulados
-├── public/                           # Arquivos estáticos
-├── tailwind.config.ts               # Configuração Tailwind
-├── tsconfig.json                    # Configuração TypeScript
-├── next.config.js                   # Configuração Next.js
-└── package.json                     # Dependências do projeto
+│   │   ├── admin/           # Admin panel
+│   │   ├── api/auth/        # Autenticação
+│   │   ├── layout.tsx
+│   │   └── page.tsx
+│   ├── components/          # Componentes reutilizáveis
+│   ├── lib/                 # Utilitários
+│   ├── types/               # Type definitions
+│   └── middleware.ts        # Proteção de rotas
+├── prisma/
+│   ├── schema.prisma        # Schema do banco
+│   └── migrations/          # Histórico de mudanças
+├── docs/                    # Documentação
+├── .env                     # Variáveis de ambiente
+└── package.json
 ```
 
-## 🎨 Paleta de Cores
+## 🚀 Deploy
 
-### Página Inicial (Rosa - Confiabilidade)
-- **Rosa Primária**: `#be185d` (Rosa firme)
-- **Tons degradados**: Rosa 600, 700, 800
+### Local Development
+```bash
+npm run dev        # Inicia servidor local
+npm run build      # Build de produção
+npm run start      # Inicia servidor produção
+npm run lint       # Lint do código
+```
 
-### Dashboard Admin (Confortável)
-- **Cinza Escuro**: `#1e293b` (Fundo principal)
-- **Cinza Médio**: `#64748b` (Textos)
-- **Azul/Cinza Suave**: Tons confortáveis para os olhos
+### Production (Vercel)
+Veja [docs/DEPLOY_VERCEL.md](docs/DEPLOY_VERCEL.md) para instruções completas.
 
-## 🔑 Funcionalidades Principais
+```bash
+git push origin main  # Vercel faz deploy automático
+```
 
-### 📦 Gerenciamento de Produtos
-- Adicionar novos produtos
-- Editar informações de produtos
-- Deletar produtos do catálogo
-- Tracking de estoque em tempo real
-- Upload de imagens
+## 🔧 Criar Usuários de Teste
 
-### 🛒 Dashboard de Vendas
-- Total de pedidos
-- Faturamento total
-- Produtos mais vendidos
-- Performance por plataforma (Shopee vs Mercado Livre)
-- Gráficos e estatísticas
+```bash
+# Criar usuário interativo
+node create-user.js
 
-### 👥 Autenticação
-- Login/Logout seguro
-- Proteção de rotas admin
-- Sessão persistente (localStorage)
+# Criar com argumentos
+node create-user-args.js email@example.com password username "Full Name"
+```
 
-## 🔧 Tecnologias Utilizadas
+## 🔌 Gerar JWT Secret
 
-- **Next.js 14** - Framework React
-- **React 18** - Biblioteca UI
-- **TypeScript** - Type safety
-- **Tailwind CSS** - Styling
-- **Next.js Image** - Otimização de imagens
+```bash
+node generate-jwt-secret.js
+```
 
-## 📝 Notas Importantes
+## 📊 Database
 
-1. **Dados Simulados**: O projeto usa dados em memória (localStorage). Para produção, implemente um banco de dados real (MongoDB, PostgreSQL, etc.)
+### Conectar ao Studio (UI visual)
+```bash
+npx prisma studio
+```
 
-2. **Autenticação**: O sistema de login é básico. Para produção, use bibliotecas como NextAuth.js
+### Migrations
+```bash
+npx prisma migrate dev       # Criar nova migration
+npx prisma migrate deploy    # Aplicar em produção
+npx prisma migrate reset     # Reset (⚠️ perde dados)
+```
 
-3. **Segurança**: Senhas não devem ser armazenadas em texto plano. Use bcrypt ou similar para hash
+## 🐛 Troubleshooting
 
-4. **Integração com Plataformas**: Integre com as APIs do Shopee e Mercado Livre para sincronizar produtos
+### Build falha
+- Verifique Environment Variables
+- Execute `npm run build` localmente
+- Veja logs em: Vercel Dashboard → Deployments
 
-## 🚀 Próximos Passos
+### Login não funciona
+- Verifique JWT_SECRET é igual em local e produção
+- Limpe cache do navegador (Ctrl+Shift+Del)
+- Teste em navegador anônimo
 
-1. **Banco de Dados**: Migrar para PostgreSQL com Prisma
-2. **API REST**: Implementar APIs com Next.js Route Handlers
-3. **Autenticação Avançada**: Usar NextAuth.js com JWT
-4. **Pagamentos**: Integrar gateway de pagamento
-5. **Notificações**: Sistema de notificações por email
-6. **Mobile**: Aplicativo mobile com expo/react-native
+### Database connection fails
+- Verifique DIRECT_DATABASE_URL
+- Teste: `npx prisma db push`
+- NEON pode estar em sleep mode
 
 ## 📞 Suporte
 
-Para dúvidas ou sugestões, entre em contato através dos canais da Donna Gigi.
+Documentação detalhada em `/docs`
 
-## 📄 Licença
+## 📝 License
 
-Todos os direitos reservados © 2024 Donna Gigi
+MIT
