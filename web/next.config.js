@@ -2,8 +2,6 @@
 const nextConfig = {
   reactStrictMode: true,
   swcMinify: true,
-  // Desabilitar ISR e outras features de geração estática
-  unstable_runtimeJS: false,
   images: {
     remotePatterns: [
       {
@@ -11,12 +9,6 @@ const nextConfig = {
         hostname: 'images.unsplash.com',
       },
     ],
-  },
-  typescript: {
-    ignoreBuildErrors: false,
-  },
-  eslint: {
-    ignoreDuringBuilds: false,
   },
 };
 
