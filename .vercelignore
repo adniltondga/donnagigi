@@ -1,0 +1,11 @@
+# Vercel Build Ignore
+
+# Don't build these files
+.git
+.gitignore
+.env.local
+.env.example
+docs/
+node_modules/
+.next/
+.yarn/
