@@ -13,7 +13,7 @@ function generateCodeChallenge(codeVerifier: string): string {
     .replace(/=/g, "")
 }
 
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
     const clientId = process.env.ML_CLIENT_ID
     const clientSecret = process.env.ML_CLIENT_SECRET
@@ -39,26 +39,16 @@ export async function GET(request: NextRequest) {
     const codeVerifier = randomBytes(64).toString("base64url")
     const codeChallenge = generateCodeChallenge(codeVerifier)
 
-    // Gerar state para CSRF protection (padrão OAuth 2.0, recomendado pela ML)
-    const state = randomBytes(32).toString("hex")
-    
-    // URL conforme documentação do Mercado Livre
-    // Ordem: response_type → client_id → redirect_uri → state → code_challenge → code_challenge_method
+    // URL EXATAMENTE conforme documentação do Mercado Livre para PKCE
     // https://auth.mercadolivre.com.br/authorization?response_type=code&client_id=$APP_ID&redirect_uri=$YOUR_URL&code_challenge=$CODE_CHALLENGE&code_challenge_method=$CODE_METHOD
-    const authUrl = `https://auth.mercadolibre.com.br/authorization?response_type=code&client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&state=${state}&code_challenge=${codeChallenge}&code_challenge_method=S256`
+    const authUrl = `https://auth.mercadolibre.com.br/authorization?response_type=code&client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&code_challenge=${codeChallenge}&code_challenge_method=S256`
 
     console.log("[PKCE] Iniciando autenticação com URL:", authUrl)
     console.log("[PKCE] Code Challenge:", codeChallenge)
 
     const response = NextResponse.redirect(authUrl)
 
-    // Salvar state e code_verifier em cookies por 10 minutos (PKCE)
-    response.cookies.set("ml_oauth_state", state, {
-      httpOnly: true,
-      secure: false,
-      maxAge: 600,
-      path: "/",
-    })
+    // Salvar code_verifier em cookie por 10 minutos (PKCE)
     response.cookies.set("ml_code_verifier", codeVerifier, {
       httpOnly: true,
       secure: false,

@@ -9,7 +9,6 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
     const code = searchParams.get("code")
-    const state = searchParams.get("state")
     const error = searchParams.get("error")
 
     // Verificar se houve erro
@@ -21,12 +20,6 @@ export async function GET(request: NextRequest) {
 
     if (!code) {
       return NextResponse.redirect("/admin/integracao?error=No authorization code")
-    }
-
-    // Verificar state para segurança
-    const savedState = request.cookies.get("ml_oauth_state")?.value
-    if (state !== savedState) {
-      return NextResponse.redirect("/admin/integracao?error=Invalid state")
     }
 
     // Trocar código por token de acesso (com PKCE)
@@ -109,10 +102,7 @@ export async function GET(request: NextRequest) {
       `/admin/integracao?success=Mercado Livre conectado com sucesso!&seller=${userData.id}&expiresAt=${expiresAt.toISOString()}`
     )
 
-    // Limpar state e code_verifier cookies
-    response.cookies.set("ml_oauth_state", "", {
-      maxAge: 0,
-    })
+    // Limpar code_verifier cookie
     response.cookies.set("ml_code_verifier", "", {
       maxAge: 0,
     })
