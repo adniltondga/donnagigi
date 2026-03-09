@@ -185,30 +185,7 @@ export default function LoginPage() {
             </button>
           </form>
 
-          {/* Toggle Register/Login */}
-          <div className="text-center text-sm text-admin-600">
-            {isRegister ? (
-              <>
-                Já tem conta?{" "}
-                <button
-                  onClick={() => setIsRegister(false)}
-                  className="text-primary-600 font-semibold hover:text-primary-700"
-                >
-                  Faça login
-                </button>
-              </>
-            ) : (
-              <>
-                Não tem conta?{" "}
-                <button
-                  onClick={() => setIsRegister(true)}
-                  className="text-primary-600 font-semibold hover:text-primary-700"
-                >
-                  Registre-se
-                </button>
-              </>
-            )}
-          </div>
+
 
           {/* Demo Credentials */}
           {!isRegister && (
