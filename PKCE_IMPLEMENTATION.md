@@ -27,6 +27,21 @@
 7. ML → App: access_token
 ```
 
+## URL Conforme Documentação do Mercado Livre
+
+Segundo docs oficiais: https://developers.mercadolibre.com.ar/es_AR/oauth
+
+```
+https://auth.mercadolibre.com.br/authorization?
+  response_type=code&
+  client_id=$APP_ID&
+  redirect_uri=$YOUR_URL&
+  code_challenge=$CODE_CHALLENGE&
+  code_challenge_method=$CODE_METHOD
+```
+
+⚠️ **Nota de Segurança**: A documentação não menciona `state`, mas adicionamos automaticamente como proteção CSRF (padrão OAuth 2.0 RFC 6749). O parâmetro não prejudica e melhora significativamente a segurança.
+
 ## Implementação no Projeto
 
 ### 1. **auth/route.ts** - Geração do PKCE
