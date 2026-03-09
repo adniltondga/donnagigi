@@ -41,7 +41,7 @@ export async function syncProductToML(
 
     const mlData = {
       title: product.name,
-      price: product.price,
+      price: product.salePrice,
       description: product.description,
       pictures: [product.image],
       category_id: categoryMap[product.category.toLowerCase()] || categoryMap["default"],

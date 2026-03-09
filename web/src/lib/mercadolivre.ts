@@ -13,11 +13,10 @@ export interface MLProductData {
 
 export class MercadoLivreAPI {
   private accessToken: string
-  private sellerId: string
 
-  constructor(accessToken: string, sellerId: string) {
+  constructor(accessToken: string, _sellerId: string) {
     this.accessToken = accessToken
-    this.sellerId = sellerId
+    // sellerId pode ser usado em operações futuras
   }
 
   // Criar listing no Mercado Livre
