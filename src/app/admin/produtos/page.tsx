@@ -1,0 +1,231 @@
+'use client'
+
+import { useState, useEffect } from 'react'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
+import { Button } from '@/components/ui/button'
+import { formatCurrency } from '@/lib/calculations'
+import ProductFormDialog from '@/components/ProductFormDialog'
+
+interface Product {
+  id: string
+  name: string
+  baseModel: string | null
+  colorVariant: string | null
+  supplier: string | null
+  purchaseCost: number
+  boxCost: number
+  mlTariff: number
+  deliveryTariff: number
+  salePrice: number
+  calculatedMargin: number | null
+  stock: number
+  minStock: number
+}
+
+export default function ProdutosPage() {
+  const [products, setProducts] = useState<Product[]>([])
+  const [loading, setLoading] = useState(true)
+  const [showForm, setShowForm] = useState(false)
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null)
+
+  useEffect(() => {
+    fetchProducts()
+  }, [])
+
+  async function fetchProducts() {
+    try {
+      setLoading(true)
+      const response = await fetch('/api/products')
+      const data = await response.json()
+      if (data.success) {
+        setProducts(data.data)
+      }
+    } catch (error) {
+      console.error('Erro ao carregar produtos:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  async function handleDelete(id: string) {
+    if (!confirm('Tem certeza que deseja deletar este produto?')) return
+
+    try {
+      const response = await fetch(`/api/products/${id}`, {
+        method: 'DELETE',
+      })
+      if (response.ok) {
+        setProducts(products.filter((p) => p.id !== id))
+      } else {
+        alert('Erro ao deletar produto')
+      }
+    } catch (error) {
+      console.error('Erro:', error)
+      alert('Erro ao deletar produto')
+    }
+  }
+
+  function handleEdit(product: Product) {
+    setSelectedProduct(product)
+    setShowForm(true)
+  }
+
+  function handleCreate() {
+    setSelectedProduct(null)
+    setShowForm(true)
+  }
+
+  function handleFormClose() {
+    setShowForm(false)
+    setSelectedProduct(null)
+    fetchProducts()
+  }
+
+  const totalCost = products.reduce(
+    (sum, p) => sum + (p.purchaseCost + p.boxCost + p.mlTariff + p.deliveryTariff) * p.stock,
+    0
+  )
+  const totalRevenue = products.reduce((sum, p) => sum + p.salePrice * p.stock, 0)
+  const totalMargin = totalRevenue - totalCost
+
+  return (
+    <div className="space-y-6 p-6">
+      <div>
+        <h1 className="text-3xl font-bold tracking-tight">Produtos</h1>
+        <p className="text-gray-500">Gerencie seu catálogo de capinhas</p>
+      </div>
+
+      {/* Resumo */}
+      <div className="grid grid-cols-4 gap-4">
+        <div className="bg-white p-4 rounded-lg border">
+          <p className="text-sm text-gray-600">Total de SKUs</p>
+          <p className="text-2xl font-bold">{products.length}</p>
+        </div>
+        <div className="bg-white p-4 rounded-lg border">
+          <p className="text-sm text-gray-600">Estoque Total</p>
+          <p className="text-2xl font-bold">
+            {products.reduce((sum, p) => sum + p.stock, 0)}
+          </p>
+        </div>
+        <div className="bg-white p-4 rounded-lg border">
+          <p className="text-sm text-gray-600">Receita Total</p>
+          <p className="text-2xl font-bold text-green-600">
+            {formatCurrency(totalRevenue)}
+          </p>
+        </div>
+        <div className="bg-white p-4 rounded-lg border">
+          <p className="text-sm text-gray-600">Margem Total</p>
+          <p className="text-2xl font-bold text-blue-600">
+            {formatCurrency(totalMargin)}
+          </p>
+        </div>
+      </div>
+
+      {/* Novo Produto */}
+      <div>
+        <Button onClick={handleCreate} className="bg-blue-600 hover:bg-blue-700">
+          + Novo Produto
+        </Button>
+      </div>
+
+      {/* Tabela */}
+      <div className="bg-white rounded-lg border overflow-hidden">
+        {loading ? (
+          <div className="p-6 text-center">Carregando produtos...</div>
+        ) : products.length === 0 ? (
+          <div className="p-6 text-center text-gray-500">
+            Nenhum produto cadastrado
+          </div>
+        ) : (
+          <Table>
+            <TableHeader>
+              <TableRow className="bg-gray-50">
+                <TableHead>Produto</TableHead>
+                <TableHead>Modelo</TableHead>
+                <TableHead>Cor</TableHead>
+                <TableHead className="text-right">Custo Unit.</TableHead>
+                <TableHead className="text-right">Preço</TableHead>
+                <TableHead className="text-right">Margem</TableHead>
+                <TableHead className="text-right">Estoque</TableHead>
+                <TableHead>Ações</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {products.map((product) => {
+                const totalCostUnit =
+                  product.purchaseCost +
+                  product.boxCost +
+                  product.mlTariff +
+                  product.deliveryTariff
+                const margin = product.salePrice - totalCostUnit
+
+                return (
+                  <TableRow key={product.id}>
+                    <TableCell className="font-medium max-w-xs truncate">
+                      {product.name}
+                    </TableCell>
+                    <TableCell>{product.baseModel || '-'}</TableCell>
+                    <TableCell>{product.colorVariant || '-'}</TableCell>
+                    <TableCell className="text-right">
+                      {formatCurrency(totalCostUnit)}
+                    </TableCell>
+                    <TableCell className="text-right font-semibold">
+                      {formatCurrency(product.salePrice)}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <span className="text-green-600 font-semibold">
+                        {formatCurrency(margin)}
+                      </span>
+                      <span className="text-gray-500 text-xs ml-1">
+                        ({((margin / product.salePrice) * 100).toFixed(1)}%)
+                      </span>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {product.stock}
+                      {product.stock <= product.minStock && (
+                        <div className="text-xs text-orange-600">Baixo ⚠️</div>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex gap-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleEdit(product)}
+                        >
+                          Editar
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="destructive"
+                          onClick={() => handleDelete(product.id)}
+                        >
+                          Deletar
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                )
+              })}
+            </TableBody>
+          </Table>
+        )}
+      </div>
+
+      {/* Modal de Formulário */}
+      {showForm && (
+        <ProductFormDialog
+          product={selectedProduct}
+          onClose={handleFormClose}
+        />
+      )}
+    </div>
+  )
+}
