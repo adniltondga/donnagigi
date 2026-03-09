@@ -1,10 +1,6 @@
-"use client";
+'use client'
 
-import { useState } from "react";
-import Image from "next/image";
-import { Product } from "@/types";
-import { mockProducts } from "@/lib/mockData";
-import { Plus, Edit2, Trash2, AlertCircle } from "lucide-react";
+import { useState, useEffect } from 'react'
 import {
   Table,
   TableBody,
@@ -12,295 +8,249 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Badge } from "@/components/ui/badge";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
+} from '@/components/ui/table'
+import { Button } from '@/components/ui/button'
+import { formatCurrency } from '@/lib/calculations'
+import ProductFormDialog from '@/components/ProductFormDialog'
 
-export default function ProductsAdmin() {
-  const [products, setProducts] = useState<Product[]>(mockProducts);
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [formData, setFormData] = useState({
-    name: "",
-    description: "",
-    price: "",
-    image: "",
-    category: "Capinhas",
-    stock: "",
-  });
-  const [editingId, setEditingId] = useState<string | null>(null);
+interface Product {
+  id: string
+  name: string
+  baseModel: string | null
+  colorVariant: string | null
+  supplier: string | null
+  purchaseCost: number
+  boxCost: number
+  mlTariff: number
+  deliveryTariff: number
+  salePrice: number
+  calculatedMargin: number | null
+  stock: number
+  minStock: number
+}
 
-  const handleInputChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
-  ) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
-  };
+export default function ProductsPage() {
+  const [products, setProducts] = useState<Product[]>([])
+  const [loading, setLoading] = useState(true)
+  const [deleting, setDeleting] = useState<string | null>(null)
+  const [showForm, setShowForm] = useState(false)
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null)
+  const [error, setError] = useState<string | null>(null)
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
+  useEffect(() => {
+    fetchProducts()
+  }, [])
 
-    if (editingId) {
-      setProducts(
-        products.map((p) =>
-          p.id === editingId
-            ? {
-                ...p,
-                name: formData.name,
-                description: formData.description,
-                price: parseFloat(formData.price),
-                image: formData.image,
-                stock: parseInt(formData.stock),
-                updatedAt: new Date().toISOString(),
-              }
-            : p
-        )
-      );
-      setEditingId(null);
-    } else {
-      const newProduct: Product = {
-        id: Date.now().toString(),
-        name: formData.name,
-        description: formData.description,
-        price: parseFloat(formData.price),
-        image: formData.image,
-        category: formData.category,
-        stock: parseInt(formData.stock),
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
-      setProducts([...products, newProduct]);
+  async function fetchProducts() {
+    try {
+      setLoading(true)
+      setError(null)
+      const response = await fetch('/api/products')
+      const data = await response.json()
+      console.log('API Response:', data) // Debug
+      if (data.success) {
+        setProducts(data.data)
+      } else {
+        setError(data.error || 'Erro ao carregar produtos')
+      }
+    } catch (error) {
+      console.error('Erro ao carregar produtos:', error)
+      setError('Erro ao conectar com a API')
+    } finally {
+      setLoading(false)
     }
+  }
 
-    resetForm();
-  };
+  async function handleDelete(id: string) {
+    if (!confirm('Tem certeza que deseja deletar este produto?')) return
 
-  const handleEdit = (product: Product) => {
-    setFormData({
-      name: product.name,
-      description: product.description,
-      price: product.price.toString(),
-      image: product.image,
-      category: product.category,
-      stock: product.stock.toString(),
-    });
-    setEditingId(product.id);
-    setIsDialogOpen(true);
-  };
-
-  const resetForm = () => {
-    setFormData({
-      name: "",
-      description: "",
-      price: "",
-      image: "",
-      category: "Capinhas",
-      stock: "",
-    });
-    setEditingId(null);
-    setIsDialogOpen(false);
-  };
-
-  const handleDelete = (id: string) => {
-    if (confirm("Tem certeza que deseja deletar este produto?")) {
-      setProducts(products.filter((p) => p.id !== id));
+    try {
+      setDeleting(id)
+      const response = await fetch(`/api/products/${id}`, {
+        method: 'DELETE',
+      })
+      const data = await response.json()
+      
+      if (response.ok && data.success) {
+        setProducts(products.filter((p) => p.id !== id))
+        alert('Produto deletado com sucesso!')
+      } else {
+        alert(data.error || 'Erro ao deletar produto')
+      }
+    } catch (error) {
+      console.error('Erro:', error)
+      alert('Erro ao deletar produto')
+    } finally {
+      setDeleting(null)
     }
-  };
+  }
+
+  function handleEdit(product: Product) {
+    setSelectedProduct(product)
+    setShowForm(true)
+  }
+
+  function handleCreate() {
+    setSelectedProduct(null)
+    setShowForm(true)
+  }
+
+  function handleFormClose() {
+    setShowForm(false)
+    setSelectedProduct(null)
+    fetchProducts()
+  }
+
+  const totalCost = products.reduce(
+    (sum, p) => sum + (p.purchaseCost + p.boxCost + p.mlTariff + p.deliveryTariff) * p.stock,
+    0
+  )
+  const totalRevenue = products.reduce((sum, p) => sum + p.salePrice * p.stock, 0)
+  const totalMargin = totalRevenue - totalCost
 
   return (
-    <div>
-      <div className="flex justify-between items-center mb-8">
-        <div>
-          <h1 className="text-4xl font-bold text-admin-900">Produtos</h1>
-          <p className="text-admin-600 mt-2">Gerencia todos os seus produtos</p>
-        </div>
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogTrigger asChild>
-            <Button onClick={() => resetForm()}>
-              <Plus size={20} className="mr-2" /> Novo Produto
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="sm:max-w-[600px]">
-            <DialogHeader>
-              <DialogTitle>
-                {editingId ? "Editar Produto" : "Adicionar Novo Produto"}
-              </DialogTitle>
-              <DialogDescription>
-                {editingId
-                  ? "Atualize os detalhes do produto"
-                  : "Preencha os detalhes do novo produto"}
-              </DialogDescription>
-            </DialogHeader>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="grid md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-admin-700">
-                    Nome
-                  </label>
-                  <Input
-                    type="text"
-                    name="name"
-                    value={formData.name}
-                    onChange={handleInputChange}
-                    placeholder="Nome do produto"
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-admin-700">
-                    Preço (R$)
-                  </label>
-                  <Input
-                    type="number"
-                    name="price"
-                    value={formData.price}
-                    onChange={handleInputChange}
-                    placeholder="0.00"
-                    step="0.01"
-                    required
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-admin-700">
-                  Descrição
-                </label>
-                <Textarea
-                  name="description"
-                  value={formData.description}
-                  onChange={handleInputChange}
-                  placeholder="Descrição do produto"
-                  required
-                  rows={3}
-                />
-              </div>
-
-              <div className="grid md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-admin-700">
-                    URL da Imagem
-                  </label>
-                  <Input
-                    type="url"
-                    name="image"
-                    value={formData.image}
-                    onChange={handleInputChange}
-                    placeholder="https://..."
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-admin-700">
-                    Estoque
-                  </label>
-                  <Input
-                    type="number"
-                    name="stock"
-                    value={formData.stock}
-                    onChange={handleInputChange}
-                    placeholder="0"
-                    required
-                  />
-                </div>
-              </div>
-
-              <DialogFooter className="gap-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => resetForm()}
-                >
-                  Cancelar
-                </Button>
-                <Button type="submit">
-                  {editingId ? "Atualizar" : "Adicionar"} Produto
-                </Button>
-              </DialogFooter>
-            </form>
-          </DialogContent>
-        </Dialog>
+    <div className="space-y-6 p-6">
+      <div>
+        <h1 className="text-3xl font-bold tracking-tight">Produtos</h1>
+        <p className="text-gray-500">Gerencie seu catálogo de capinhas</p>
       </div>
 
-      {/* Products Table */}
-      <div className="bg-white rounded-xl shadow-sm border border-admin-200 overflow-hidden">
-        {products.length > 0 ? (
+      {/* Erro */}
+      {error && (
+        <div className="bg-red-50 border border-red-200 p-4 rounded-lg">
+          <p className="text-red-600 text-sm">{error}</p>
+          <Button size="sm" onClick={fetchProducts} className="mt-2">
+            Tentar novamente
+          </Button>
+        </div>
+      )}
+
+      {/* Resumo */}
+      <div className="grid grid-cols-4 gap-4">
+        <div className="bg-white p-4 rounded-lg border">
+          <p className="text-sm text-gray-600">Total de SKUs</p>
+          <p className="text-2xl font-bold">{products.length}</p>
+        </div>
+        <div className="bg-white p-4 rounded-lg border">
+          <p className="text-sm text-gray-600">Estoque Total</p>
+          <p className="text-2xl font-bold">
+            {products.reduce((sum, p) => sum + p.stock, 0)}
+          </p>
+        </div>
+        <div className="bg-white p-4 rounded-lg border">
+          <p className="text-sm text-gray-600">Receita Total</p>
+          <p className="text-2xl font-bold text-green-600">
+            {formatCurrency(totalRevenue)}
+          </p>
+        </div>
+        <div className="bg-white p-4 rounded-lg border">
+          <p className="text-sm text-gray-600">Margem Total</p>
+          <p className="text-2xl font-bold text-blue-600">
+            {formatCurrency(totalMargin)}
+          </p>
+        </div>
+      </div>
+
+      {/* Novo Produto */}
+      <div>
+        <Button onClick={handleCreate} className="bg-blue-600 hover:bg-blue-700">
+          + Novo Produto
+        </Button>
+      </div>
+
+      {/* Tabela */}
+      <div className="bg-white rounded-lg border overflow-hidden">
+        {loading ? (
+          <div className="p-6 text-center">Carregando produtos...</div>
+        ) : products.length === 0 ? (
+          <div className="p-6 text-center text-gray-500">
+            Nenhum produto cadastrado
+          </div>
+        ) : (
           <Table>
             <TableHeader>
-              <TableRow>
-                <TableHead>Imagem</TableHead>
-                <TableHead>Nome</TableHead>
-                <TableHead>Preço</TableHead>
-                <TableHead>Estoque</TableHead>
+              <TableRow className="bg-gray-50">
+                <TableHead>Produto</TableHead>
+                <TableHead>Modelo</TableHead>
+                <TableHead>Cor</TableHead>
+                <TableHead className="text-right">Custo Unit.</TableHead>
+                <TableHead className="text-right">Preço</TableHead>
+                <TableHead className="text-right">Margem</TableHead>
+                <TableHead className="text-right">Estoque</TableHead>
                 <TableHead>Ações</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {products.map((product) => (
-                <TableRow key={product.id}>
-                  <TableCell>
-                    <div className="w-12 h-12 relative bg-gray-200 rounded-lg overflow-hidden">
-                      <Image
-                        src={product.image}
-                        alt={product.name}
-                        fill
-                        className="object-cover"
-                      />
-                    </div>
-                  </TableCell>
-                  <TableCell className="font-semibold">
-                    {product.name}
-                  </TableCell>
-                  <TableCell className="text-primary-600 font-bold">
-                    R$ {product.price.toFixed(2)}
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant={product.stock > 0 ? "success" : "destructive"}>
-                      {product.stock > 0 ? "✓" : "✕"} {product.stock}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex gap-2">
-                      <Button
-                        size="sm"
-                        variant="default"
-                        onClick={() => handleEdit(product)}
-                      >
-                        <Edit2 size={16} className="mr-1" /> Editar
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="destructive"
-                        onClick={() => handleDelete(product.id)}
-                      >
-                        <Trash2 size={16} className="mr-1" /> Deletar
-                      </Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
+              {products.map((product) => {
+                const totalCostUnit =
+                  product.purchaseCost +
+                  product.boxCost +
+                  product.mlTariff +
+                  product.deliveryTariff
+                const margin = product.salePrice - totalCostUnit
+
+                return (
+                  <TableRow key={product.id}>
+                    <TableCell className="font-medium max-w-xs truncate">
+                      {product.name}
+                    </TableCell>
+                    <TableCell>{product.baseModel || '-'}</TableCell>
+                    <TableCell>{product.colorVariant || '-'}</TableCell>
+                    <TableCell className="text-right">
+                      {formatCurrency(totalCostUnit)}
+                    </TableCell>
+                    <TableCell className="text-right font-semibold">
+                      {formatCurrency(product.salePrice)}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <span className="text-green-600 font-semibold">
+                        {formatCurrency(margin)}
+                      </span>
+                      <span className="text-gray-500 text-xs ml-1">
+                        ({((margin / product.salePrice) * 100).toFixed(1)}%)
+                      </span>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {product.stock}
+                      {product.stock <= product.minStock && (
+                        <div className="text-xs text-orange-600">Baixo ⚠️</div>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex gap-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleEdit(product)}
+                          disabled={deleting === product.id}
+                        >
+                          Editar
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="destructive"
+                          onClick={() => handleDelete(product.id)}
+                          disabled={deleting === product.id}
+                        >
+                          {deleting === product.id ? 'Deletando...' : 'Deletar'}
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                )
+              })}
             </TableBody>
           </Table>
-        ) : (
-          <div className="p-12 text-center">
-            <AlertCircle className="mx-auto mb-3 text-admin-400" size={48} />
-            <p className="text-admin-600">Nenhum produto cadastrado ainda.</p>
-          </div>
         )}
       </div>
+
+      {/* Modal de Formulário */}
+      {showForm && (
+        <ProductFormDialog
+          product={selectedProduct}
+          onClose={handleFormClose}
+        />
+      )}
     </div>
-  );
+  )
 }
