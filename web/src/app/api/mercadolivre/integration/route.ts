@@ -81,3 +81,40 @@ export async function POST(request: NextRequest) {
     )
   }
 }
+
+// DELETE - Desconectar do Mercado Livre
+export async function DELETE() {
+  try {
+    const mlIntegration = await prisma.mLIntegration.findFirst()
+
+    if (!mlIntegration) {
+      return NextResponse.json(
+        { error: "Nenhuma integração configurada" },
+        { status: 404 }
+      )
+    }
+
+    // Deletar todos os produtos sincronizados também
+    await prisma.mLProduct.deleteMany({
+      where: {
+        mlIntegrationId: mlIntegration.id,
+      },
+    })
+
+    // Deletar integração
+    await prisma.mLIntegration.delete({
+      where: { id: mlIntegration.id },
+    })
+
+    return NextResponse.json({
+      success: true,
+      message: "Integração removida com sucesso",
+    })
+  } catch (error) {
+    console.error("Erro ao remover integração:", error)
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : "Erro desconhecido" },
+      { status: 500 }
+    )
+  }
+}
