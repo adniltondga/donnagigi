@@ -25,19 +25,35 @@ model User {
 }
 
 model Product {
-  id          String   @id @default(cuid())
-  name        String
-  description String
-  price       Float
-  image       String
-  category    String   @default("Capinhas")
-  stock       Int
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id                  String   @id @default(cuid())
+  name                String
+  description         String
+  image               String
+  
+  // Dados do produto
+  baseModel           String?  // "iPhone 14 Pro Max"
+  colorVariant        String?  // "preta", "rosa", etc
+  category            String   @default("Capinhas")
+  supplier            String?  // "capa25"
+  
+  // Preços e custos (em reais)
+  purchaseCost        Float    @default(0)    // Custo do produto
+  boxCost             Float    @default(0)    // Custo da caixa para envio
+  mlTariff            Float    @default(0)    // Tarifa Mercado Livre
+  deliveryTariff      Float    @default(0)    // Tarifa entrega Mercado Livre
+  salePrice           Float                   // Valor de venda (preço)
+  calculatedMargin    Float?                  // Margem calculada automaticamente
+  
+  // Estoque
+  stock               Int      @default(0)
+  minStock            Int      @default(5)    // Alerta quando estoque baixo
+  
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
 
   // Relações
-  orderItems OrderItem[]
-  mlProducts MLProduct[] // Produtos sincronizados para ML
+  orderItems          OrderItem[]
+  mlProducts          MLProduct[]
 }
 
 model Order {
