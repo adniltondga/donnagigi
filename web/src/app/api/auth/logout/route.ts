@@ -8,10 +8,16 @@ export async function POST() {
     { status: 200 }
   )
 
+  // Resposta inclui instrução para limpar localStorage
+  response.headers.set('X-Clear-Storage', 'true')
+
   // Limpar o cookie
   response.cookies.set('token', '', {
     httpOnly: true,
-    maxAge: 0
+    secure: false,
+    sameSite: 'lax',
+    maxAge: 0,
+    path: '/'
   })
 
   return response

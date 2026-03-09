@@ -14,10 +14,13 @@ export function AdminSidebar() {
       await fetch('/api/auth/logout', {
         method: 'POST',
       })
+      // Limpar localStorage
+      localStorage.removeItem('adminToken')
       router.push('/admin/login')
     } catch (error) {
       console.error('Erro ao fazer logout:', error)
-      // Mesmo com erro, redirecionar
+      // Mesmo com erro, limpar localStorage e redirecionar
+      localStorage.removeItem('adminToken')
       router.push('/admin/login')
     }
   };
