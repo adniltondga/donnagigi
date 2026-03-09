@@ -24,6 +24,25 @@ model User {
   orders Order[]
 }
 
+model Supplier {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  code        String   @unique // "capa25", etc
+  email       String?
+  whatsapp    String?
+  address     String?
+  city        String?
+  state       String?
+  contactPerson String?
+  notes       String?
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relações
+  products Product[]
+}
+
 model Product {
   id                  String   @id @default(cuid())
   name                String
@@ -34,7 +53,9 @@ model Product {
   baseModel           String?  // "iPhone 14 Pro Max"
   colorVariant        String?  // "preta", "rosa", etc
   category            String   @default("Capinhas")
-  supplier            String?  // "capa25"
+  
+  supplierId          String?
+  supplier            Supplier? @relation(fields: [supplierId], references: [id], onDelete: SetNull)
   
   // Preços e custos (em reais)
   purchaseCost        Float    @default(0)    // Custo do produto

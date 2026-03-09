@@ -32,6 +32,7 @@ interface Product {
 export default function ProdutosPage() {
   const [products, setProducts] = useState<Product[]>([])
   const [loading, setLoading] = useState(true)
+  const [deleting, setDeleting] = useState<string | null>(null)
   const [showForm, setShowForm] = useState(false)
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null)
 
@@ -58,17 +59,24 @@ export default function ProdutosPage() {
     if (!confirm('Tem certeza que deseja deletar este produto?')) return
 
     try {
+      setDeleting(id)
       const response = await fetch(`/api/products/${id}`, {
         method: 'DELETE',
       })
-      if (response.ok) {
+      const data = await response.json()
+      
+      if (response.ok && data.success) {
+        // Remover do state local imediatamente
         setProducts(products.filter((p) => p.id !== id))
+        alert('Produto deletado com sucesso!')
       } else {
-        alert('Erro ao deletar produto')
+        alert(data.error || 'Erro ao deletar produto')
       }
     } catch (error) {
       console.error('Erro:', error)
       alert('Erro ao deletar produto')
+    } finally {
+      setDeleting(null)
     }
   }
 
@@ -199,6 +207,7 @@ export default function ProdutosPage() {
                           size="sm"
                           variant="outline"
                           onClick={() => handleEdit(product)}
+                          disabled={deleting === product.id}
                         >
                           Editar
                         </Button>
@@ -206,8 +215,9 @@ export default function ProdutosPage() {
                           size="sm"
                           variant="destructive"
                           onClick={() => handleDelete(product.id)}
+                          disabled={deleting === product.id}
                         >
-                          Deletar
+                          {deleting === product.id ? 'Deletando...' : 'Deletar'}
                         </Button>
                       </div>
                     </TableCell>
