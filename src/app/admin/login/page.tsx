@@ -36,7 +36,10 @@ export default function LoginPage() {
         return
       }
 
-      // Token é salvo automaticamente como cookie HTTP-only
+      // Salvar token em localStorage para verificação no layout
+      if (data.token) {
+        localStorage.setItem("adminToken", data.token)
+      }
       // Redirecionar para dashboard
       router.push("/admin/dashboard")
     } catch (err) {
