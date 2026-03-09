@@ -49,10 +49,28 @@ export default function IntegracaoPage() {
   const handleLoginML = async () => {
     setStatus("loading")
     try {
+      const res = await fetch("/api/mercadolivre/auth")
+      
+      if (!res.ok) {
+        const error = await res.json()
+        setStatus("error")
+        setMessage(
+          error.details ||
+          error.error ||
+          "Erro ao conectar com Mercado Livre"
+        )
+        return
+      }
+
+      // Se OK, NextResponse.redirect vai redirecionar
       window.location.href = "/api/mercadolivre/auth"
     } catch (error) {
       setStatus("error")
-      setMessage("Erro ao iniciar autenticação")
+      setMessage(
+        error instanceof Error
+          ? error.message
+          : "Erro ao conectar com servidor"
+      )
     }
   }
 
