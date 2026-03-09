@@ -37,6 +37,7 @@ model Product {
 
   // Relações
   orderItems OrderItem[]
+  mlProducts MLProduct[] // Produtos sincronizados para ML
 }
 
 model Order {
@@ -66,4 +67,39 @@ model OrderItem {
   price    Float
 
   @@unique([orderId, productId])
+}
+
+// Integração com Mercado Livre
+model MLIntegration {
+  id            String   @id @default(cuid())
+  accessToken   String   @db.Text
+  refreshToken  String?  @db.Text
+  sellerID      String
+  expiresAt     DateTime
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // Relações
+  products MLProduct[]
+}
+
+model MLProduct {
+  id              String   @id @default(cuid())
+  productId       String
+  product         Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  
+  mlListingID     String   @unique // ID do produto no Mercado Livre
+  mlSKU           String?
+  syncedAt        DateTime @default(now())
+  lastSyncedAt    DateTime @updatedAt
+  syncStatus      String   @default("synced") // synced, pending, failed
+  syncError       String?
+  
+  mlIntegrationId String
+  mlIntegration   MLIntegration @relation(fields: [mlIntegrationId], references: [id], onDelete: Cascade)
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([productId, mlIntegrationId])
 }
