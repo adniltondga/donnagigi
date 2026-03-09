@@ -35,12 +35,17 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    // Gerar PKCE: code_verifier e code_challenge
+    // Gerar PKCE: code_verifier e code_challenge (conforme doc ML)
     const codeVerifier = randomBytes(64).toString("base64url")
     const codeChallenge = generateCodeChallenge(codeVerifier)
 
+    // Gerar state para CSRF protection (padrão OAuth 2.0, recomendado pela ML)
     const state = randomBytes(32).toString("hex")
-    const authUrl = `https://auth.mercadolibre.com.br/authorization?response_type=code&client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&code_challenge=${codeChallenge}&code_challenge_method=S256&state=${state}`
+    
+    // URL conforme documentação do Mercado Livre
+    // Ordem: response_type → client_id → redirect_uri → state → code_challenge → code_challenge_method
+    // https://auth.mercadolivre.com.br/authorization?response_type=code&client_id=$APP_ID&redirect_uri=$YOUR_URL&code_challenge=$CODE_CHALLENGE&code_challenge_method=$CODE_METHOD
+    const authUrl = `https://auth.mercadolibre.com.br/authorization?response_type=code&client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&state=${state}&code_challenge=${codeChallenge}&code_challenge_method=S256`
 
     console.log("[PKCE] Iniciando autenticação com URL:", authUrl)
     console.log("[PKCE] Code Challenge:", codeChallenge)
