@@ -187,19 +187,7 @@ export default function LoginPage() {
 
 
 
-          {/* Demo Credentials */}
-          {!isRegister && (
-            <div className="border-t border-admin-200 pt-6">
-              <p className="text-sm text-admin-600 mb-3">
-                <span className="font-semibold">Demo:</span> Registre-se para testar
-              </p>
-              <div className="space-y-2 text-xs text-admin-500 bg-admin-50 p-3 rounded">
-                <p>• Digite um email válido</p>
-                <p>• Crie um username único</p>
-                <p>• Escolha uma senha forte</p>
-              </div>
-            </div>
-          )}
+
         </div>
 
         {/* Back Link */}
