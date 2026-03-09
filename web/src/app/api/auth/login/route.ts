@@ -3,6 +3,8 @@ import { sign } from 'jsonwebtoken'
 import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/prisma'
 
+export const dynamic = 'force-dynamic'
+
 const JWT_SECRET = process.env.JWT_SECRET || 'seu_jwt_secret_super_seguro'
 
 export async function POST(request: NextRequest) {
