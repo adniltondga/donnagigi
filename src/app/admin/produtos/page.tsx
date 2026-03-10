@@ -27,6 +27,12 @@ interface Product {
   calculatedMargin: number | null
   stock: number
   minStock: number
+  mlListed: boolean
+  mlListingId: string | null
+  mlListingUrl: string | null
+  shopeeListed: boolean
+  shopeeListingId: string | null
+  shopeeListingUrl: string | null
 }
 
 export default function ProdutosPage() {

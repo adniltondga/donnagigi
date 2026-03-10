@@ -27,6 +27,12 @@ interface Product {
   calculatedMargin: number | null
   stock: number
   minStock: number
+  mlListed: boolean
+  mlListingId: string | null
+  mlListingUrl: string | null
+  shopeeListed: boolean
+  shopeeListingId: string | null
+  shopeeListingUrl: string | null
 }
 
 export default function ProductsPage() {
@@ -177,6 +183,8 @@ export default function ProductsPage() {
                 <TableHead className="text-right">Preço</TableHead>
                 <TableHead className="text-right">Margem</TableHead>
                 <TableHead className="text-right">Estoque</TableHead>
+                <TableHead>ML</TableHead>
+                <TableHead>Shopee</TableHead>
                 <TableHead>Ações</TableHead>
               </TableRow>
             </TableHeader>
@@ -214,6 +222,44 @@ export default function ProductsPage() {
                       {product.stock}
                       {product.stock <= product.minStock && (
                         <div className="text-xs text-orange-600">Baixo ⚠️</div>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {product.mlListed ? (
+                        <div className="text-sm">
+                          <div className="text-green-600 font-semibold">✓ Ativo</div>
+                          {product.mlListingUrl && (
+                            <a
+                              href={product.mlListingUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-xs text-blue-600 hover:underline"
+                            >
+                              Ver anúncio
+                            </a>
+                          )}
+                        </div>
+                      ) : (
+                        <div className="text-sm text-gray-500">Não anunciado</div>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {product.shopeeListed ? (
+                        <div className="text-sm">
+                          <div className="text-green-600 font-semibold">✓ Ativo</div>
+                          {product.shopeeListingUrl && (
+                            <a
+                              href={product.shopeeListingUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-xs text-blue-600 hover:underline"
+                            >
+                              Ver anúncio
+                            </a>
+                          )}
+                        </div>
+                      ) : (
+                        <div className="text-sm text-gray-500">Não anunciado</div>
                       )}
                     </TableCell>
                     <TableCell>
