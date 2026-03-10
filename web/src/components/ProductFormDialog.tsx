@@ -26,6 +26,12 @@ interface Product {
   calculatedMargin: number | null
   stock: number
   minStock: number
+  mlListed: boolean
+  mlListingId: string | null
+  mlListingUrl: string | null
+  shopeeListed: boolean
+  shopeeListingId: string | null
+  shopeeListingUrl: string | null
 }
 
 interface ProductFormDialogProps {
@@ -47,6 +53,10 @@ export default function ProductFormDialog({ product, onClose }: ProductFormDialo
     salePrice: product?.salePrice.toString() || '0',
     stock: product?.stock.toString() || '0',
     minStock: product?.minStock.toString() || '5',
+    mlListed: product?.mlListed || false,
+    mlListingUrl: product?.mlListingUrl || '',
+    shopeeListed: product?.shopeeListed || false,
+    shopeeListingUrl: product?.shopeeListingUrl || '',
   })
 
   const [errors, setErrors] = useState<Record<string, string>>({})
@@ -89,6 +99,10 @@ export default function ProductFormDialog({ product, onClose }: ProductFormDialo
           salePrice: parseFloat(formData.salePrice),
           stock: parseInt(formData.stock),
           minStock: parseInt(formData.minStock),
+          mlListed: formData.mlListed,
+          mlListingUrl: formData.mlListed ? formData.mlListingUrl : null,
+          shopeeListed: formData.shopeeListed,
+          shopeeListingUrl: formData.shopeeListed ? formData.shopeeListingUrl : null,
         }),
       })
 
@@ -285,6 +299,69 @@ export default function ProductFormDialog({ product, onClose }: ProductFormDialo
                   placeholder="5"
                 />
               </div>
+            </div>
+          </div>
+
+          {/* Seção: Marketplaces */}
+          <div>
+            <h3 className="font-semibold mb-3">Anúncios em Marketplaces</h3>
+            
+            {/* Mercado Livre */}
+            <div className="bg-orange-50 p-3 rounded border border-orange-200 mb-3">
+              <label className="flex items-center gap-2 mb-2">
+                <input
+                  type="checkbox"
+                  checked={formData.mlListed}
+                  onChange={(e) =>
+                    setFormData({ ...formData, mlListed: e.target.checked })
+                  }
+                  className="w-4 h-4"
+                />
+                <span className="font-medium">Anunciado no Mercado Livre?</span>
+              </label>
+              {formData.mlListed && (
+                <div>
+                  <label className="text-sm font-medium">Link do Anúncio ML</label>
+                  <Input
+                    type="url"
+                    value={formData.mlListingUrl}
+                    onChange={(e) =>
+                      setFormData({ ...formData, mlListingUrl: e.target.value })
+                    }
+                    placeholder="https://produto.mercadolivre.com.br/..."
+                    className="mt-1"
+                  />
+                </div>
+              )}
+            </div>
+
+            {/* Shopee */}
+            <div className="bg-red-50 p-3 rounded border border-red-200">
+              <label className="flex items-center gap-2 mb-2">
+                <input
+                  type="checkbox"
+                  checked={formData.shopeeListed}
+                  onChange={(e) =>
+                    setFormData({ ...formData, shopeeListed: e.target.checked })
+                  }
+                  className="w-4 h-4"
+                />
+                <span className="font-medium">Anunciado na Shopee?</span>
+              </label>
+              {formData.shopeeListed && (
+                <div>
+                  <label className="text-sm font-medium">Link do Anúncio Shopee</label>
+                  <Input
+                    type="url"
+                    value={formData.shopeeListingUrl}
+                    onChange={(e) =>
+                      setFormData({ ...formData, shopeeListingUrl: e.target.value })
+                    }
+                    placeholder="https://shopee.com.br/..."
+                    className="mt-1"
+                  />
+                </div>
+              )}
             </div>
           </div>
 
