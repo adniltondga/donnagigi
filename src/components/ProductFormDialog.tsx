@@ -48,7 +48,6 @@ export default function ProductFormDialog({ product, onClose }: ProductFormDialo
   const [formData, setFormData] = useState({
     name: product?.name || '',
     description: product?.description || '',
-    baseImage: product?.baseImage || '',
     categoryId: product?.categoryId || '',
     supplierId: product?.supplier || '',
     mlListingId: product?.mlListingId || '',
@@ -102,6 +101,7 @@ export default function ProductFormDialog({ product, onClose }: ProductFormDialo
       colorId: v.colorId,
       stock: v.stock,
       attributes: v.attributes || {},
+      productId: product?.id,
     })) || [
       {
         cod: '',
@@ -128,7 +128,6 @@ export default function ProductFormDialog({ product, onClose }: ProductFormDialo
     const errors: string[] = []
 
     if (!formData.name.trim()) errors.push('Nome do produto é obrigatório')
-    if (!formData.baseImage.trim()) errors.push('Imagem base é obrigatória')
     if (variants.length === 0) errors.push('Mínimo 1 variação é obrigatória')
 
     variants.forEach((v, idx) => {
@@ -160,7 +159,6 @@ export default function ProductFormDialog({ product, onClose }: ProductFormDialo
           body: JSON.stringify({
             name: formData.name,
             description: formData.description,
-            baseImage: formData.baseImage,
             categoryId: formData.categoryId || null,
             supplier: formData.supplierId || null,
             mlListingId: formData.mlListingId || null,
@@ -192,7 +190,6 @@ export default function ProductFormDialog({ product, onClose }: ProductFormDialo
           body: JSON.stringify({
             name: formData.name,
             description: formData.description,
-            baseImage: formData.baseImage,
             categoryId: formData.categoryId || null,
             supplier: formData.supplierId || null,
             mlListingId: formData.mlListingId || null,
@@ -268,17 +265,7 @@ export default function ProductFormDialog({ product, onClose }: ProductFormDialo
                 />
               </div>
 
-              <div className="grid grid-cols-3 gap-3">
-                <div>
-                  <label className="block text-sm font-medium mb-1">Imagem Base (URL) *</label>
-                  <Input
-                    type="url"
-                    value={formData.baseImage}
-                    onChange={(e) => setFormData({ ...formData, baseImage: e.target.value })}
-                    placeholder="https://..."
-                    required
-                  />
-                </div>
+              <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-sm font-medium mb-1">Categoria</label>
                   <select
