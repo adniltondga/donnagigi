@@ -46,6 +46,9 @@ export default function VariantForm({
   const [models, setModels] = useState<DeviceModel[]>([])
   const [colors, setColors] = useState<DeviceColor[]>([])
   const [loadingData, setLoadingData] = useState(true)
+  const [modelSearch, setModelSearch] = useState<Record<number, string>>({})
+  const [openDropdown, setOpenDropdown] = useState<number | null>(null)
+  const [loadingColors, setLoadingColors] = useState<Record<number, boolean>>({})
 
   useEffect(() => {
     fetchModelsAndColors()
@@ -64,7 +67,7 @@ export default function VariantForm({
       if (modelsData.success) setModels(modelsData.data?.filter((m: any) => m.active) || [])
       if (colorsData.success) setColors(colorsData.data?.filter((c: any) => c.active) || [])
     } catch (error) {
-      console.error('Erro ao carregar modelos e cores:', error)
+      console.error('❌ Erro ao carregar modelos e cores:', error)
     } finally {
       setLoadingData(false)
     }
@@ -91,8 +94,38 @@ export default function VariantForm({
   function getAvailableColors(modelId?: string) {
     if (!modelId) return colors
     const model = models.find((m) => m.id === modelId)
-    if (!model) return colors
-    return model.modelColors.map((mc) => mc.color)
+    if (!model) return []
+    
+    const availableColors = model.modelColors?.map((mc) => mc.color) || []
+    return availableColors
+  }
+
+  function getFilteredModels(searchText: string) {
+    if (!searchText) return models
+    return models.filter((model) =>
+      model.name.toLowerCase().includes(searchText.toLowerCase())
+    )
+  }
+
+  function handleModelSelect(idx: number, modelId: string) {
+    const selectedModel = models.find((m) => m.id === modelId)
+    setLoadingColors({ ...loadingColors, [idx]: true })
+    
+    // Simula um pequeno delay para mostrar o loading
+    setTimeout(() => {
+      // Atualiza TUDO de uma vez, em vez de duas chamadas separadas
+      const updated = [...variants]
+      updated[idx] = {
+        ...updated[idx],
+        modelId: modelId,
+        colorId: undefined
+      }
+      onVariantsChange(updated)
+      
+      setModelSearch({ ...modelSearch, [idx]: selectedModel?.name || '' })
+      setOpenDropdown(null)
+      setLoadingColors({ ...loadingColors, [idx]: false })
+    }, 300)
   }
 
   if (loadingData) {
@@ -141,44 +174,88 @@ export default function VariantForm({
                   </div>
 
                   <div className="grid grid-cols-2 gap-3">
-                    <div>
+                    <div className="relative">
                       <label className="block text-sm font-medium mb-1">Modelo *</label>
-                      <select
-                        className="w-full border rounded px-3 py-2 bg-white"
-                        value={variant.modelId || ''}
+                      <Input
+                        type="text"
+                        placeholder="Digite para buscar..."
+                        value={modelSearch[idx] || ''}
                         onChange={(e) => {
-                          updateVariant(idx, 'modelId', e.target.value || undefined)
-                          updateVariant(idx, 'colorId', undefined)
+                          setModelSearch({ ...modelSearch, [idx]: e.target.value })
+                          if (e.target.value.length > 0) {
+                            setOpenDropdown(idx)
+                          } else {
+                            setOpenDropdown(null)
+                          }
+                        }}
+                        onFocus={() => {
+                          if (modelSearch[idx] && selectedModel?.name !== modelSearch[idx]) {
+                            setOpenDropdown(idx)
+                          }
+                        }}
+                        onBlur={() => {
+                          setTimeout(() => setOpenDropdown(null), 150)
                         }}
                         required
-                      >
-                        <option value="">Selecionar modelo...</option>
-                        {models.map((model) => (
-                          <option key={model.id} value={model.id}>
-                            {model.name}
-                          </option>
-                        ))}
-                      </select>
+                      />
+                      {openDropdown === idx && (
+                        <div className="absolute top-full left-0 right-0 mt-1 bg-white border rounded shadow-lg z-10 max-h-48 overflow-y-auto">
+                          {getFilteredModels(modelSearch[idx]).length > 0 ? (
+                            getFilteredModels(modelSearch[idx]).map((model) => (
+                              <button
+                                key={model.id}
+                                type="button"
+                                onClick={() => handleModelSelect(idx, model.id)}
+                                className="w-full text-left px-3 py-2 hover:bg-blue-100 transition border-b last:border-b-0"
+                              >
+                                {model.name}
+                              </button>
+                            ))
+                          ) : (
+                            <div className="px-3 py-2 text-gray-500 text-sm">Nenhum modelo encontrado</div>
+                          )}
+                        </div>
+                      )}
                     </div>
 
                     <div>
                       <label className="block text-sm font-medium mb-1">Cor *</label>
-                      <select
-                        className="w-full border rounded px-3 py-2 bg-white"
-                        value={variant.colorId || ''}
-                        onChange={(e) => updateVariant(idx, 'colorId', e.target.value || undefined)}
-                        required
-                        disabled={!variant.modelId}
-                      >
-                        <option value="">
-                          {!variant.modelId ? 'Selecione um modelo primeiro' : 'Selecionar cor...'}
-                        </option>
-                        {availableColors.map((color) => (
-                          <option key={color.id} value={color.id}>
-                            {color.name}
-                          </option>
-                        ))}
-                      </select>
+                      {loadingColors[idx] && (
+                        <div className="w-full border rounded px-3 py-2 bg-blue-50 text-blue-600 text-sm flex items-center">
+                          <span className="inline-block animate-spin mr-2">⟳</span>
+                          Carregando cores...
+                        </div>
+                      )}
+                      {!loadingColors[idx] && variant.modelId && availableColors.length > 0 && (
+                        <select
+                          className="w-full border rounded px-3 py-2 bg-white"
+                          value={variant.colorId || ''}
+                          onChange={(e) => updateVariant(idx, 'colorId', e.target.value || undefined)}
+                          required
+                        >
+                          <option value="">Selecionar cor...</option>
+                          {availableColors.map((color) => (
+                            <option key={color.id} value={color.id}>
+                              {color.name}
+                            </option>
+                          ))}
+                        </select>
+                      )}
+                      {!loadingColors[idx] && variant.modelId && availableColors.length === 0 && (
+                        <div className="w-full border rounded px-3 py-2 bg-red-50 border-red-200">
+                          <div className="text-red-700 text-sm font-medium mb-2">
+                            ❌ Nenhuma cor vinculada a este modelo
+                          </div>
+                          <p className="text-xs text-red-600">
+                            Acesse o painel de Modelos de Dispositivo para vincular cores a &quot;{selectedModel?.name}&quot;
+                          </p>
+                        </div>
+                      )}
+                      {!loadingColors[idx] && !variant.modelId && (
+                        <div className="w-full border rounded px-3 py-2 bg-gray-100 text-gray-600 text-sm">
+                          Selecione um modelo primeiro
+                        </div>
+                      )}
                     </div>
 
                     <div>
@@ -216,7 +293,7 @@ export default function VariantForm({
         )}
 
         <p className="text-sm text-gray-500 mt-3">
-          ℹ️ Mínimo 1 variação obrigatória. Cada variação precisa de Modelo, Cor, COD e preço de venda.
+          ℹ️ Mínimo 1 variação obrigatória. Cada variação precisa de Modelo, Cor e COD.
         </p>
       </div>
     </div>
