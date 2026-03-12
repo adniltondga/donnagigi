@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/prisma'
-import { calculateMargin } from '@/lib/calculations'
 
 export async function GET(req: NextRequest) {
   try {
@@ -14,6 +13,19 @@ export async function GET(req: NextRequest) {
         skip,
         take: limit,
         orderBy: { createdAt: 'desc' },
+        include: {
+          category: true,
+          variants: {
+            where: { active: true },
+            include: {
+              model: true,
+              color: true,
+              attributes: {
+                include: { attributeValue: true }
+              }
+            }
+          }
+        }
       }),
       prisma.product.count(),
     ])
@@ -42,16 +54,7 @@ export async function POST(req: NextRequest) {
     const body = await req.json()
 
     // Validar campos obrigatórios
-    const requiredFields = [
-      'name',
-      'purchaseCost',
-      'boxCost',
-      'mlTariff',
-      'deliveryTariff',
-      'salePrice',
-      'stock',
-    ]
-
+    const requiredFields = ['name', 'description', 'baseImage']
     for (const field of requiredFields) {
       if (!(field in body)) {
         return NextResponse.json(
@@ -61,37 +64,125 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Calcular margem
-    const calculatedMargin = calculateMargin({
-      purchaseCost: body.purchaseCost,
-      boxCost: body.boxCost,
-      mlTariff: body.mlTariff,
-      deliveryTariff: body.deliveryTariff,
-      salePrice: body.salePrice,
-    })
+    // Validar variações
+    if (!body.variants || !Array.isArray(body.variants) || body.variants.length === 0) {
+      return NextResponse.json(
+        { success: false, error: 'Pelo menos 1 variação é obrigatória' },
+        { status: 400 }
+      )
+    }
 
+    // Validar cada variação
+    for (let i = 0; i < body.variants.length; i++) {
+      const variant = body.variants[i]
+      if (!variant.cod || !variant.salePrice) {
+        return NextResponse.json(
+          { success: false, error: `Variação ${i + 1}: COD e salePrice são obrigatórios` },
+          { status: 400 }
+        )
+      }
+    }
+
+    // 1. Criar Produto
     const product = await prisma.product.create({
       data: {
         name: body.name,
-        baseModel: body.baseModel || null,
-        colorVariant: body.colorVariant || null,
+        description: body.description,
+        baseImage: body.baseImage || 'https://via.placeholder.com/300x300?text=Produto',
+        categoryId: body.categoryId || null,
         supplier: body.supplier || null,
-        purchaseCost: parseFloat(body.purchaseCost),
-        boxCost: parseFloat(body.boxCost),
-        mlTariff: parseFloat(body.mlTariff),
-        deliveryTariff: parseFloat(body.deliveryTariff),
-        salePrice: parseFloat(body.salePrice),
-        calculatedMargin,
-        stock: parseInt(body.stock),
+        mlListingId: body.mlListingId || null,
+        shopeeListingId: body.shopeeListingId || null,
+        baseSalePrice: body.baseSalePrice ? parseFloat(body.baseSalePrice) : null,
+        basePurchaseCost: body.basePurchaseCost ? parseFloat(body.basePurchaseCost) : 0,
+        baseBoxCost: body.baseBoxCost ? parseFloat(body.baseBoxCost) : 0,
         minStock: body.minStock ? parseInt(body.minStock) : 5,
-        description: body.description || null,
-        image: body.image || 'https://via.placeholder.com/300x300?text=Produto',
-        category: body.category || 'Outros',
       },
     })
 
+    // 2. Criar Atributos (se fornecidos)
+    const attributeMap: Record<string, string> = {} // name -> id
+    
+    if (body.attributes && Array.isArray(body.attributes)) {
+      for (const attr of body.attributes) {
+        if (!attr.name || !attr.values) continue
+
+        const productAttr = await prisma.productAttribute.create({
+          data: {
+            productId: product.id,
+            name: attr.name,
+            type: attr.type || 'text',
+          },
+        })
+        attributeMap[attr.name] = productAttr.id
+
+        // Criar valores do atributo
+        for (const value of attr.values) {
+          await prisma.productAttributeValue.create({
+            data: {
+              attributeId: productAttr.id,
+              value,
+            },
+          })
+        }
+      }
+    }
+
+    // 3. Criar Variações
+    const createdVariants = []
+    for (const variantData of body.variants) {
+      const variant = await prisma.productVariant.create({
+        data: {
+          productId: product.id,
+          cod: variantData.cod,
+          image: variantData.image || null,
+          purchaseCost: variantData.purchaseCost ? parseFloat(variantData.purchaseCost) : null,
+          boxCost: variantData.boxCost ? parseFloat(variantData.boxCost) : null,
+          mlTariff: variantData.mlTariff ? parseFloat(variantData.mlTariff) : 0,
+          deliveryTariff: variantData.deliveryTariff ? parseFloat(variantData.deliveryTariff) : 0,
+          salePrice: parseFloat(variantData.salePrice),
+          stock: variantData.stock ? parseInt(variantData.stock) : 0,
+          active: true,
+        },
+      })
+
+      // Associar atributos à variante (se fornecidos)
+      if (variantData.attributes && typeof variantData.attributes === 'object') {
+        for (const [attrName, attrValue] of Object.entries(variantData.attributes)) {
+          const attrId = attributeMap[attrName]
+          if (!attrId) continue
+
+          // Encontrar o valor do atributo
+          const attrVal = await prisma.productAttributeValue.findFirst({
+            where: {
+              attributeId: attrId,
+              value: String(attrValue),
+            },
+          })
+
+          if (attrVal) {
+            await prisma.variantAttributeValue.create({
+              data: {
+                variantId: variant.id,
+                attributeValueId: attrVal.id,
+              },
+            })
+          }
+        }
+      }
+
+      createdVariants.push(variant)
+    }
+
     return NextResponse.json(
-      { success: true, data: product },
+      {
+        success: true,
+        data: {
+          product,
+          variants: createdVariants,
+          variantsCount: createdVariants.length,
+        },
+      },
       { status: 201 }
     )
   } catch (error) {

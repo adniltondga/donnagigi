@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/prisma'
-import { calculateMargin } from '@/lib/calculations'
 
 export async function GET(
   _req: NextRequest,
@@ -9,6 +8,25 @@ export async function GET(
   try {
     const product = await prisma.product.findUnique({
       where: { id: params.id },
+      include: {
+        category: true,
+        variants: {
+          where: { active: true },
+          include: {
+            model: true,
+            color: true,
+            attributes: {
+              include: {
+                attributeValue: {
+                  include: {
+                    attribute: true,
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
     })
 
     if (!product) {
@@ -47,51 +65,63 @@ export async function PUT(
       )
     }
 
-    // Calcular margem se preços mudaram
-    let calculatedMargin = existingProduct.calculatedMargin
+    // Campos de variação foram movidos para ProductVariant
+    // Retornar aviso se usuário tentar atualizar esses campos
+    const variationFields = [
+      'salePrice',
+      'purchaseCost',
+      'stock',
+      'boxCost',
+      'mlTariff',
+      'deliveryTariff',
+      'baseModel',
+      'colorVariant',
+      'cod',
+    ]
 
-    if (
-      body.purchaseCost ||
-      body.boxCost ||
-      body.mlTariff ||
-      body.deliveryTariff ||
-      body.salePrice
-    ) {
-      calculatedMargin = calculateMargin({
-        purchaseCost: body.purchaseCost || existingProduct.purchaseCost,
-        boxCost: body.boxCost || existingProduct.boxCost,
-        mlTariff: body.mlTariff || existingProduct.mlTariff,
-        deliveryTariff: body.deliveryTariff || existingProduct.deliveryTariff,
-        salePrice: body.salePrice || existingProduct.salePrice,
-      })
+    const attemptedVariationUpdate = variationFields.some((field) =>
+      body.hasOwnProperty(field)
+    )
+
+    if (attemptedVariationUpdate) {
+      return NextResponse.json(
+        {
+          success: false,
+          error:
+            'Campos de preço, estoque e variações devem ser atualizados via POST /api/products/[id]/variants',
+          note: 'Use PUT /api/products/[id]/variants/[variantId] para atualizar variações específicas',
+        },
+        { status: 400 }
+      )
     }
 
     const updatedProduct = await prisma.product.update({
       where: { id: params.id },
       data: {
         ...(body.name && { name: body.name }),
-        ...(body.baseModel !== undefined && { baseModel: body.baseModel }),
-        ...(body.colorVariant !== undefined && { colorVariant: body.colorVariant }),
-        ...(body.supplier !== undefined && { supplier: body.supplier }),
-        ...(body.purchaseCost !== undefined && {
-          purchaseCost: parseFloat(body.purchaseCost),
-        }),
-        ...(body.boxCost !== undefined && { boxCost: parseFloat(body.boxCost) }),
-        ...(body.mlTariff !== undefined && {
-          mlTariff: parseFloat(body.mlTariff),
-        }),
-        ...(body.deliveryTariff !== undefined && {
-          deliveryTariff: parseFloat(body.deliveryTariff),
-        }),
-        ...(body.salePrice !== undefined && {
-          salePrice: parseFloat(body.salePrice),
-        }),
-        ...(calculatedMargin && { calculatedMargin }),
-        ...(body.stock !== undefined && { stock: parseInt(body.stock) }),
-        ...(body.minStock !== undefined && { minStock: parseInt(body.minStock) }),
         ...(body.description !== undefined && { description: body.description }),
-        ...(body.image !== undefined && { image: body.image }),
-        ...(body.category !== undefined && { category: body.category }),
+        ...(body.baseImage !== undefined && { baseImage: body.baseImage }),
+        ...(body.categoryId !== undefined && { categoryId: body.categoryId || null }),
+        ...(body.supplier !== undefined && { supplier: body.supplier }),
+        ...(body.mlListingId !== undefined && { mlListingId: body.mlListingId || null }),
+        ...(body.shopeeListingId !== undefined && { shopeeListingId: body.shopeeListingId || null }),
+      },
+      include: {
+        category: true,
+        variants: {
+          where: { active: true },
+          include: {
+            attributes: {
+              include: {
+                attributeValue: {
+                  include: {
+                    attribute: true,
+                  },
+                },
+              },
+            },
+          },
+        },
       },
     })
 

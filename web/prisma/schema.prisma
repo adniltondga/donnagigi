@@ -25,60 +25,196 @@ model User {
 }
 
 model Supplier {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  telephone String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Category {
   id          String   @id @default(cuid())
   name        String   @unique
-  code        String   @unique // "capa25", etc
-  email       String?
-  whatsapp    String?
-  address     String?
-  city        String?
-  state       String?
-  contactPerson String?
-  notes       String?
+  description String   @default("")
+  icon        String? // emoji ou URL do ícone
+  color       String   @default("#000000")
   active      Boolean  @default(true)
+  order       Int      @default(0)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+
+  // Relações
+  products Product[]
+}
+
+// Modelo de dispositivo (iPhone 14 Pro Max, iPhone 15, etc)
+model DeviceModel {
+  id          String   @id @default(cuid())
+  name        String   @unique // "iPhone 14 Pro Max", "Samsung S24"
+  description String   @default("")
+  icon        String? // emoji ou ícone
+  color       String   @default("#000000") // Cor visual no admin
+  active      Boolean  @default(true)
+  order       Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relações
+  modelColors DeviceModelColor[]
+  variants    ProductVariant[]
+}
+
+// Cor de dispositivo (Preto, Azul, Rosa, etc)
+model DeviceColor {
+  id        String   @id @default(cuid())
+  name      String   @unique // "Preto", "Azul", "Rosa"
+  hexColor  String   @default("#000000") // Código hexadecimal da cor
+  active    Boolean  @default(true)
+  order     Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relações
+  modelColors DeviceModelColor[]
+  variants    ProductVariant[]
+}
+
+// Relacionamento: Dev quais modelos têm quais cores
+model DeviceModelColor {
+  id        String      @id @default(cuid())
+  modelId   String
+  model     DeviceModel @relation(fields: [modelId], references: [id], onDelete: Cascade)
+  colorId   String
+  color     DeviceColor @relation(fields: [colorId], references: [id], onDelete: Cascade)
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+
+  @@unique([modelId, colorId])
 }
 
 model Product {
-  id                  String   @id @default(cuid())
-  name                String
-  description         String
-  image               String
-  
-  // Dados do produto
-  baseModel           String?  // "iPhone 14 Pro Max"
-  colorVariant        String?  // "preta", "rosa", etc
-  category            String   @default("Capinhas")
-  supplier            String?  // "capa25"
-  
-  // Preços e custos (em reais)
-  purchaseCost        Float    @default(0)    // Custo do produto
-  boxCost             Float    @default(0)    // Custo da caixa para envio
-  mlTariff            Float    @default(0)    // Tarifa Mercado Livre
-  deliveryTariff      Float    @default(0)    // Tarifa entrega Mercado Livre
-  salePrice           Float                   // Valor de venda (preço)
-  calculatedMargin    Float?                  // Margem calculada automaticamente
-  
-  // Estoque
-  stock               Int      @default(0)
-  minStock            Int      @default(5)    // Alerta quando estoque baixo
-  
-  // Anúncios em Marketplaces
-  mlListed            Boolean  @default(false) // Anunciado no Mercado Livre?
-  mlListingId         String?                  // ID do anúncio no ML
-  mlListingUrl        String?                  // URL do anúncio no ML
-  
-  shopeeListed        Boolean  @default(false) // Anunciado na Shopee?
-  shopeeListingId     String?                  // ID do anúncio na Shopee
-  shopeeListingUrl    String?                  // URL do anúncio na Shopee
-  
-  createdAt           DateTime @default(now())
-  updatedAt           DateTime @updatedAt
+  id          String    @id @default(cuid())
+  name        String
+  description String    @db.Text
+  baseImage   String    @default("") // Imagem padrão do produto
+  categoryId  String?
+  category    Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  supplier    String? // "capa25"
+
+  // Códigos de Marketplace
+  mlListingId     String? // ID de anúncio no Mercado Livre
+  shopeeListingId String? // ID de anúncio no Shopee
+
+  // Preço base (pode ser sobrescrito por variante)
+  baseSalePrice    Float? // Preço padrão
+  basePurchaseCost Float  @default(0) // Custo-padrão
+  baseBoxCost      Float  @default(0) // Custo caixa padrão
+
+  // Estoque mínimo padrão
+  minStock Int @default(5)
+
+  // Status
+  active Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   // Relações
-  orderItems          OrderItem[]
-  mlProducts          MLProduct[]
+  variants   ProductVariant[]
+  attributes ProductAttribute[]
+}
+
+// Atributos do produto (tipo de variação como "Cor", "Modelo iPhone", etc)
+model ProductAttribute {
+  id        String  @id @default(cuid())
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  name String // "Cor", "Modelo iPhone"
+  type String // "color", "model", "size", etc
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relações
+  attributeValues ProductAttributeValue[]
+
+  @@unique([productId, name])
+}
+
+// Valores de atributos (ex: "Preto", "Rosa" para cor)
+model ProductAttributeValue {
+  id          String           @id @default(cuid())
+  attributeId String
+  attribute   ProductAttribute @relation(fields: [attributeId], references: [id], onDelete: Cascade)
+
+  value String // "Preto", "Rosa", "iPhone 14 Pro Max"
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relações
+  variantAttributes VariantAttributeValue[]
+
+  @@unique([attributeId, value])
+}
+
+// Variação de produto (combina múltiplos atributos)
+model ProductVariant {
+  id        String  @id @default(cuid())
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  // Modelo e Cor (novo sistema)
+  modelId String?
+  model   DeviceModel? @relation(fields: [modelId], references: [id], onDelete: SetNull)
+  colorId String?
+  color   DeviceColor? @relation(fields: [colorId], references: [id], onDelete: SetNull)
+
+  cod   String  @unique // Código da variação (ex: "VAR-001")
+  image String? // Imagem específica da variante (opcional)
+
+  // Preços específicos da variante (sobrescreve o do produto)
+  purchaseCost     Float? // Se null, usa basePrice do Product
+  boxCost          Float?
+  mlTariff         Float  @default(0) // Tarifa Mercado Livre
+  deliveryTariff   Float  @default(0) // Tarifa entrega Mercado Livre
+  salePrice        Float // Preço de venda
+  calculatedMargin Float?
+
+  // Estoque
+  stock Int @default(0)
+
+  // Anúncios em Marketplaces
+  mlListed     Boolean @default(false)
+  mlListingId  String?
+  mlListingUrl String?
+
+  shopeeListed     Boolean @default(false)
+  shopeeListingId  String?
+  shopeeListingUrl String?
+
+  active Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relações
+  attributes VariantAttributeValue[]
+  orderItems OrderItem[]
+  mlProducts MLProduct[]
+}
+
+// Associação entre variante e valores de atributos
+model VariantAttributeValue {
+  id        String         @id @default(cuid())
+  variantId String
+  variant   ProductVariant @relation(fields: [variantId], references: [id], onDelete: Cascade)
+
+  attributeValueId String
+  attributeValue   ProductAttributeValue @relation(fields: [attributeValueId], references: [id], onDelete: Cascade)
+
+  @@unique([variantId, attributeValueId])
 }
 
 model Order {
@@ -101,46 +237,46 @@ model OrderItem {
   orderId String
   order   Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
 
-  productId String
-  product   Product @relation(fields: [productId], references: [id])
+  variantId String
+  variant   ProductVariant @relation(fields: [variantId], references: [id])
 
   quantity Int
   price    Float
 
-  @@unique([orderId, productId])
+  @@unique([orderId, variantId])
 }
 
 // Integração com Mercado Livre
 model MLIntegration {
-  id            String   @id @default(cuid())
-  accessToken   String   @db.Text
-  refreshToken  String?  @db.Text
-  sellerID      String
-  expiresAt     DateTime
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  id           String   @id @default(cuid())
+  accessToken  String   @db.Text
+  refreshToken String?  @db.Text
+  sellerID     String
+  expiresAt    DateTime
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
   // Relações
   products MLProduct[]
 }
 
 model MLProduct {
-  id              String   @id @default(cuid())
-  productId       String
-  product         Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
-  
-  mlListingID     String   @unique // ID do produto no Mercado Livre
-  mlSKU           String?
-  syncedAt        DateTime @default(now())
-  lastSyncedAt    DateTime @updatedAt
-  syncStatus      String   @default("synced") // synced, pending, failed
-  syncError       String?
-  
+  id        String         @id @default(cuid())
+  variantId String
+  variant   ProductVariant @relation(fields: [variantId], references: [id], onDelete: Cascade)
+
+  mlListingID  String   @unique // ID do produto no Mercado Livre
+  mlSKU        String?
+  syncedAt     DateTime @default(now())
+  lastSyncedAt DateTime @updatedAt
+  syncStatus   String   @default("synced") // synced, pending, failed
+  syncError    String?
+
   mlIntegrationId String
   mlIntegration   MLIntegration @relation(fields: [mlIntegrationId], references: [id], onDelete: Cascade)
-  
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  @@unique([productId, mlIntegrationId])
+  @@unique([variantId, mlIntegrationId])
 }
