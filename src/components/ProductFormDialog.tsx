@@ -22,13 +22,15 @@ interface Product {
   supplier?: string | null
   mlListingId?: string | null
   shopeeListingId?: string | null
-  baseSalePrice?: number
-  basePurchaseCost?: number
-  baseBoxCost?: number
-  baseMLTariff?: number
-  baseDeliveryTariff?: number
-  baseMLPrice?: number
-  shopeePrice?: number
+  baseSalePrice?: number | null
+  basePurchaseCost?: number | null
+  baseBoxCost?: number | null
+  baseMLTariff?: number | null
+  baseDeliveryTariff?: number | null
+  baseMLPrice?: number | null
+  shopeePrice?: number | null
+  baseShoppeeTariff?: number | null
+  baseShopeeDeliveryTariff?: number | null
   variants?: any[]
 }
 
@@ -58,6 +60,8 @@ export default function ProductFormDialog({ product, onClose }: ProductFormDialo
     baseDeliveryTariff: product?.baseDeliveryTariff || 0,
     baseMLPrice: product?.baseMLPrice || 0,
     shopeePrice: product?.shopeePrice || 0,
+    baseShoppeeTariff: product?.baseShoppeeTariff || 0,
+    baseShopeeDeliveryTariff: product?.baseShopeeDeliveryTariff || 0,
   })
 
   useEffect(() => {
@@ -177,6 +181,8 @@ export default function ProductFormDialog({ product, onClose }: ProductFormDialo
             baseDeliveryTariff: formData.baseDeliveryTariff,
             baseMLPrice: formData.baseMLPrice,
             shopeePrice: formData.shopeePrice,
+            baseShoppeeTariff: formData.baseShoppeeTariff,
+            baseShopeeDeliveryTariff: formData.baseShopeeDeliveryTariff,
             attributes,
             variants,
           }),
@@ -208,16 +214,44 @@ export default function ProductFormDialog({ product, onClose }: ProductFormDialo
             baseDeliveryTariff: formData.baseDeliveryTariff,
             baseMLPrice: formData.baseMLPrice,
             shopeePrice: formData.shopeePrice,
+            baseShoppeeTariff: formData.baseShoppeeTariff,
+            baseShopeeDeliveryTariff: formData.baseShopeeDeliveryTariff,
           }),
         })
 
-        if (response.ok) {
-          alert('Produto atualizado com sucesso!')
-          onClose()
-        } else {
+        if (!response.ok) {
           const data = await response.json()
           setError(data.error || 'Erro ao atualizar produto')
+          return
         }
+
+        // Adicionar novas variações (sem ID)
+        const newVariants = variants.filter(v => !v.id)
+        if (newVariants.length > 0) {
+          for (const variant of newVariants) {
+            const variantResponse = await fetch(`/api/products/${product.id}/variants`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                cod: variant.cod,
+                modelId: variant.modelId || null,
+                colorId: variant.colorId || null,
+                stock: variant.stock || 0,
+                salePrice: variant.salePrice || 0,
+                attributes: variant.attributes || {},
+              }),
+            })
+
+            if (!variantResponse.ok) {
+              const data = await variantResponse.json()
+              setError(data.error || 'Erro ao adicionar variação')
+              return
+            }
+          }
+        }
+
+        alert('Produto atualizado com sucesso!')
+        onClose()
       }
     } catch (error) {
       setError('Erro ao salvar produto')
@@ -371,19 +405,33 @@ export default function ProductFormDialog({ product, onClose }: ProductFormDialo
               </div>
               
               {/* Linha 2: Tarifas */}
-              <div className="grid grid-cols-2 lg:grid-cols-2 gap-3">
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
                 <div>
-                  <label className="block text-sm font-medium mb-1">Tarifa ML ou Shoppe (R$)</label>
+                  <label className="block text-sm font-medium mb-1">Tarifa ML (R$)</label>
                   <CurrencyInput
                     value={formData.baseMLTariff}
                     onChange={(value) => setFormData({ ...formData, baseMLTariff: value })}
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-1">Tarifa Entrega (R$)</label>
+                  <label className="block text-sm font-medium mb-1">Tarifa Entrega ML (R$)</label>
                   <CurrencyInput
                     value={formData.baseDeliveryTariff}
                     onChange={(value) => setFormData({ ...formData, baseDeliveryTariff: value })}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Tarifa Shopee (R$)</label>
+                  <CurrencyInput
+                    value={formData.baseShoppeeTariff}
+                    onChange={(value) => setFormData({ ...formData, baseShoppeeTariff: value })}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Tarifa Entrega Shopee (R$)</label>
+                  <CurrencyInput
+                    value={formData.baseShopeeDeliveryTariff}
+                    onChange={(value) => setFormData({ ...formData, baseShopeeDeliveryTariff: value })}
                   />
                 </div>
               </div>
@@ -391,20 +439,26 @@ export default function ProductFormDialog({ product, onClose }: ProductFormDialo
           </div>
 
           {/* Seção 2: Variações e Atributos */}
-          {!product && (
-            <VariantForm
-              variants={variants}
-              attributes={attributes}
-              onVariantsChange={setVariants}
-              onAttributesChange={setAttributes}
-            />
-          )}
+          <VariantForm
+            variants={variants}
+            attributes={attributes}
+            onVariantsChange={setVariants}
+            onAttributesChange={setAttributes}
+          />
 
           {product && (
-            <div className="border rounded-lg p-4 bg-blue-50">
-              <p className="text-sm text-blue-700">
-                ℹ️ Clique na seta (▶) ao lado do produto na página de produtos para expandir e gerenciar as variações.
-              </p>
+            <div className="border rounded-lg p-4 bg-blue-50 space-y-3">
+              <div>
+                <p className="text-sm text-blue-700 font-medium mb-2">
+                  📸 Para fazer upload de imagens:
+                </p>
+                <ol className="text-sm text-blue-700 list-decimal list-inside space-y-1">
+                  <li>Clique em <strong>&apos;Produtos&apos;</strong> no menu lateral</li>
+                  <li>Encontre o produto <strong>&apos;{product.name}&apos;</strong> na lista</li>
+                  <li>Clique na seta <strong>(▶)</strong> ao lado do produto para expandir</li>
+                  <li>Aí você encontrará a seção de upload de imagens 📁</li>
+                </ol>
+              </div>
             </div>
           )}
 

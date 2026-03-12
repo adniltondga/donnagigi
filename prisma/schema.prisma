@@ -102,13 +102,15 @@ model Product {
   shopeeListingId String? // ID de anúncio no Shopee
 
   // Preço base (pode ser sobrescrito por variante)
-  baseSalePrice      Float? // Preço padrão
-  basePurchaseCost   Float  @default(0) // Custo-padrão
-  baseBoxCost        Float  @default(0) // Custo caixa padrão
-  baseMLTariff       Float  @default(0) // Tarifa Mercado Livre padrão
-  baseDeliveryTariff Float  @default(0) // Tarifa entrega padrão
-  baseMLPrice        Float? // Preço Mercado Livre
-  shopeePrice        Float? // Preço Shopee
+  baseSalePrice        Float? // Preço padrão
+  basePurchaseCost     Float  @default(0) // Custo-padrão
+  baseBoxCost          Float  @default(0) // Custo caixa padrão
+  baseMLTariff         Float  @default(0) // Tarifa Mercado Livre padrão
+  baseDeliveryTariff   Float  @default(0) // Tarifa entrega ML padrão
+  baseShoppeeTariff    Float  @default(0) // Tarifa Shopee padrão
+  baseShopeeDeliveryTariff Float @default(0) // Tarifa entrega Shopee padrão
+  baseMLPrice          Float? // Preço Mercado Livre
+  shopeePrice          Float? // Preço Shopee
 
   // Estoque mínimo padrão
   minStock Int @default(5)
@@ -180,6 +182,8 @@ model ProductVariant {
   boxCost          Float?
   mlTariff         Float  @default(0) // Tarifa Mercado Livre
   deliveryTariff   Float  @default(0) // Tarifa entrega Mercado Livre
+  shoppeeTariff    Float  @default(0) // Tarifa Shopee
+  shopeeDeliveryTariff Float @default(0) // Tarifa entrega Shopee
   salePrice        Float // Preço de venda
   calculatedMargin Float?
 

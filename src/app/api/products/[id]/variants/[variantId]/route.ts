@@ -71,7 +71,7 @@ export async function PATCH(request: NextRequest, { params }: Params) {
       where: { id: variantId },
       data: {
         ...(body.stock !== undefined && { stock: body.stock }),
-        ...(body.salePrice !== undefined && { salePrice: body.salePrice }),
+        ...(body.salePrice !== undefined && { salePrice: body.salePrice ? parseFloat(body.salePrice) : body.salePrice }),
         ...(body.purchaseCost !== undefined && { purchaseCost: body.purchaseCost }),
         ...(body.boxCost !== undefined && { boxCost: body.boxCost }),
         ...(body.mlTariff !== undefined && { mlTariff: body.mlTariff }),

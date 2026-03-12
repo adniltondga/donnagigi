@@ -108,6 +108,8 @@ export async function POST(req: NextRequest) {
         baseDeliveryTariff: body.baseDeliveryTariff ? parseFloat(body.baseDeliveryTariff) : 0,
         baseMLPrice: body.baseMLPrice ? parseFloat(body.baseMLPrice) : null,
         shopeePrice: body.shopeePrice ? parseFloat(body.shopeePrice) : null,
+        baseShoppeeTariff: body.baseShoppeeTariff ? parseFloat(body.baseShoppeeTariff) : 0,
+        baseShopeeDeliveryTariff: body.baseShopeeDeliveryTariff ? parseFloat(body.baseShopeeDeliveryTariff) : 0,
         minStock: body.minStock ? parseInt(body.minStock) : 5,
       },
     })
