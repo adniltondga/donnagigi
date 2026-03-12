@@ -46,9 +46,6 @@ export default function ProductsPage() {
   const [editingVariant, setEditingVariant] = useState<any | null>(null)
   const [showVariantForm, setShowVariantForm] = useState(false)
   const [variantFormData, setVariantFormData] = useState({
-    salePrice: 0,
-    purchaseCost: 0,
-    boxCost: 0,
     stock: 0,
   })
 
@@ -118,9 +115,6 @@ export default function ProductsPage() {
   function handleEditVariant(variant: any) {
     setEditingVariant(variant)
     setVariantFormData({
-      salePrice: variant.salePrice || 0,
-      purchaseCost: variant.purchaseCost || 0,
-      boxCost: variant.boxCost || 0,
       stock: variant.stock || 0,
     })
     setShowVariantForm(true)
@@ -157,9 +151,6 @@ export default function ProductsPage() {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            salePrice: variantFormData.salePrice,
-            purchaseCost: variantFormData.purchaseCost,
-            boxCost: variantFormData.boxCost,
             stock: variantFormData.stock,
           }),
         }
@@ -448,10 +439,15 @@ export default function ProductsPage() {
 
                             <div className="grid gap-2">
                           {product.variants.map((variant) => {
-                            const unitCost = (variant.purchaseCost || 0) + (variant.boxCost || 0)
-                            const margin = variant.salePrice - unitCost
-                            const variantRevenue = variant.salePrice * variant.stock
-                            const marginPercent = variant.salePrice > 0 ? (margin / variant.salePrice) * 100 : 0
+                            // Usar preços do produto base (Informações Básicas)
+                            const salePrice = product.baseSalePrice || 0
+                            const purchaseCost = product.basePurchaseCost || 0
+                            const boxCost = product.baseBoxCost || 0
+                            
+                            const unitCost = purchaseCost + boxCost
+                            const margin = salePrice - unitCost
+                            const variantRevenue = salePrice * variant.stock
+                            const marginPercent = salePrice > 0 ? (margin / salePrice) * 100 : 0
 
                             // Formatar variação
                             const variantName = variant.model && variant.color
@@ -476,7 +472,7 @@ export default function ProductsPage() {
                                 <div>
                                   <div className="text-xs text-gray-500">Preço</div>
                                   <div className="font-semibold text-sm">
-                                    {formatCurrency(variant.salePrice)}
+                                    {formatCurrency(salePrice)}
                                   </div>
                                 </div>
 
@@ -566,45 +562,6 @@ export default function ProductsPage() {
 
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium mb-1">Preço de Venda (R$)</label>
-                <input
-                  type="number"
-                  value={variantFormData.salePrice}
-                  onChange={(e) =>
-                    setVariantFormData({ ...variantFormData, salePrice: parseFloat(e.target.value) })
-                  }
-                  step="0.01"
-                  className="w-full border rounded px-3 py-2"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium mb-1">Custo de Compra (R$)</label>
-                <input
-                  type="number"
-                  value={variantFormData.purchaseCost}
-                  onChange={(e) =>
-                    setVariantFormData({ ...variantFormData, purchaseCost: parseFloat(e.target.value) })
-                  }
-                  step="0.01"
-                  className="w-full border rounded px-3 py-2"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium mb-1">Custo da Caixa (R$)</label>
-                <input
-                  type="number"
-                  value={variantFormData.boxCost}
-                  onChange={(e) =>
-                    setVariantFormData({ ...variantFormData, boxCost: parseFloat(e.target.value) })
-                  }
-                  step="0.01"
-                  className="w-full border rounded px-3 py-2"
-                />
-              </div>
-
-              <div>
                 <label className="block text-sm font-medium mb-1">Estoque</label>
                 <input
                   type="number"
@@ -615,6 +572,9 @@ export default function ProductsPage() {
                   className="w-full border rounded px-3 py-2"
                 />
               </div>
+              <p className="text-xs text-gray-500 mt-2">
+                ℹ️ Os preços (Venda, Custo, Embalagem, Tarifa ML ou Shoppe e Entrega) são definidos nas Informações Básicas do produto.
+              </p>
             </div>
 
             <div className="flex gap-2 mt-6">

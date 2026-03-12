@@ -66,20 +66,13 @@ export async function PUT(
     }
 
     // Campos de variação foram movidos para ProductVariant
-    // Retornar aviso se usuário tentar atualizar esses campos
-    const variationFields = [
-      'salePrice',
-      'purchaseCost',
+    // Retornar aviso se usuário tentar atualizar esses campos específicos de variação
+    const variantSpecificFields = [
       'stock',
-      'boxCost',
-      'mlTariff',
-      'deliveryTariff',
-      'baseModel',
-      'colorVariant',
       'cod',
     ]
 
-    const attemptedVariationUpdate = variationFields.some((field) =>
+    const attemptedVariationUpdate = variantSpecificFields.some((field) =>
       body.hasOwnProperty(field)
     )
 
@@ -88,8 +81,7 @@ export async function PUT(
         {
           success: false,
           error:
-            'Campos de preço, estoque e variações devem ser atualizados via POST /api/products/[id]/variants',
-          note: 'Use PUT /api/products/[id]/variants/[variantId] para atualizar variações específicas',
+            'Campos de estoque e COD devem ser atualizados via PUT /api/products/[id]/variants/[variantId]',
         },
         { status: 400 }
       )
@@ -105,6 +97,13 @@ export async function PUT(
         ...(body.supplier !== undefined && { supplier: body.supplier }),
         ...(body.mlListingId !== undefined && { mlListingId: body.mlListingId || null }),
         ...(body.shopeeListingId !== undefined && { shopeeListingId: body.shopeeListingId || null }),
+        ...(body.baseSalePrice !== undefined && { baseSalePrice: body.baseSalePrice ? parseFloat(body.baseSalePrice) : null }),
+        ...(body.basePurchaseCost !== undefined && { basePurchaseCost: body.basePurchaseCost ? parseFloat(body.basePurchaseCost) : 0 }),
+        ...(body.baseBoxCost !== undefined && { baseBoxCost: body.baseBoxCost ? parseFloat(body.baseBoxCost) : 0 }),
+        ...(body.baseMLTariff !== undefined && { baseMLTariff: body.baseMLTariff ? parseFloat(body.baseMLTariff) : 0 }),
+        ...(body.baseDeliveryTariff !== undefined && { baseDeliveryTariff: body.baseDeliveryTariff ? parseFloat(body.baseDeliveryTariff) : 0 }),
+        ...(body.baseMLPrice !== undefined && { baseMLPrice: body.baseMLPrice ? parseFloat(body.baseMLPrice) : null }),
+        ...(body.shopeePrice !== undefined && { shopeePrice: body.shopeePrice ? parseFloat(body.shopeePrice) : null }),
       },
       include: {
         category: true,

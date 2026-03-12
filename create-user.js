@@ -9,10 +9,10 @@ const prisma = new PrismaClient();
 async function createUser() {
   try {
     // Dados do usuário
-    const email = 'giovana.coutinho@donnagigi.com.br';
-    const password = 'gi13226014';
-    const username = 'giovana.coutinho';
-    const name = 'Giovana Coutinho';
+    const email = 'adnilton.santos@donnagigi.com.br';
+    const password = 'md98yp121556';
+    const username = 'adnilton.santos';
+    const name = 'Adnilton Santos';
 
     // Hash da senha
     const hashedPassword = await hash(password, 10);

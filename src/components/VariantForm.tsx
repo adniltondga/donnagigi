@@ -10,12 +10,7 @@ export interface Variant {
   cod: string
   modelId?: string
   colorId?: string
-  salePrice: number
-  purchaseCost: number
-  boxCost: number
   stock: number
-  mlTariff?: number
-  deliveryTariff?: number
   attributes?: Record<string, string>
 }
 
@@ -78,9 +73,6 @@ export default function VariantForm({
   function addVariant() {
     const newVariant: Variant = {
       cod: '',
-      salePrice: 0,
-      purchaseCost: 0,
-      boxCost: 0,
       stock: 0,
     }
     onVariantsChange([...variants, newVariant])
@@ -200,76 +192,12 @@ export default function VariantForm({
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium mb-1">Preço Venda (R$) *</label>
-                      <Input
-                        type="number"
-                        step="0.01"
-                        placeholder="59.90"
-                        value={variant.salePrice}
-                        onChange={(e) => updateVariant(idx, 'salePrice', parseFloat(e.target.value) || 0)}
-                        required
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium mb-1">Custo (R$)</label>
-                      <Input
-                        type="number"
-                        step="0.01"
-                        placeholder="18.90"
-                        value={variant.purchaseCost}
-                        onChange={(e) =>
-                          updateVariant(idx, 'purchaseCost', parseFloat(e.target.value) || 0)
-                        }
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium mb-1">Embalagem (R$)</label>
-                      <Input
-                        type="number"
-                        step="0.01"
-                        placeholder="2.00"
-                        value={variant.boxCost}
-                        onChange={(e) =>
-                          updateVariant(idx, 'boxCost', parseFloat(e.target.value) || 0)
-                        }
-                      />
-                    </div>
-
-                    <div>
                       <label className="block text-sm font-medium mb-1">Estoque</label>
                       <Input
                         type="number"
                         placeholder="15"
                         value={variant.stock}
                         onChange={(e) => updateVariant(idx, 'stock', parseInt(e.target.value) || 0)}
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium mb-1">Tarifa ML (R$)</label>
-                      <Input
-                        type="number"
-                        step="0.01"
-                        placeholder="0.00"
-                        value={variant.mlTariff || 0}
-                        onChange={(e) =>
-                          updateVariant(idx, 'mlTariff', parseFloat(e.target.value) || 0)
-                        }
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium mb-1">Tarifa Entrega (R$)</label>
-                      <Input
-                        type="number"
-                        step="0.01"
-                        placeholder="0.00"
-                        value={variant.deliveryTariff || 0}
-                        onChange={(e) =>
-                          updateVariant(idx, 'deliveryTariff', parseFloat(e.target.value) || 0)
-                        }
                       />
                     </div>
                   </div>
