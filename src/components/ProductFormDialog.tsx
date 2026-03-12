@@ -12,6 +12,7 @@ import {
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import VariantForm, { Variant, Attribute } from './VariantForm'
+import CurrencyInput from './CurrencyInput'
 
 interface Product {
   id: string
@@ -22,6 +23,13 @@ interface Product {
   supplier?: string | null
   mlListingId?: string | null
   shopeeListingId?: string | null
+  baseSalePrice?: number
+  basePurchaseCost?: number
+  baseBoxCost?: number
+  baseMLTariff?: number
+  baseDeliveryTariff?: number
+  baseMLPrice?: number
+  shopeePrice?: number
   variants?: any[]
 }
 
@@ -125,7 +133,6 @@ export default function ProductFormDialog({ product, onClose }: ProductFormDialo
 
     variants.forEach((v, idx) => {
       if (!v.cod.trim()) errors.push(`Variação ${idx + 1}: COD é obrigatório`)
-      if (v.salePrice <= 0) errors.push(`Variação ${idx + 1}: Preço deve ser maior que 0`)
     })
 
     if (errors.length > 0) {
@@ -334,52 +341,37 @@ export default function ProductFormDialog({ product, onClose }: ProductFormDialo
               <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
                 <div>
                   <label className="block text-sm font-medium mb-1">Preço Venda (R$)</label>
-                  <Input
-                    type="number"
-                    step="0.01"
+                  <CurrencyInput
                     value={formData.baseSalePrice}
-                    onChange={(e) => setFormData({ ...formData, baseSalePrice: parseFloat(e.target.value) || 0 })}
-                    placeholder="59.90"
+                    onChange={(value) => setFormData({ ...formData, baseSalePrice: value })}
                   />
                 </div>
                 <div>
                   <label className="block text-sm font-medium mb-1">Preço ML (R$)</label>
-                  <Input
-                    type="number"
-                    step="0.01"
+                  <CurrencyInput
                     value={formData.baseMLPrice}
-                    onChange={(e) => setFormData({ ...formData, baseMLPrice: parseFloat(e.target.value) || 0 })}
-                    placeholder="59.90"
+                    onChange={(value) => setFormData({ ...formData, baseMLPrice: value })}
                   />
                 </div>
                 <div>
                   <label className="block text-sm font-medium mb-1">Preço Shopee (R$)</label>
-                  <Input
-                    type="number"
-                    step="0.01"
+                  <CurrencyInput
                     value={formData.shopeePrice}
-                    onChange={(e) => setFormData({ ...formData, shopeePrice: parseFloat(e.target.value) || 0 })}
-                    placeholder="59.90"
+                    onChange={(value) => setFormData({ ...formData, shopeePrice: value })}
                   />
                 </div>
                 <div>
                   <label className="block text-sm font-medium mb-1">Custo (R$)</label>
-                  <Input
-                    type="number"
-                    step="0.01"
+                  <CurrencyInput
                     value={formData.basePurchaseCost}
-                    onChange={(e) => setFormData({ ...formData, basePurchaseCost: parseFloat(e.target.value) || 0 })}
-                    placeholder="18.90"
+                    onChange={(value) => setFormData({ ...formData, basePurchaseCost: value })}
                   />
                 </div>
                 <div>
                   <label className="block text-sm font-medium mb-1">Embalagem (R$)</label>
-                  <Input
-                    type="number"
-                    step="0.01"
+                  <CurrencyInput
                     value={formData.baseBoxCost}
-                    onChange={(e) => setFormData({ ...formData, baseBoxCost: parseFloat(e.target.value) || 0 })}
-                    placeholder="2.00"
+                    onChange={(value) => setFormData({ ...formData, baseBoxCost: value })}
                   />
                 </div>
               </div>
@@ -388,22 +380,16 @@ export default function ProductFormDialog({ product, onClose }: ProductFormDialo
               <div className="grid grid-cols-2 lg:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-sm font-medium mb-1">Tarifa ML ou Shoppe (R$)</label>
-                  <Input
-                    type="number"
-                    step="0.01"
+                  <CurrencyInput
                     value={formData.baseMLTariff}
-                    onChange={(e) => setFormData({ ...formData, baseMLTariff: parseFloat(e.target.value) || 0 })}
-                    placeholder="0.00"
+                    onChange={(value) => setFormData({ ...formData, baseMLTariff: value })}
                   />
                 </div>
                 <div>
                   <label className="block text-sm font-medium mb-1">Tarifa Entrega (R$)</label>
-                  <Input
-                    type="number"
-                    step="0.01"
+                  <CurrencyInput
                     value={formData.baseDeliveryTariff}
-                    onChange={(e) => setFormData({ ...formData, baseDeliveryTariff: parseFloat(e.target.value) || 0 })}
-                    placeholder="0.00"
+                    onChange={(value) => setFormData({ ...formData, baseDeliveryTariff: value })}
                   />
                 </div>
               </div>
