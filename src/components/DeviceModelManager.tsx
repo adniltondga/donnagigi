@@ -31,6 +31,7 @@ export default function DeviceModelManager() {
   const [isCreating, setIsCreating] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [expandedModel, setExpandedModel] = useState<string | null>(null)
+  const [loadingEdit, setLoadingEdit] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
   const [newModel, setNewModel] = useState({
     name: '',
@@ -56,10 +57,22 @@ export default function DeviceModelManager() {
       const modelsData = await modelsRes.json()
       const colorsData = await colorsRes.json()
 
-      if (modelsData.success) setModels(modelsData.data || [])
-      if (colorsData.success) setColors(colorsData.data || [])
+      if (modelsData.success) {
+        const loadedModels = modelsData.data || []
+        // Garantir que cada modelo tem modelColors
+        const modelsWithColors = loadedModels.map((m: any) => ({
+          ...m,
+          modelColors: m.modelColors || [],
+        }))
+        setModels(modelsWithColors)
+        console.log(`✅ ${loadedModels.length} modelos carregados`, modelsWithColors)
+      }
+      if (colorsData.success) {
+        setColors(colorsData.data || [])
+        console.log(`✅ ${colorsData.data?.length || 0} cores carregadas`)
+      }
     } catch (error) {
-      console.error('Erro ao buscar dados:', error)
+      console.error('❌ Erro ao buscar dados:', error)
     } finally {
       setLoading(false)
     }
@@ -77,14 +90,19 @@ export default function DeviceModelManager() {
 
       const data = await response.json()
       if (data.success) {
-        setModels([...models, data.data])
+        const createdModel = {
+          ...data.data,
+          modelColors: data.data.modelColors || [],
+        }
+        setModels([...models, createdModel])
         setNewModel({ name: '', colorIds: [] })
         setIsCreating(false)
+        console.log(`✅ Modelo criado: ${createdModel.name}`, { colorCount: createdModel.modelColors.length })
       } else {
         alert(data.error || 'Erro ao criar modelo')
       }
     } catch (error) {
-      console.error('Erro:', error)
+      console.error('❌ Erro ao criar modelo:', error)
       alert('Erro ao criar modelo')
     }
   }
@@ -99,10 +117,15 @@ export default function DeviceModelManager() {
 
       const data = await response.json()
       if (data.success) {
-        setModels(models.map((m) => (m.id === id ? data.data : m)))
+        const updatedModel = {
+          ...data.data,
+          modelColors: data.data.modelColors || [],
+        }
+        setModels(models.map((m) => (m.id === id ? updatedModel : m)))
+        console.log(`✅ Modelo atualizado via handleUpdate`, { id, colorCount: updatedModel.modelColors.length })
       }
     } catch (error) {
-      console.error('Erro:', error)
+      console.error('❌ Erro ao atualizar modelo:', error)
     }
   }
 
@@ -122,12 +145,46 @@ export default function DeviceModelManager() {
     }
   }
 
-  function handleEditStart(model: DeviceModel) {
-    setEditingId(model.id)
-    setEditingModel({
-      name: model.name,
-      colorIds: model.modelColors.map((mc) => mc.color.id),
-    })
+  async function handleEditStart(model: DeviceModel) {
+    try {
+      setLoadingEdit(true)
+      // Buscar modelo atualizado da API para garantir dados completos
+      const response = await fetch(`/api/device-models/${model.id}`)
+      const data = await response.json()
+      
+      if (data.success && data.data) {
+        const freshModel = data.data
+        const modelColors = freshModel.modelColors || []
+        const colorIds = modelColors
+          .map((mc: any) => {
+            if (typeof mc === 'string') return mc
+            if (mc?.color?.id) return mc.color.id
+            if (mc?.colorId) return mc.colorId
+            return null
+          })
+          .filter(Boolean)
+        
+        setExpandedModel(model.id) // Expandir automaticamente
+        setEditingId(model.id)
+        setEditingModel({
+          name: freshModel.name,
+          colorIds: colorIds as string[],
+        })
+        
+        console.log(`🎯 Editando modelo: ${freshModel.name}`, { 
+          modelColorCount: modelColors.length,
+          colorIds,
+          freshModel
+        })
+      } else {
+        console.error('❌ Erro ao carregar modelo:', data.error)
+      }
+    } catch (error) {
+      console.error('❌ Erro ao buscar modelo para edição:', error)
+      alert('Erro ao carregar dados do modelo')
+    } finally {
+      setLoadingEdit(false)
+    }
   }
 
   async function handleEditSave(id: string) {
@@ -142,13 +199,18 @@ export default function DeviceModelManager() {
 
       const data = await response.json()
       if (data.success) {
-        setModels(models.map((m) => (m.id === id ? data.data : m)))
+        const updatedModel = {
+          ...data.data,
+          modelColors: data.data.modelColors || [],
+        }
+        setModels(models.map((m) => (m.id === id ? updatedModel : m)))
         setEditingId(null)
+        console.log(`✅ Modelo atualizado: ${updatedModel.name}`, { colorIds: updatedModel.modelColors.map((mc: any) => mc.color?.id) })
       } else {
         alert(data.error || 'Erro ao atualizar modelo')
       }
     } catch (error) {
-      console.error('Erro:', error)
+      console.error('❌ Erro ao atualizar modelo:', error)
       alert('Erro ao atualizar modelo')
     }
   }
@@ -300,71 +362,90 @@ export default function DeviceModelManager() {
               <div className="bg-gray-50 border-t p-4 space-y-3">
                 {editingId === model.id ? (
                   <div className="space-y-3 bg-white rounded p-3 border">
-                    <p className="text-sm font-medium">Editar Modelo</p>
-                    <Input
-                      placeholder="Nome do modelo"
-                      value={editingModel.name}
-                      onChange={(e) => setEditingModel({ ...editingModel, name: e.target.value })}
-                      autoFocus
-                    />
-                    <div>
-                      <p className="text-sm font-medium mb-2">Cores</p>
-                      <div className="grid grid-cols-3 gap-2 max-h-40 overflow-y-auto border rounded p-2">
-                        {colors.filter((c) => c.active).map((color) => (
-                          <label key={color.id} className="flex items-center gap-2 cursor-pointer">
-                            <input
-                              type="checkbox"
-                              checked={editingModel.colorIds.includes(color.id)}
-                              onChange={(e) => {
-                                if (e.target.checked) {
-                                  setEditingModel({
-                                    ...editingModel,
-                                    colorIds: [...editingModel.colorIds, color.id],
-                                  })
-                                } else {
-                                  setEditingModel({
-                                    ...editingModel,
-                                    colorIds: editingModel.colorIds.filter((id) => id !== color.id),
-                                  })
-                                }
-                              }}
-                            />
-                            <div
-                              className="w-4 h-4 rounded border"
-                              style={{ backgroundColor: color.hexColor }}
-                            />
-                            <span className="text-sm">{color.name}</span>
-                          </label>
-                        ))}
+                    <p className="text-sm font-medium">
+                      Editar Modelo {loadingEdit && '(Carregando...)'}
+                    </p>
+                    {loadingEdit ? (
+                      <div className="text-center py-4 text-gray-500">
+                        <p className="text-sm">Carregando dados do modelo...</p>
                       </div>
-                    </div>
-                    <div className="flex gap-2">
-                      <Button size="sm" onClick={() => handleEditSave(model.id)}>
-                        Salvar
-                      </Button>
-                      <Button size="sm" variant="outline" onClick={handleEditCancel}>
-                        Cancelar
-                      </Button>
-                    </div>
+                    ) : (
+                      <>
+                        <Input
+                          placeholder="Nome do modelo"
+                          value={editingModel.name}
+                          onChange={(e) => setEditingModel({ ...editingModel, name: e.target.value })}
+                          autoFocus
+                        />
+                        <div>
+                          <p className="text-sm font-medium mb-2">Cores ({editingModel.colorIds.length} selecionadas)</p>
+                          <div className="grid grid-cols-3 gap-2 max-h-40 overflow-y-auto border rounded p-2">
+                            {!colors || colors.length === 0 ? (
+                              <p className="text-xs text-gray-500">Nenhuma cor disponível</p>
+                            ) : (
+                              colors.filter((c) => c.active).map((color) => {
+                                const isChecked = editingModel.colorIds.includes(color.id)
+                                return (
+                                  <label key={color.id} className="flex items-center gap-2 cursor-pointer">
+                                    <input
+                                      type="checkbox"
+                                      checked={isChecked}
+                                      onChange={(e) => {
+                                        if (e.target.checked) {
+                                          setEditingModel({
+                                            ...editingModel,
+                                            colorIds: [...editingModel.colorIds, color.id],
+                                          })
+                                        } else {
+                                          setEditingModel({
+                                            ...editingModel,
+                                            colorIds: editingModel.colorIds.filter((id) => id !== color.id),
+                                          })
+                                        }
+                                      }}
+                                    />
+                                    <div
+                                      className="w-4 h-4 rounded border"
+                                      style={{ backgroundColor: color.hexColor }}
+                                    />
+                                    <span className="text-sm">{color.name}</span>
+                                  </label>
+                                )
+                              })
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex gap-2">
+                          <Button size="sm" onClick={() => handleEditSave(model.id)}>
+                            Salvar
+                          </Button>
+                          <Button size="sm" variant="outline" onClick={handleEditCancel}>
+                            Cancelar
+                          </Button>
+                        </div>
+                      </>
+                    )}
                   </div>
                 ) : (
                   <div>
-                    <p className="text-sm font-medium mb-2">Cores Disponíveis para este Modelo</p>
+                    <p className="text-sm font-medium mb-2">
+                      Cores Disponíveis para este Modelo ({(model.modelColors?.length || 0)} ativas)
+                    </p>
                     <div className="grid grid-cols-3 gap-2">
                       {colors.filter((c) => c.active).map((color) => {
-                        const isSelected = model.modelColors.some((mc) => mc.color.id === color.id)
+                        const modelColorsArray = model.modelColors || []
+                        const isSelected = modelColorsArray.some((mc) => mc.color?.id === color.id)
                         return (
                           <label key={color.id} className="flex items-center gap-2 cursor-pointer">
                             <input
                               type="checkbox"
                               checked={isSelected}
                               onChange={() => {
+                                const existingIds = modelColorsArray.map((mc) => mc.color?.id).filter(Boolean)
                                 const newColorIds = isSelected
-                                  ? model.modelColors
-                                      .map((mc) => mc.color.id)
-                                      .filter((id) => id !== color.id)
-                                  : [...model.modelColors.map((mc) => mc.color.id), color.id]
-                                handleUpdateColors(model.id, newColorIds)
+                                  ? existingIds.filter((id) => id !== color.id)
+                                  : [...existingIds, color.id]
+                                handleUpdateColors(model.id, newColorIds as string[])
                               }}
                             />
                             <div

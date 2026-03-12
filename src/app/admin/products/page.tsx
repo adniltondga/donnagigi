@@ -57,6 +57,12 @@ export default function ProductsPage() {
   const [variantFormData, setVariantFormData] = useState({
     stock: 0,
     salePrice: 0,
+    purchaseCost: 0,
+    boxCost: 0,
+    mlTariff: 0,
+    deliveryTariff: 0,
+    shoppeeTariff: 0,
+    shopeeDeliveryTariff: 0,
   })
 
   useEffect(() => {
@@ -123,12 +129,42 @@ export default function ProductsPage() {
     fetchProducts()
   }
 
-  function handleEditVariant(variant: any) {
+  async function handleEditVariant(variant: any) {
     setEditingVariant(variant)
-    setVariantFormData({
-      stock: variant.stock || 0,
-      salePrice: selectedProduct?.baseSalePrice || variant.salePrice || 0,
-    })
+    
+    // Buscar produto atualizado da API para garantir todos os campos
+    if (selectedProduct?.id) {
+      try {
+        const response = await fetch(`/api/products/${selectedProduct.id}`)
+        const data = await response.json()
+        
+        if (data.success && data.data) {
+          const product = data.data
+          console.log('✅ Produto carregado da API:', product)
+          
+          setVariantFormData({
+            stock: variant.stock || 0,
+            salePrice: variant.salePrice || product.baseSalePrice || 0,
+            purchaseCost: variant.purchaseCost || product.basePurchaseCost || 0,
+            boxCost: variant.boxCost || product.baseBoxCost || 0,
+            mlTariff: variant.mlTariff || product.baseMLTariff || 0,
+            deliveryTariff: variant.deliveryTariff || product.baseDeliveryTariff || 0,
+            shoppeeTariff: variant.shoppeeTariff || product.baseShoppeeTariff || 0,
+            shopeeDeliveryTariff: variant.shopeeDeliveryTariff || product.baseShopeeDeliveryTariff || 0,
+          })
+          
+          console.log('💰 Valores calculados:', {
+            purchaseCost: variant.purchaseCost || product.basePurchaseCost || 0,
+            boxCost: variant.boxCost || product.baseBoxCost || 0,
+            mlTariff: variant.mlTariff || product.baseMLTariff || 0,
+            deliveryTariff: variant.deliveryTariff || product.baseDeliveryTariff || 0,
+          })
+        }
+      } catch (error) {
+        console.error('❌ Erro ao carregar produto:', error)
+      }
+    }
+    
     setShowVariantForm(true)
   }
 
@@ -182,6 +218,35 @@ export default function ProductsPage() {
     } catch (error) {
       console.error('Erro:', error)
       alert('Erro ao atualizar variação')
+    }
+  }
+
+  // Função para calcular custo total baseado em marketplace
+  function calculateVariantCost(variant: any, product: any, marketplace: 'ml' | 'shopee' = 'ml') {
+    // Se a variação tem valor específico, usa; senão usa o padrão do produto
+    const purchaseCost = variant.purchaseCost !== undefined && variant.purchaseCost !== null 
+      ? variant.purchaseCost 
+      : (product?.basePurchaseCost || 0)
+    const boxCost = variant.boxCost !== undefined && variant.boxCost !== null 
+      ? variant.boxCost 
+      : (product?.baseBoxCost || 0)
+
+    if (marketplace === 'ml') {
+      const mlTariff = variant.mlTariff !== undefined && variant.mlTariff !== null 
+        ? variant.mlTariff 
+        : (product?.baseMLTariff || 0)
+      const deliveryTariff = variant.deliveryTariff !== undefined && variant.deliveryTariff !== null 
+        ? variant.deliveryTariff 
+        : (product?.baseDeliveryTariff || 0)
+      return purchaseCost + boxCost + mlTariff + deliveryTariff
+    } else {
+      const shoppeeTariff = variant.shoppeeTariff !== undefined && variant.shoppeeTariff !== null 
+        ? variant.shoppeeTariff 
+        : (product?.baseShoppeeTariff || 0)
+      const shopeeDeliveryTariff = variant.shopeeDeliveryTariff !== undefined && variant.shopeeDeliveryTariff !== null 
+        ? variant.shopeeDeliveryTariff 
+        : (product?.baseShopeeDeliveryTariff || 0)
+      return purchaseCost + boxCost + shoppeeTariff + shopeeDeliveryTariff
     }
   }
 
@@ -440,10 +505,9 @@ export default function ProductsPage() {
                         <div className="space-y-2">
                           {product.variants.map((variant) => {
                             const salePrice = variant.salePrice || 0
-                            const purchaseCost = variant.purchaseCost || 0
-                            const boxCost = variant.boxCost || 0
-
-                            const unitCost = purchaseCost + boxCost
+                            
+                            // Calcula custo com base em ML (padrão), passando o product para tarifas padrão
+                            const unitCost = calculateVariantCost(variant, product, 'ml')
                             const margin = salePrice - unitCost
                             const variantRevenue = salePrice * variant.stock
                             const marginPercent = salePrice > 0 ? (margin / salePrice) * 100 : 0
@@ -474,22 +538,35 @@ export default function ProductsPage() {
                                   </div>
                                 </div>
 
-                                {/* Custo */}
-                                <div>
-                                  <div className="text-xs text-gray-500">Custo</div>
-                                  <div className="text-sm text-gray-700">
-                                    {formatCurrency(unitCost)}
+                                {/* Receita Líquida */}
+                                <div className="sm:col-span-2 lg:col-span-2">
+                                  <div className="grid grid-cols-2 gap-2">
+                                    <div>
+                                      <p className="text-xs text-gray-600 mb-1">Mercado Livre</p>
+                                      <p className={`text-sm font-bold ${salePrice - calculateVariantCost(variant, product, 'ml') >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                        {formatCurrency(salePrice - calculateVariantCost(variant, product, 'ml'))}
+                                      </p>
+                                      <p className="text-xs text-gray-500 mt-1">
+                                        {salePrice > 0 ? ((salePrice - calculateVariantCost(variant, product, 'ml')) / salePrice * 100).toFixed(1) : '0'}% de margem
+                                      </p>
+                                    </div>
+                                    <div>
+                                      <p className="text-xs text-gray-600 mb-1">Shopee</p>
+                                      <p className={`text-sm font-bold ${salePrice - calculateVariantCost(variant, product, 'shopee') >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                        {formatCurrency(salePrice - calculateVariantCost(variant, product, 'shopee'))}
+                                      </p>
+                                      <p className="text-xs text-gray-500 mt-1">
+                                        {salePrice > 0 ? ((salePrice - calculateVariantCost(variant, product, 'shopee')) / salePrice * 100).toFixed(1) : '0'}% de margem
+                                      </p>
+                                    </div>
                                   </div>
                                 </div>
 
+                                {/* Custo */}
+                                {/* Removido */}
+
                                 {/* Margem */}
-                                <div>
-                                  <div className="text-xs text-gray-500">Margem</div>
-                                  <div className="font-semibold text-sm text-green-600">
-                                    {formatCurrency(margin)}
-                                  </div>
-                                  <div className="text-xs text-gray-500">{marginPercent.toFixed(1)}%</div>
-                                </div>
+                                {/* Removido */}
 
                                 {/* Estoque */}
                                 <div>
@@ -504,12 +581,7 @@ export default function ProductsPage() {
                                 </div>
 
                                 {/* Receita */}
-                                <div className="hidden lg:flex lg:flex-col">
-                                  <div className="text-xs text-gray-500">Receita</div>
-                                  <div className="font-semibold text-sm text-green-600">
-                                    {formatCurrency(variantRevenue)}
-                                  </div>
-                                </div>
+                                {/* Removido */}
 
                                 {/* Ações */}
                                 <div className="flex gap-2">
@@ -580,14 +652,111 @@ export default function ProductsPage() {
                   type="number"
                   value={variantFormData.stock}
                   onChange={(e) =>
-                    setVariantFormData({ ...variantFormData, stock: parseInt(e.target.value) })
+                    setVariantFormData({ ...variantFormData, stock: parseInt(e.target.value) || 0 })
                   }
                   className="w-full border rounded px-3 py-2"
                 />
               </div>
-              <p className="text-xs text-gray-500 mt-2">
-                ℹ️ Outros preços (Custo, Embalagem, Tarifas) podem ser editados nas opções avançadas do produto.
-              </p>
+
+              {/* Custo Total Calculado - Somente Visualização */}
+              <div className="bg-blue-50 p-3 rounded border border-blue-200">
+                <p className="text-xs text-gray-600 mb-1">💰 Custo Total Calculado (Mercado Livre)</p>
+                <div className="text-xs text-gray-500 mb-2 text-justify">
+                  ℹ️ {editingVariant?.purchaseCost !== undefined && editingVariant.purchaseCost !== null ? '(Valores específicos da variação)' : '(Usando tarifas padrão do produto)'}
+                </div>
+                <div className="grid grid-cols-2 gap-2 mb-2 text-xs text-gray-600">
+                  <div>Custo: R$ {(variantFormData.purchaseCost || 0).toFixed(2)}</div>
+                  <div>Embalagem: R$ {(variantFormData.boxCost || 0).toFixed(2)}</div>
+                  <div>Tarifa ML: R$ {(variantFormData.mlTariff || 0).toFixed(2)}</div>
+                  <div>Entrega ML: R$ {(variantFormData.deliveryTariff || 0).toFixed(2)}</div>
+                </div>
+                <p className="text-2xl font-bold text-blue-700">
+                  R$ {(
+                    (variantFormData.purchaseCost || 0) +
+                    (variantFormData.boxCost || 0) +
+                    (variantFormData.mlTariff || 0) +
+                    (variantFormData.deliveryTariff || 0)
+                  ).toFixed(2)}
+                </p>
+              </div>
+
+              <div className="bg-red-50 p-3 rounded border border-red-200">
+                <p className="text-xs text-gray-600 mb-1">💰 Custo Total Calculado (Shopee)</p>
+                <div className="text-xs text-gray-500 mb-2">
+                  ℹ️ {editingVariant?.shoppeeTariff !== undefined && editingVariant.shoppeeTariff !== null ? '(Valores específicos da variação)' : '(Usando tarifas padrão do produto)'}
+                </div>
+                <div className="grid grid-cols-2 gap-2 mb-2 text-xs text-gray-600">
+                  <div>Custo: R$ {(variantFormData.purchaseCost || 0).toFixed(2)}</div>
+                  <div>Embalagem: R$ {(variantFormData.boxCost || 0).toFixed(2)}</div>
+                  <div>Tarifa Shopee: R$ {(variantFormData.shoppeeTariff || 0).toFixed(2)}</div>
+                  <div>Entrega: R$ {(variantFormData.shopeeDeliveryTariff || 0).toFixed(2)}</div>
+                </div>
+                <p className="text-2xl font-bold text-red-700">
+                  R$ {(
+                    (variantFormData.purchaseCost || 0) +
+                    (variantFormData.boxCost || 0) +
+                    (variantFormData.shoppeeTariff || 0) +
+                    (variantFormData.shopeeDeliveryTariff || 0)
+                  ).toFixed(2)}
+                </p>
+              </div>
+
+              {/* Receita Líquida */}
+              <div className="bg-green-50 p-4 rounded border-2 border-green-300">
+                <p className="text-sm font-semibold mb-3 text-green-900">💵 Receita Líquida por Venda</p>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <p className="text-xs text-green-700 mb-1">Mercado Livre</p>
+                    <p className="text-xl font-bold text-green-700">
+                      R$ {(
+                        variantFormData.salePrice -
+                        ((variantFormData.purchaseCost || 0) +
+                          (variantFormData.boxCost || 0) +
+                          (variantFormData.mlTariff || 0) +
+                          (variantFormData.deliveryTariff || 0))
+                      ).toFixed(2)}
+                    </p>
+                    <p className="text-xs text-green-600 mt-1">
+                      {variantFormData.salePrice > 0 ? (
+                        ((
+                          variantFormData.salePrice -
+                          ((variantFormData.purchaseCost || 0) +
+                            (variantFormData.boxCost || 0) +
+                            (variantFormData.mlTariff || 0) +
+                            (variantFormData.deliveryTariff || 0))
+                        ) / variantFormData.salePrice * 100).toFixed(1)
+                      ) : (
+                        0
+                      )}% de margem
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-red-700 mb-1">Shopee</p>
+                    <p className="text-xl font-bold text-red-700">
+                      R$ {(
+                        variantFormData.salePrice -
+                        ((variantFormData.purchaseCost || 0) +
+                          (variantFormData.boxCost || 0) +
+                          (variantFormData.shoppeeTariff || 0) +
+                          (variantFormData.shopeeDeliveryTariff || 0))
+                      ).toFixed(2)}
+                    </p>
+                    <p className="text-xs text-red-600 mt-1">
+                      {variantFormData.salePrice > 0 ? (
+                        ((
+                          variantFormData.salePrice -
+                          ((variantFormData.purchaseCost || 0) +
+                            (variantFormData.boxCost || 0) +
+                            (variantFormData.shoppeeTariff || 0) +
+                            (variantFormData.shopeeDeliveryTariff || 0))
+                        ) / variantFormData.salePrice * 100).toFixed(1)
+                      ) : (
+                        0
+                      )}% de margem
+                    </p>
+                  </div>
+                </div>
+              </div>
             </div>
 
             <div className="flex gap-2 mt-6">

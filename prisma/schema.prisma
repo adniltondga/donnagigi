@@ -102,15 +102,15 @@ model Product {
   shopeeListingId String? // ID de anúncio no Shopee
 
   // Preço base (pode ser sobrescrito por variante)
-  baseSalePrice        Float? // Preço padrão
-  basePurchaseCost     Float  @default(0) // Custo-padrão
-  baseBoxCost          Float  @default(0) // Custo caixa padrão
-  baseMLTariff         Float  @default(0) // Tarifa Mercado Livre padrão
-  baseDeliveryTariff   Float  @default(0) // Tarifa entrega ML padrão
-  baseShoppeeTariff    Float  @default(0) // Tarifa Shopee padrão
-  baseShopeeDeliveryTariff Float @default(0) // Tarifa entrega Shopee padrão
-  baseMLPrice          Float? // Preço Mercado Livre
-  shopeePrice          Float? // Preço Shopee
+  baseSalePrice            Float? // Preço padrão
+  basePurchaseCost         Float  @default(0) // Custo-padrão
+  baseBoxCost              Float  @default(0) // Custo caixa padrão
+  baseMLTariff             Float  @default(0) // Tarifa Mercado Livre padrão
+  baseDeliveryTariff       Float  @default(0) // Tarifa entrega ML padrão
+  baseShoppeeTariff        Float  @default(0) // Tarifa Shopee padrão
+  baseShopeeDeliveryTariff Float  @default(0) // Tarifa entrega Shopee padrão
+  baseMLPrice              Float? // Preço Mercado Livre
+  shopeePrice              Float? // Preço Shopee
 
   // Estoque mínimo padrão
   minStock Int @default(5)
@@ -178,14 +178,14 @@ model ProductVariant {
   image String? // Imagem específica da variante (opcional)
 
   // Preços específicos da variante (sobrescreve o do produto)
-  purchaseCost     Float? // Se null, usa basePrice do Product
-  boxCost          Float?
-  mlTariff         Float  @default(0) // Tarifa Mercado Livre
-  deliveryTariff   Float  @default(0) // Tarifa entrega Mercado Livre
-  shoppeeTariff    Float  @default(0) // Tarifa Shopee
-  shopeeDeliveryTariff Float @default(0) // Tarifa entrega Shopee
-  salePrice        Float // Preço de venda
-  calculatedMargin Float?
+  purchaseCost         Float? // Se null, usa basePrice do Product
+  boxCost              Float?
+  mlTariff             Float  @default(0) // Tarifa Mercado Livre
+  deliveryTariff       Float  @default(0) // Tarifa entrega Mercado Livre
+  shoppeeTariff        Float  @default(0) // Tarifa Shopee
+  shopeeDeliveryTariff Float  @default(0) // Tarifa entrega Shopee
+  salePrice            Float // Preço de venda
+  calculatedMargin     Float?
 
   // Estoque
   stock Int @default(0)
@@ -209,6 +209,7 @@ model ProductVariant {
   orderItems OrderItem[]
   mlProducts MLProduct[]
   images     VariantImage[]
+  sales      Sale[]
 }
 
 // Associação entre variante e valores de atributos
@@ -301,4 +302,29 @@ model VariantImage {
 
   @@index([variantId])
   @@index([productId])
+}
+
+// Registro de Vendas
+model Sale {
+  id        String         @id @default(cuid())
+  variantId String
+  variant   ProductVariant @relation(fields: [variantId], references: [id], onDelete: Cascade)
+
+  quantity      Int   // Quantidade vendida
+  salePrice     Float // Preço por unidade
+  marketplace   String // "ml" ou "shopee"
+  
+  // Valores calculados
+  totalRevenue  Float // quantidade × salePrice
+  totalCost     Float // custos totais da venda
+  profit        Float // totalRevenue - totalCost
+  profitMargin  Float // (profit / totalRevenue) × 100
+
+  saleDate      DateTime @default(now()) // Data da venda
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([variantId])
+  @@index([saleDate])
+  @@index([marketplace])
 }
