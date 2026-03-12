@@ -76,6 +76,8 @@ export async function PATCH(request: NextRequest, { params }: Params) {
         ...(body.boxCost !== undefined && { boxCost: body.boxCost }),
         ...(body.mlTariff !== undefined && { mlTariff: body.mlTariff }),
         ...(body.deliveryTariff !== undefined && { deliveryTariff: body.deliveryTariff }),
+        ...(body.shoppeeTariff !== undefined && { shoppeeTariff: body.shoppeeTariff }),
+        ...(body.shopeeDeliveryTariff !== undefined && { shopeeDeliveryTariff: body.shopeeDeliveryTariff }),
       },
       include: {
         attributes: {
