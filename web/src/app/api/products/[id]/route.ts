@@ -92,7 +92,11 @@ export async function PUT(
       data: {
         ...(body.name && { name: body.name }),
         ...(body.description !== undefined && { description: body.description }),
-        ...(body.categoryId !== undefined && { categoryId: body.categoryId || null }),
+        ...(body.categoryId !== undefined && { 
+          category: body.categoryId 
+            ? { connect: { id: body.categoryId } } 
+            : { disconnect: true }
+        }),
         ...(body.supplier !== undefined && { supplier: body.supplier }),
         ...(body.mlListingId !== undefined && { mlListingId: body.mlListingId || null }),
         ...(body.shopeeListingId !== undefined && { shopeeListingId: body.shopeeListingId || null }),
@@ -103,6 +107,8 @@ export async function PUT(
         ...(body.baseDeliveryTariff !== undefined && { baseDeliveryTariff: body.baseDeliveryTariff ? parseFloat(body.baseDeliveryTariff) : 0 }),
         ...(body.baseMLPrice !== undefined && { baseMLPrice: body.baseMLPrice ? parseFloat(body.baseMLPrice) : null }),
         ...(body.shopeePrice !== undefined && { shopeePrice: body.shopeePrice ? parseFloat(body.shopeePrice) : null }),
+        ...(body.baseShoppeeTariff !== undefined && { baseShoppeeTariff: body.baseShoppeeTariff ? parseFloat(body.baseShoppeeTariff) : 0 }),
+        ...(body.baseShopeeDeliveryTariff !== undefined && { baseShopeeDeliveryTariff: body.baseShopeeDeliveryTariff ? parseFloat(body.baseShopeeDeliveryTariff) : 0 }),
       },
       include: {
         category: true,

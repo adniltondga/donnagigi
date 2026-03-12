@@ -4,6 +4,8 @@ import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { formatCurrency } from '@/lib/calculations'
 import ProductFormDialog from '@/components/ProductFormDialog'
+import ImageUploadVariant from '@/components/ImageUploadVariant'
+import CurrencyInput from '@/components/CurrencyInput'
 import { ChevronDown, ChevronRight, Edit2, Trash2, Package, Search, X } from 'lucide-react'
 
 interface ProductVariant {
@@ -29,6 +31,13 @@ interface Product {
   supplier?: string | null
   mlListingId?: string | null
   shopeeListingId?: string | null
+  baseSalePrice?: number | null
+  basePurchaseCost?: number | null
+  baseBoxCost?: number | null
+  baseMLTariff?: number | null
+  baseDeliveryTariff?: number | null
+  baseMLPrice?: number | null
+  shopeePrice?: number | null
   active: boolean
   variants?: ProductVariant[]
 }
@@ -44,8 +53,10 @@ export default function ProductsPage() {
   const [searchTerm, setSearchTerm] = useState('')
   const [editingVariant, setEditingVariant] = useState<any | null>(null)
   const [showVariantForm, setShowVariantForm] = useState(false)
+  const [showImageUpload, setShowImageUpload] = useState<string | null>(null)
   const [variantFormData, setVariantFormData] = useState({
     stock: 0,
+    salePrice: 0,
   })
 
   useEffect(() => {
@@ -108,6 +119,7 @@ export default function ProductsPage() {
   function handleFormClose() {
     setShowForm(false)
     setSelectedProduct(null)
+    // Recarregar lista quando produto é criado/editado
     fetchProducts()
   }
 
@@ -115,6 +127,7 @@ export default function ProductsPage() {
     setEditingVariant(variant)
     setVariantFormData({
       stock: variant.stock || 0,
+      salePrice: selectedProduct?.baseSalePrice || variant.salePrice || 0,
     })
     setShowVariantForm(true)
   }
@@ -151,6 +164,7 @@ export default function ProductsPage() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             stock: variantFormData.stock,
+            salePrice: variantFormData.salePrice,
           }),
         }
       )
@@ -193,6 +207,16 @@ export default function ProductsPage() {
       }, 0) || 0)
     )
   }, 0)
+
+  // Filtrar produtos
+  const filteredProducts = products.filter((product) => {
+    const searchLower = searchTerm.toLowerCase()
+    return (
+      product.name.toLowerCase().includes(searchLower) ||
+      (product.mlListingId && product.mlListingId.toLowerCase().includes(searchLower)) ||
+      (product.shopeeListingId && product.shopeeListingId.toLowerCase().includes(searchLower))
+    )
+  })
 
   return (
     <div className="space-y-6 p-6">
@@ -268,25 +292,11 @@ export default function ProductsPage() {
       <div className="bg-white rounded-lg border overflow-hidden">
         {loading ? (
           <div className="p-6 text-center">Carregando produtos...</div>
-        ) : (() => {
-          const filteredProducts = products.filter((product) => {
-            const searchLower = searchTerm.toLowerCase()
-            return (
-              product.name.toLowerCase().includes(searchLower) ||
-              (product.mlListingId && product.mlListingId.toLowerCase().includes(searchLower)) ||
-              (product.shopeeListingId && product.shopeeListingId.toLowerCase().includes(searchLower))
-            )
-          })
-
-          if (filteredProducts.length === 0) {
-            return (
-              <div className="p-6 text-center text-gray-500">
-                {searchTerm ? 'Nenhum produto encontrado com esses critérios' : 'Nenhum produto cadastrado'}
-              </div>
-            )
-          }
-
-          return (
+        ) : filteredProducts.length === 0 ? (
+          <div className="p-6 text-center text-gray-500">
+            {searchTerm ? 'Nenhum produto encontrado com esses critérios' : 'Nenhum produto cadastrado'}
+          </div>
+        ) : (
           <div className="divide-y">
             {filteredProducts.map((product) => {
               const productStock = product.variants?.reduce((s, v) => s + (v.stock || 0), 0) || 0
@@ -316,15 +326,7 @@ export default function ProductsPage() {
                       {/* Imagem + Info do Produto */}
                       <div className="flex items-center gap-3 flex-1 min-w-0">
                         <div className="flex-shrink-0 w-12 h-12 bg-gray-200 rounded flex items-center justify-center">
-                          {product.baseImage ? (
-                            <img
-                              src={product.baseImage}
-                              alt={product.name}
-                              className="w-12 h-12 object-cover rounded"
-                            />
-                          ) : (
-                            <Package className="w-6 h-6 text-gray-400" />
-                          )}
+                          <Package className="w-6 h-6 text-gray-400" />
                         </div>
 
                         <div className="flex-1 min-w-0">
@@ -332,7 +334,6 @@ export default function ProductsPage() {
                           <div className="flex gap-2 mt-1 flex-wrap">
                             {product.category && (
                               <span className="text-xs bg-gray-100 px-2 py-1 rounded text-gray-600">
-                                {product.category.icon ? `${product.category.icon} ` : ''}
                                 {product.category.name}
                               </span>
                             )}
@@ -436,19 +437,17 @@ export default function ProductsPage() {
                           Variações ({product.variants.length})
                         </h4>
 
-                            <div className="grid gap-2">
+                        <div className="space-y-2">
                           {product.variants.map((variant) => {
-                            // Usar preços do produto base (Informações Básicas)
-                            const salePrice = product.baseSalePrice || 0
-                            const purchaseCost = product.basePurchaseCost || 0
-                            const boxCost = product.baseBoxCost || 0
-                            
+                            const salePrice = variant.salePrice || 0
+                            const purchaseCost = variant.purchaseCost || 0
+                            const boxCost = variant.boxCost || 0
+
                             const unitCost = purchaseCost + boxCost
                             const margin = salePrice - unitCost
                             const variantRevenue = salePrice * variant.stock
                             const marginPercent = salePrice > 0 ? (margin / salePrice) * 100 : 0
 
-                            // Formatar variação
                             const variantName = variant.model && variant.color
                               ? `${variant.model.name} - ${variant.color.name}`
                               : variant.cod
@@ -524,6 +523,13 @@ export default function ProductsPage() {
                                     ✏️ Editar
                                   </button>
                                   <button
+                                    onClick={() => setShowImageUpload(showImageUpload === variant.id ? null : variant.id)}
+                                    className="px-2 py-1 text-xs bg-green-100 text-green-600 rounded hover:bg-green-200 transition"
+                                    title="Gerenciar imagens desta variação"
+                                  >
+                                    📸 Imagens
+                                  </button>
+                                  <button
                                     onClick={() => handleDeleteVariant(product.id, variant.id)}
                                     className="px-2 py-1 text-xs bg-red-100 text-red-600 rounded hover:bg-red-200 transition"
                                   >
@@ -541,8 +547,7 @@ export default function ProductsPage() {
               )
             })}
           </div>
-          )
-        })()}
+        )}
       </div>
 
       {/* Modal de Formulário */}
@@ -561,6 +566,15 @@ export default function ProductsPage() {
 
             <div className="space-y-4">
               <div>
+                <label className="block text-sm font-medium mb-1">Preço Venda (R$)</label>
+                <CurrencyInput
+                  value={variantFormData.salePrice}
+                  onChange={(value) =>
+                    setVariantFormData({ ...variantFormData, salePrice: value })
+                  }
+                />
+              </div>
+              <div>
                 <label className="block text-sm font-medium mb-1">Estoque</label>
                 <input
                   type="number"
@@ -572,7 +586,7 @@ export default function ProductsPage() {
                 />
               </div>
               <p className="text-xs text-gray-500 mt-2">
-                ℹ️ Os preços (Venda, Custo, Embalagem, Tarifa ML ou Shoppe e Entrega) são definidos nas Informações Básicas do produto.
+                ℹ️ Outros preços (Custo, Embalagem, Tarifas) podem ser editados nas opções avançadas do produto.
               </p>
             </div>
 
@@ -593,6 +607,29 @@ export default function ProductsPage() {
                 Salvar
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Upload de Imagens */}
+      {showImageUpload && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg p-6 max-w-2xl w-full max-h-96 overflow-y-auto">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-lg font-bold">Gerenciar Imagens da Variação</h2>
+              <button
+                onClick={() => setShowImageUpload(null)}
+                className="text-gray-500 hover:text-gray-700 text-2xl leading-none"
+              >
+                ×
+              </button>
+            </div>
+            {showImageUpload && filteredProducts.find(p => p.variants?.find(v => v.id === showImageUpload)) && (
+              <ImageUploadVariant
+                variantId={showImageUpload}
+                productId={filteredProducts.find(p => p.variants?.find(v => v.id === showImageUpload))?.id || ''}
+              />
+            )}
           </div>
         </div>
       )}
