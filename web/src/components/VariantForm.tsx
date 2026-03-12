@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Trash2, Plus } from 'lucide-react'
+import ImageUploadVariant from './ImageUploadVariant'
 
 export interface Variant {
   id?: string
@@ -12,6 +13,7 @@ export interface Variant {
   colorId?: string
   stock: number
   attributes?: Record<string, string>
+  productId?: string
 }
 
 export interface Attribute {
@@ -277,6 +279,20 @@ export default function VariantForm({
                         onChange={(e) => updateVariant(idx, 'stock', parseInt(e.target.value) || 0)}
                       />
                     </div>
+                  </div>
+
+                  {/* Seção de Upload de Imagens */}
+                  <div className="pt-4 border-t">
+                    {variant.id ? (
+                      <ImageUploadVariant
+                        variantId={variant.id}
+                        productId={variant.productId || ''}
+                      />
+                    ) : (
+                      <div className="p-3 bg-blue-50 border border-blue-200 rounded text-sm text-blue-700">
+                        💡 <span className="font-medium">Dica:</span> Salve o produto primeiro para fazer upload de imagens desta variação.
+                      </div>
+                    )}
                   </div>
                 </div>
               )
