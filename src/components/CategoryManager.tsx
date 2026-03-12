@@ -16,9 +16,6 @@ import { Edit2, Trash2, Plus, X } from 'lucide-react'
 interface Category {
   id: string
   name: string
-  description: string
-  icon: string | null
-  color: string
   active: boolean
   order: number
   _count?: {
@@ -37,9 +34,6 @@ export default function CategoryManager() {
 
   const [formData, setFormData] = useState({
     name: '',
-    description: '',
-    icon: '',
-    color: '#000000',
   })
 
   useEffect(() => {
@@ -64,7 +58,7 @@ export default function CategoryManager() {
 
   function handleCreate() {
     setEditingId(null)
-    setFormData({ name: '', description: '', icon: '', color: '#000000' })
+    setFormData({ name: '' })
     setShowForm(true)
   }
 
@@ -72,9 +66,6 @@ export default function CategoryManager() {
     setEditingId(category.id)
     setFormData({
       name: category.name,
-      description: category.description,
-      icon: category.icon || '',
-      color: category.color,
     })
     setShowForm(true)
   }
@@ -185,9 +176,6 @@ export default function CategoryManager() {
               <thead>
                 <tr className="bg-gray-50 border-b">
                   <th className="px-6 py-3 text-left text-sm font-semibold">Nome</th>
-                  <th className="px-6 py-3 text-left text-sm font-semibold">Descrição</th>
-                  <th className="px-6 py-3 text-center text-sm font-semibold">Ícone</th>
-                  <th className="px-6 py-3 text-center text-sm font-semibold">Cor</th>
                   <th className="px-6 py-3 text-center text-sm font-semibold">Produtos</th>
                   <th className="px-6 py-3 text-center text-sm font-semibold">Status</th>
                   <th className="px-6 py-3 text-center text-sm font-semibold">Ações</th>
@@ -198,22 +186,6 @@ export default function CategoryManager() {
                   <tr key={category.id} className="border-b hover:bg-gray-50">
                     <td className="px-6 py-4 font-medium text-gray-900">
                       {category.name}
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-700">
-                      {category.description || '-'}
-                    </td>
-                    <td className="px-6 py-4 text-center">
-                      {category.icon ? (
-                        <span className="text-2xl">{category.icon}</span>
-                      ) : (
-                        <span className="text-gray-400">-</span>
-                      )}
-                    </td>
-                    <td className="px-6 py-4 text-center">
-                      <div
-                        className="w-8 h-8 rounded-full border-2 border-gray-300 mx-auto"
-                        style={{ backgroundColor: category.color }}
-                      />
                     </td>
                     <td className="px-6 py-4 text-center text-sm">
                       {category._count?.products || 0}
@@ -280,50 +252,7 @@ export default function CategoryManager() {
               />
             </div>
 
-            <div>
-              <label className="block text-sm font-medium mb-1">Descrição</label>
-              <textarea
-                value={formData.description}
-                onChange={(e) =>
-                  setFormData({ ...formData, description: e.target.value })
-                }
-                placeholder="Descrição da categoria"
-                className="w-full border rounded px-3 py-2 min-h-[80px]"
-              />
-            </div>
 
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block text-sm font-medium mb-1">Ícone</label>
-                <Input
-                  value={formData.icon}
-                  onChange={(e) => setFormData({ ...formData, icon: e.target.value })}
-                  placeholder="Ex: 📱 🎨 📦"
-                  maxLength={2}
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium mb-1">Cor</label>
-                <div className="flex gap-2">
-                  <input
-                    type="color"
-                    value={formData.color}
-                    onChange={(e) =>
-                      setFormData({ ...formData, color: e.target.value })
-                    }
-                    className="w-12 h-10 rounded border cursor-pointer"
-                  />
-                  <Input
-                    value={formData.color}
-                    onChange={(e) =>
-                      setFormData({ ...formData, color: e.target.value })
-                    }
-                    placeholder="#000000"
-                  />
-                </div>
-              </div>
-            </div>
 
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setShowForm(false)}>

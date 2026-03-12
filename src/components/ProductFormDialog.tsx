@@ -18,7 +18,6 @@ interface Product {
   id: string
   name: string
   description?: string
-  baseImage?: string
   categoryId?: string | null
   supplier?: string | null
   mlListingId?: string | null
@@ -100,12 +99,14 @@ export default function ProductFormDialog({ product, onClose }: ProductFormDialo
       modelId: v.modelId,
       colorId: v.colorId,
       stock: v.stock,
+      salePrice: v.salePrice || 0,
       attributes: v.attributes || {},
       productId: product?.id,
     })) || [
       {
         cod: '',
         stock: 0,
+        salePrice: 0,
         attributes: {},
       },
     ]
@@ -131,7 +132,13 @@ export default function ProductFormDialog({ product, onClose }: ProductFormDialo
     if (variants.length === 0) errors.push('Mínimo 1 variação é obrigatória')
 
     variants.forEach((v, idx) => {
-      if (!v.cod.trim()) errors.push(`Variação ${idx + 1}: COD é obrigatório`)
+      if (!v.cod || v.cod.trim() === '') {
+        errors.push(`Variação ${idx + 1}: COD é obrigatório`)
+      }
+      const salePrice = parseFloat(String(v.salePrice))
+      if (isNaN(salePrice) || salePrice <= 0) {
+        errors.push(`Variação ${idx + 1}: Preço Venda é obrigatório e deve ser maior que 0`)
+      }
     })
 
     if (errors.length > 0) {

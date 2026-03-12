@@ -68,9 +68,6 @@ export async function PUT(
       where: { id: params.id },
       data: {
         ...(body.name && { name: body.name.trim() }),
-        ...(body.description !== undefined && { description: body.description }),
-        ...(body.icon !== undefined && { icon: body.icon }),
-        ...(body.color !== undefined && { color: body.color }),
         ...(body.order !== undefined && { order: body.order }),
         ...(body.active !== undefined && { active: body.active }),
       },

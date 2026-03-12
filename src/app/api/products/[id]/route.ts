@@ -92,7 +92,6 @@ export async function PUT(
       data: {
         ...(body.name && { name: body.name }),
         ...(body.description !== undefined && { description: body.description }),
-        ...(body.baseImage !== undefined && { baseImage: body.baseImage }),
         ...(body.categoryId !== undefined && { categoryId: body.categoryId || null }),
         ...(body.supplier !== undefined && { supplier: body.supplier }),
         ...(body.mlListingId !== undefined && { mlListingId: body.mlListingId || null }),
