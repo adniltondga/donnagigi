@@ -1,0 +1,3 @@
+-- AlterTable
+ALTER TABLE "Product" ADD COLUMN "baseMLPrice" DOUBLE PRECISION,
+ADD COLUMN "shopeePrice" DOUBLE PRECISION;

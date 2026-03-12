@@ -96,6 +96,10 @@ export async function POST(req: NextRequest) {
         baseSalePrice: body.baseSalePrice ? parseFloat(body.baseSalePrice) : null,
         basePurchaseCost: body.basePurchaseCost ? parseFloat(body.basePurchaseCost) : 0,
         baseBoxCost: body.baseBoxCost ? parseFloat(body.baseBoxCost) : 0,
+        baseMLTariff: body.baseMLTariff ? parseFloat(body.baseMLTariff) : 0,
+        baseDeliveryTariff: body.baseDeliveryTariff ? parseFloat(body.baseDeliveryTariff) : 0,
+        baseMLPrice: body.baseMLPrice ? parseFloat(body.baseMLPrice) : null,
+        shopeePrice: body.shopeePrice ? parseFloat(body.shopeePrice) : null,
         minStock: body.minStock ? parseInt(body.minStock) : 5,
       },
     })

@@ -109,6 +109,10 @@ model Product {
   baseSalePrice    Float? // Preço padrão
   basePurchaseCost Float  @default(0) // Custo-padrão
   baseBoxCost      Float  @default(0) // Custo caixa padrão
+  baseMLTariff     Float  @default(0) // Tarifa Mercado Livre padrão
+  baseDeliveryTariff Float @default(0) // Tarifa entrega padrão
+  baseMLPrice      Float? // Preço Mercado Livre
+  shopeePrice      Float? // Preço Shopee
 
   // Estoque mínimo padrão
   minStock Int @default(5)
