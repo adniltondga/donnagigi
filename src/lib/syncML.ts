@@ -27,25 +27,29 @@ export async function syncProductToML(
       throw new Error("Integração com Mercado Livre não configurada")
     }
 
+    // Buscar variantes do produto
+    const variant = await prisma.productVariant.findFirst({
+      where: { productId },
+    })
+
+    if (!variant) {
+      throw new Error("Produto não possui variantes")
+    }
+
     const existingSync = await prisma.mLProduct.findFirst({
       where: {
-        productId,
+        variantId: variant.id,
         mlIntegrationId: mlIntegration.id,
       },
     })
 
-    const categoryMap: Record<string, string> = {
-      "capinhas": "MLB100672", // Categoria de acessórios de celular
-      "default": "MLB100672",
-    }
-
     const mlData = {
       title: product.name,
-      price: product.salePrice,
+      price: product.baseSalePrice || 0,
       description: product.description,
-      pictures: [product.image],
-      category_id: categoryMap[product.category.toLowerCase()] || categoryMap["default"],
-      quantity: product.stock,
+      pictures: [product.baseImage],
+      category_id: "MLB100672", // Categoria padrão: acessórios de celular
+      quantity: 0,
     }
 
     let mlListingId: string
@@ -71,7 +75,7 @@ export async function syncProductToML(
 
       await prisma.mLProduct.create({
         data: {
-          productId,
+          variantId: variant.id,
           mlListingID: mlListingId,
           mlIntegrationId: mlIntegration.id,
           syncStatus: "synced",
@@ -90,21 +94,28 @@ export async function syncProductToML(
     // Registrar erro no banco
     const mlIntegration = await prisma.mLIntegration.findFirst()
     if (mlIntegration) {
-      const existingSync = await prisma.mLProduct.findFirst({
-        where: {
-          productId,
-          mlIntegrationId: mlIntegration.id,
-        },
+      // Buscar variant se não tiver sido encontrado antes
+      const variant = await prisma.productVariant.findFirst({
+        where: { productId },
       })
-
-      if (existingSync) {
-        await prisma.mLProduct.update({
-          where: { id: existingSync.id },
-          data: {
-            syncStatus: "failed",
-            syncError: error instanceof Error ? error.message : "Erro desconhecido",
+      
+      if (variant) {
+        const existingSync = await prisma.mLProduct.findFirst({
+          where: {
+            variantId: variant.id,
+            mlIntegrationId: mlIntegration.id,
           },
         })
+
+        if (existingSync) {
+          await prisma.mLProduct.update({
+            where: { id: existingSync.id },
+            data: {
+              syncStatus: "failed",
+              syncError: error instanceof Error ? error.message : "Erro desconhecido",
+            },
+          })
+        }
       }
     }
 

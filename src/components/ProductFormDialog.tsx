@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import {
   Dialog,
   DialogContent,
@@ -11,27 +11,18 @@ import {
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
+import VariantForm, { Variant, Attribute } from './VariantForm'
 
 interface Product {
   id: string
   name: string
-  baseModel: string | null
-  colorVariant: string | null
-  supplier: string | null
-  purchaseCost: number
-  boxCost: number
-  mlTariff: number
-  deliveryTariff: number
-  salePrice: number
-  calculatedMargin: number | null
-  stock: number
-  minStock: number
-  mlListed: boolean
-  mlListingId: string | null
-  mlListingUrl: string | null
-  shopeeListed: boolean
-  shopeeListingId: string | null
-  shopeeListingUrl: string | null
+  description?: string
+  baseImage?: string
+  categoryId?: string | null
+  supplier?: string | null
+  mlListingId?: string | null
+  shopeeListingId?: string | null
+  variants?: any[]
 }
 
 interface ProductFormDialogProps {
@@ -41,80 +32,170 @@ interface ProductFormDialogProps {
 
 export default function ProductFormDialog({ product, onClose }: ProductFormDialogProps) {
   const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [categories, setCategories] = useState<any[]>([])
+  const [suppliers, setSuppliers] = useState<any[]>([])
+
+  // Formulário básico do produto
   const [formData, setFormData] = useState({
     name: product?.name || '',
-    baseModel: product?.baseModel || '',
-    colorVariant: product?.colorVariant || '',
-    supplier: product?.supplier || '',
-    purchaseCost: product?.purchaseCost.toString() || '0',
-    boxCost: product?.boxCost.toString() || '0',
-    mlTariff: product?.mlTariff.toString() || '0',
-    deliveryTariff: product?.deliveryTariff.toString() || '0',
-    salePrice: product?.salePrice.toString() || '0',
-    stock: product?.stock.toString() || '0',
-    minStock: product?.minStock.toString() || '5',
-    mlListed: product?.mlListed || false,
-    mlListingUrl: product?.mlListingUrl || '',
-    shopeeListed: product?.shopeeListed || false,
-    shopeeListingUrl: product?.shopeeListingUrl || '',
+    description: product?.description || '',
+    baseImage: product?.baseImage || '',
+    categoryId: product?.categoryId || '',
+    supplierId: product?.supplier || '',
+    mlListingId: product?.mlListingId || '',
+    shopeeListingId: product?.shopeeListingId || '',
   })
 
-  const [errors, setErrors] = useState<Record<string, string>>({})
+  useEffect(() => {
+    fetchCategories()
+    fetchSuppliers()
+  }, [])
+
+  async function fetchCategories() {
+    try {
+      const response = await fetch('/api/categories')
+      const data = await response.json()
+      if (data.success) {
+        setCategories(data.data)
+      }
+    } catch (error) {
+      console.error('Erro ao carregar categorias:', error)
+    }
+  }
+
+  async function fetchSuppliers() {
+    try {
+      const response = await fetch('/api/suppliers')
+      if (response.ok) {
+        const data = await response.json()
+        if (data.success) {
+          setSuppliers(data.data || [])
+        }
+      }
+    } catch (error) {
+      console.error('Erro ao carregar fornecedores:', error)
+    }
+  }
+
+  // Variações
+  const [variants, setVariants] = useState<Variant[]>(
+    product?.variants?.map((v: any) => ({
+      id: v.id,
+      cod: v.cod,
+      salePrice: v.salePrice,
+      purchaseCost: v.purchaseCost,
+      boxCost: v.boxCost,
+      stock: v.stock,
+      mlTariff: v.mlTariff,
+      deliveryTariff: v.deliveryTariff,
+      attributes: v.attributes || {},
+    })) || [
+      {
+        cod: '',
+        salePrice: 0,
+        purchaseCost: 0,
+        boxCost: 0,
+        stock: 0,
+        attributes: {},
+      },
+    ]
+  )
+
+  // Atributos (Cor, Modelo, etc)
+  const [attributes, setAttributes] = useState<Attribute[]>(
+    product?.variants?.[0]?.attributes
+      ? Object.entries(product.variants[0].attributes as Record<string, any>).map(
+          ([name, value]) => ({
+            name,
+            type: 'text',
+            values: [value],
+          })
+        )
+      : []
+  )
 
   function validateForm() {
-    const newErrors: Record<string, string> = {}
+    const errors: string[] = []
 
-    if (!formData.name.trim()) newErrors.name = 'Nome é obrigatório'
-    if (parseFloat(formData.purchaseCost) < 0) newErrors.purchaseCost = 'Valor inválido'
-    if (parseFloat(formData.salePrice) < 0) newErrors.salePrice = 'Valor inválido'
-    if (parseInt(formData.stock) < 0) newErrors.stock = 'Valor inválido'
+    if (!formData.name.trim()) errors.push('Nome do produto é obrigatório')
+    if (!formData.baseImage.trim()) errors.push('Imagem base é obrigatória')
+    if (variants.length === 0) errors.push('Mínimo 1 variação é obrigatória')
 
-    setErrors(newErrors)
-    return Object.keys(newErrors).length === 0
+    variants.forEach((v, idx) => {
+      if (!v.cod.trim()) errors.push(`Variação ${idx + 1}: COD é obrigatório`)
+      if (v.salePrice <= 0) errors.push(`Variação ${idx + 1}: Preço deve ser maior que 0`)
+    })
+
+    if (errors.length > 0) {
+      setError(errors.join('\n'))
+      return false
+    }
+
+    return true
   }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
+    setError(null)
 
     if (!validateForm()) return
 
     try {
       setLoading(true)
 
-      const url = product ? `/api/products/${product.id}` : '/api/products'
-      const method = product ? 'PUT' : 'POST'
+      // Para novo produto, usar POST
+      if (!product) {
+        const response = await fetch('/api/products', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: formData.name,
+            description: formData.description,
+            baseImage: formData.baseImage,
+            categoryId: formData.categoryId || null,
+            supplier: formData.supplierId || null,
+            mlListingId: formData.mlListingId || null,
+            shopeeListingId: formData.shopeeListingId || null,
+            attributes,
+            variants,
+          }),
+        })
 
-      const response = await fetch(url, {
-        method,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: formData.name,
-          baseModel: formData.baseModel || null,
-          colorVariant: formData.colorVariant || null,
-          supplier: formData.supplier || null,
-          purchaseCost: parseFloat(formData.purchaseCost),
-          boxCost: parseFloat(formData.boxCost),
-          mlTariff: parseFloat(formData.mlTariff),
-          deliveryTariff: parseFloat(formData.deliveryTariff),
-          salePrice: parseFloat(formData.salePrice),
-          stock: parseInt(formData.stock),
-          minStock: parseInt(formData.minStock),
-          mlListed: formData.mlListed,
-          mlListingUrl: formData.mlListed ? formData.mlListingUrl : null,
-          shopeeListed: formData.shopeeListed,
-          shopeeListingUrl: formData.shopeeListed ? formData.shopeeListingUrl : null,
-        }),
-      })
-
-      if (response.ok) {
-        alert(product ? 'Produto atualizado!' : 'Produto criado!')
-        onClose()
+        if (response.ok) {
+          alert('Produto criado com sucesso!')
+          onClose()
+        } else {
+          const data = await response.json()
+          setError(data.error || 'Erro ao criar produto')
+        }
       } else {
-        alert('Erro ao salvar produto')
+        // Para produto existente, atualizar dados gerais
+        const response = await fetch(`/api/products/${product.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: formData.name,
+            description: formData.description,
+            baseImage: formData.baseImage,
+            categoryId: formData.categoryId || null,
+            supplier: formData.supplierId || null,
+            mlListingId: formData.mlListingId || null,
+            shopeeListingId: formData.shopeeListingId || null,
+          }),
+        })
+
+        if (response.ok) {
+          alert('Produto atualizado com sucesso!')
+          onClose()
+        } else {
+          const data = await response.json()
+          setError(data.error || 'Erro ao atualizar produto')
+        }
       }
     } catch (error) {
-      console.error('Erro:', error)
-      alert('Erro ao salvar produto')
+      setError('Erro ao salvar produto')
+      console.error(error)
     } finally {
       setLoading(false)
     }
@@ -122,272 +203,137 @@ export default function ProductFormDialog({ product, onClose }: ProductFormDialo
 
   return (
     <Dialog open={true} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
-            {product ? 'Editar Produto' : 'Novo Produto'}
+            {product ? 'Editar Produto' : 'Novo Produto com Variações'}
           </DialogTitle>
           <DialogDescription>
-            Preencha os dados do produto. Todos os campos são obrigatórios.
+            {product
+              ? 'Ajuste os dados do produto. Variações podem ser editadas separadamente.'
+              : 'Crie um produto com múltiplas variações (cores, modelos, tamanhos, etc)'}
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Seção: Informações Básicas */}
-          <div>
-            <h3 className="font-semibold mb-3">Informações Básicas</h3>
+        {error && (
+          <div className="bg-red-50 border border-red-200 rounded p-3">
+            <p className="text-red-700 whitespace-pre-line text-sm">{error}</p>
+          </div>
+        )}
+
+        <form onSubmit={handleSubmit} className="space-y-6">
+          {/* Seção 1: Informações Básicas */}
+          <div className="border rounded-lg p-4 bg-gray-50">
+            <h3 className="text-lg font-semibold mb-4">Informações Básicas</h3>
             <div className="space-y-3">
               <div>
-                <label className="text-sm font-medium">Nome do Produto *</label>
+                <label className="block text-sm font-medium mb-1">Nome do Produto *</label>
                 <Input
                   value={formData.name}
-                  onChange={(e) =>
-                    setFormData({ ...formData, name: e.target.value })
-                  }
-                  placeholder="Capinha Magnética Colorida Fosca"
-                  className={errors.name ? 'border-red-500' : ''}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  placeholder="Ex: Capinha Magnética Colorida Fosca"
+                  required
                 />
-                {errors.name && (
-                  <p className="text-red-500 text-xs mt-1">{errors.name}</p>
-                )}
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-1">Descrição</label>
+                <textarea
+                  value={formData.description}
+                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                  placeholder="Descrição detalhada do produto..."
+                  className="w-full border rounded px-3 py-2 min-h-[80px]"
+                />
               </div>
 
               <div className="grid grid-cols-3 gap-3">
                 <div>
-                  <label className="text-sm font-medium">Modelo</label>
-                  <Input
-                    value={formData.baseModel}
-                    onChange={(e) =>
-                      setFormData({ ...formData, baseModel: e.target.value })
-                    }
-                    placeholder="iPhone 14 Pro Max"
-                  />
-                </div>
-                <div>
-                  <label className="text-sm font-medium">Cor</label>
-                  <Input
-                    value={formData.colorVariant}
-                    onChange={(e) =>
-                      setFormData({ ...formData, colorVariant: e.target.value })
-                    }
-                    placeholder="Preta"
-                  />
-                </div>
-                <div>
-                  <label className="text-sm font-medium">Fornecedor</label>
-                  <Input
-                    value={formData.supplier}
-                    onChange={(e) =>
-                      setFormData({ ...formData, supplier: e.target.value })
-                    }
-                    placeholder="capa25"
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Seção: Custos */}
-          <div>
-            <h3 className="font-semibold mb-3">Custos (R$)</h3>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="text-sm font-medium">Custo do Produto</label>
-                <Input
-                  type="number"
-                  step="0.01"
-                  value={formData.purchaseCost}
-                  onChange={(e) =>
-                    setFormData({ ...formData, purchaseCost: e.target.value })
-                  }
-                  placeholder="13.32"
-                  className={errors.purchaseCost ? 'border-red-500' : ''}
-                />
-                {errors.purchaseCost && (
-                  <p className="text-red-500 text-xs mt-1">
-                    {errors.purchaseCost}
-                  </p>
-                )}
-              </div>
-              <div>
-                <label className="text-sm font-medium">Custo da Caixa</label>
-                <Input
-                  type="number"
-                  step="0.01"
-                  value={formData.boxCost}
-                  onChange={(e) =>
-                    setFormData({ ...formData, boxCost: e.target.value })
-                  }
-                  placeholder="0.43"
-                />
-              </div>
-              <div>
-                <label className="text-sm font-medium">Tarifa ML</label>
-                <Input
-                  type="number"
-                  step="0.01"
-                  value={formData.mlTariff}
-                  onChange={(e) =>
-                    setFormData({ ...formData, mlTariff: e.target.value })
-                  }
-                  placeholder="10.78"
-                />
-              </div>
-              <div>
-                <label className="text-sm font-medium">Tarifa Entrega</label>
-                <Input
-                  type="number"
-                  step="0.01"
-                  value={formData.deliveryTariff}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      deliveryTariff: e.target.value,
-                    })
-                  }
-                  placeholder="12.35"
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Seção: Preço e Estoque */}
-          <div>
-            <h3 className="font-semibold mb-3">Preço e Estoque</h3>
-            <div className="grid grid-cols-3 gap-3">
-              <div>
-                <label className="text-sm font-medium">Preço de Venda (R$) *</label>
-                <Input
-                  type="number"
-                  step="0.01"
-                  value={formData.salePrice}
-                  onChange={(e) =>
-                    setFormData({ ...formData, salePrice: e.target.value })
-                  }
-                  placeholder="59.90"
-                  className={errors.salePrice ? 'border-red-500' : ''}
-                />
-                {errors.salePrice && (
-                  <p className="text-red-500 text-xs mt-1">
-                    {errors.salePrice}
-                  </p>
-                )}
-              </div>
-              <div>
-                <label className="text-sm font-medium">Quantidade em Estoque *</label>
-                <Input
-                  type="number"
-                  value={formData.stock}
-                  onChange={(e) =>
-                    setFormData({ ...formData, stock: e.target.value })
-                  }
-                  placeholder="10"
-                  className={errors.stock ? 'border-red-500' : ''}
-                />
-                {errors.stock && (
-                  <p className="text-red-500 text-xs mt-1">{errors.stock}</p>
-                )}
-              </div>
-              <div>
-                <label className="text-sm font-medium">Estoque Mínimo</label>
-                <Input
-                  type="number"
-                  value={formData.minStock}
-                  onChange={(e) =>
-                    setFormData({ ...formData, minStock: e.target.value })
-                  }
-                  placeholder="5"
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Seção: Marketplaces */}
-          <div>
-            <h3 className="font-semibold mb-3">Anúncios em Marketplaces</h3>
-            
-            {/* Mercado Livre */}
-            <div className="bg-orange-50 p-3 rounded border border-orange-200 mb-3">
-              <label className="flex items-center gap-2 mb-2">
-                <input
-                  type="checkbox"
-                  checked={formData.mlListed}
-                  onChange={(e) =>
-                    setFormData({ ...formData, mlListed: e.target.checked })
-                  }
-                  className="w-4 h-4"
-                />
-                <span className="font-medium">Anunciado no Mercado Livre?</span>
-              </label>
-              {formData.mlListed && (
-                <div>
-                  <label className="text-sm font-medium">Link do Anúncio ML</label>
+                  <label className="block text-sm font-medium mb-1">Imagem Base (URL) *</label>
                   <Input
                     type="url"
-                    value={formData.mlListingUrl}
-                    onChange={(e) =>
-                      setFormData({ ...formData, mlListingUrl: e.target.value })
-                    }
-                    placeholder="https://produto.mercadolivre.com.br/..."
-                    className="mt-1"
+                    value={formData.baseImage}
+                    onChange={(e) => setFormData({ ...formData, baseImage: e.target.value })}
+                    placeholder="https://..."
+                    required
                   />
                 </div>
-              )}
-            </div>
-
-            {/* Shopee */}
-            <div className="bg-red-50 p-3 rounded border border-red-200">
-              <label className="flex items-center gap-2 mb-2">
-                <input
-                  type="checkbox"
-                  checked={formData.shopeeListed}
-                  onChange={(e) =>
-                    setFormData({ ...formData, shopeeListed: e.target.checked })
-                  }
-                  className="w-4 h-4"
-                />
-                <span className="font-medium">Anunciado na Shopee?</span>
-              </label>
-              {formData.shopeeListed && (
                 <div>
-                  <label className="text-sm font-medium">Link do Anúncio Shopee</label>
+                  <label className="block text-sm font-medium mb-1">Categoria</label>
+                  <select
+                    value={formData.categoryId}
+                    onChange={(e) => setFormData({ ...formData, categoryId: e.target.value })}
+                    className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="">Selecionar categoria...</option>
+                    {categories.map((cat) => (
+                      <option key={cat.id} value={cat.id}>
+                        {cat.icon ? `${cat.icon} ` : ''}{cat.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Fornecedor</label>
+                  <select
+                    value={formData.supplierId}
+                    onChange={(e) => setFormData({ ...formData, supplierId: e.target.value })}
+                    className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="">Selecionar fornecedor...</option>
+                    {suppliers.map((sup) => (
+                      <option key={sup.id} value={sup.id}>
+                        {sup.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-sm font-medium mb-1">Código Mercado Livre</label>
                   <Input
-                    type="url"
-                    value={formData.shopeeListingUrl}
-                    onChange={(e) =>
-                      setFormData({ ...formData, shopeeListingUrl: e.target.value })
-                    }
-                    placeholder="https://shopee.com.br/..."
-                    className="mt-1"
+                    value={formData.mlListingId}
+                    onChange={(e) => setFormData({ ...formData, mlListingId: e.target.value })}
+                    placeholder="Ex: MCO123456789"
                   />
                 </div>
-              )}
+                <div>
+                  <label className="block text-sm font-medium mb-1">Código Shopee</label>
+                  <Input
+                    value={formData.shopeeListingId}
+                    onChange={(e) => setFormData({ ...formData, shopeeListingId: e.target.value })}
+                    placeholder="Ex: 123456789"
+                  />
+                </div>
+              </div>
             </div>
           </div>
 
-          {/* Cálculo da Margem */}
-          <div className="bg-blue-50 p-3 rounded border border-blue-200">
-            <p className="text-sm">
-              <strong>Margem Estimada:</strong>{' '}
-              <span className="text-blue-600 font-semibold">
-                R${' '}
-                {(
-                  parseFloat(formData.salePrice) -
-                  (parseFloat(formData.purchaseCost) +
-                    parseFloat(formData.boxCost) +
-                    parseFloat(formData.mlTariff) +
-                    parseFloat(formData.deliveryTariff))
-                ).toFixed(2)}
-              </span>
-            </p>
-          </div>
+          {/* Seção 2: Variações e Atributos */}
+          {!product && (
+            <VariantForm
+              variants={variants}
+              attributes={attributes}
+              onVariantsChange={setVariants}
+              onAttributesChange={setAttributes}
+            />
+          )}
+
+          {product && (
+            <div className="border rounded-lg p-4 bg-blue-50">
+              <p className="text-sm text-blue-700">
+                ℹ️ Clique na seta (▶) ao lado do produto na página de produtos para expandir e gerenciar as variações.
+              </p>
+            </div>
+          )}
 
           <DialogFooter>
             <Button type="button" variant="outline" onClick={onClose}>
               Cancelar
             </Button>
             <Button type="submit" disabled={loading}>
-              {loading ? 'Salvando...' : product ? 'Atualizar' : 'Criar'}
+              {loading ? 'Salvando...' : product ? 'Atualizar Produto' : 'Criar Produto'}
             </Button>
           </DialogFooter>
         </form>

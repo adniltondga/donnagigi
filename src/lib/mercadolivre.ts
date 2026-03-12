@@ -9,6 +9,14 @@ export interface MLProductData {
   category_id: string
   quantity: number
   attributes?: Record<string, string>
+  cod?: string
+}
+
+// Para variações de produtos
+export interface VariantMLData extends MLProductData {
+  variantId: string
+  variantName: string // Ex: "Preto - iPhone 14 Pro Max"
+  attributeValues: Record<string, string>
 }
 
 export class MercadoLivreAPI {
@@ -134,5 +142,72 @@ export class MercadoLivreAPI {
       console.error("Erro ao buscar categorias:", error)
       throw error
     }
+  }
+
+  // Criar listing para uma variação de produto
+  async createVariantListing(variantData: VariantMLData) {
+    try {
+      // Título com informações da variação
+      const fullTitle = `${variantData.title} - ${variantData.variantName}`
+
+      const response = await fetch(`${ML_API_BASE}/items`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${this.accessToken}`,
+        },
+        body: JSON.stringify({
+          title: fullTitle.substring(0, 250), // ML tem limite
+          category_id: variantData.category_id,
+          price: variantData.price,
+          currency_id: "BRL",
+          available_quantity: variantData.quantity,
+          buying_mode: "buy_it_now",
+          condition: "new",
+          description: {
+            plain_text: variantData.description,
+          },
+          pictures: variantData.pictures.map((url) => ({
+            source: url,
+          })),
+          attributes: this.buildMLAttributes(variantData.attributeValues),
+          sku: variantData.cod, // COD (código) da variação
+        }),
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(`ML API Error: ${error.message}`)
+      }
+
+      return await response.json()
+    } catch (error) {
+      console.error("Erro ao criar listing de variação no Mercado Livre:", error)
+      throw error
+    }
+  }
+
+  // Construir atributos no formato esperado pelo ML
+  private buildMLAttributes(
+    variantAttributes: Record<string, string>
+  ): Record<string, string> {
+    // Mapear atributos customizados para formatos conhecidos no ML
+    const mlAttributes: Record<string, string> = {}
+
+    for (const [key, value] of Object.entries(variantAttributes)) {
+      const lowerKey = key.toLowerCase()
+
+      if (lowerKey.includes("cor") || lowerKey.includes("color")) {
+        mlAttributes["COLOR"] = value
+      } else if (
+        lowerKey.includes("modelo") ||
+        lowerKey.includes("iphone") ||
+        lowerKey.includes("model")
+      ) {
+        mlAttributes["MODEL"] = value
+      }
+    }
+
+    return mlAttributes
   }
 }

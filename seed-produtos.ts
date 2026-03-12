@@ -20,7 +20,7 @@ const productsData = [
     mlTariff: 10.78,
     deliveryTariff: 12.35,
     salePrice: 59.9,
-    stock: 10,
+    stock: 40,
   },
   {
     name: "Capinha Magnética Colorida Fosca com Kit de Película de Câmera - iPhone",
@@ -34,7 +34,7 @@ const productsData = [
     mlTariff: 10.78,
     deliveryTariff: 12.35,
     salePrice: 59.9,
-    stock: 10,
+    stock: 40,
   },
   {
     name: "Capinha Magnética Colorida Fosca com Kit de Película de Câmera - iPhone",
@@ -48,7 +48,7 @@ const productsData = [
     mlTariff: 10.78,
     deliveryTariff: 12.35,
     salePrice: 59.9,
-    stock: 10,
+    stock: 40,
   },
   {
     name: "Capinha Magnética Colorida Fosca com Kit de Película de Câmera - iPhone",
@@ -62,7 +62,7 @@ const productsData = [
     mlTariff: 10.78,
     deliveryTariff: 12.35,
     salePrice: 59.9,
-    stock: 10,
+    stock: 40,
   },
   {
     name: "Capinha Magnética Colorida Fosca com Kit de Película de Câmera - iPhone",
@@ -76,7 +76,7 @@ const productsData = [
     mlTariff: 10.78,
     deliveryTariff: 12.35,
     salePrice: 59.9,
-    stock: 10,
+    stock: 40,
   },
   {
     name: "Capinha Magnética Colorida Fosca com Kit de Película de Câmera - iPhone",
@@ -90,7 +90,21 @@ const productsData = [
     mlTariff: 10.78,
     deliveryTariff: 12.35,
     salePrice: 59.9,
-    stock: 10,
+    stock: 40,
+  },
+  {
+    name: "Capinha Magnética Colorida Fosca com Kit de Película de Câmera - iPhone",
+    description:
+      "Capinha magnética com acabamento fosco e kit completo de películas de câmera",
+    baseModel: "iPhone 15 Pro Max",
+    colorVariant: "cinza",
+    supplier: "capa25",
+    purchaseCost: 13.32,
+    boxCost: 0.43,
+    mlTariff: 10.78,
+    deliveryTariff: 12.35,
+    salePrice: 59.9,
+    stock: 40,
   },
   {
     name: "Capinha Magnética Colorida Fosca com Kit de Película de Câmera - iPhone",
@@ -104,7 +118,7 @@ const productsData = [
     mlTariff: 10.78,
     deliveryTariff: 12.35,
     salePrice: 59.9,
-    stock: 10,
+    stock: 40,
   },
   {
     name: "Capinha Magnética Colorida Fosca com Kit de Película de Câmera - iPhone",
@@ -118,7 +132,7 @@ const productsData = [
     mlTariff: 10.78,
     deliveryTariff: 12.35,
     salePrice: 59.9,
-    stock: 10,
+    stock: 40,
   },
   {
     name: "Capinha Magnética Colorida Fosca com Kit de Película de Câmera - iPhone",
@@ -132,7 +146,7 @@ const productsData = [
     mlTariff: 10.78,
     deliveryTariff: 12.35,
     salePrice: 59.9,
-    stock: 10,
+    stock: 40,
   },
   {
     name: "Capinha Magnética Colorida Fosca com Kit de Película de Câmera - iPhone",
@@ -146,7 +160,7 @@ const productsData = [
     mlTariff: 10.78,
     deliveryTariff: 12.35,
     salePrice: 59.9,
-    stock: 10,
+    stock: 40,
   },
   {
     name: "Capinha Magnética Colorida Fosca com Kit de Película de Câmera - iPhone",
@@ -160,7 +174,35 @@ const productsData = [
     mlTariff: 10.78,
     deliveryTariff: 12.35,
     salePrice: 59.9,
-    stock: 10,
+    stock: 40,
+  },
+  {
+    name: "Capinha Magnética Colorida Fosca com Kit de Película de Câmera - iPhone",
+    description:
+      "Capinha magnética com acabamento fosco e kit completo de películas de câmera",
+    baseModel: "iPhone 12 Pro Max",
+    colorVariant: "rosa",
+    supplier: "capa25",
+    purchaseCost: 13.32,
+    boxCost: 0.43,
+    mlTariff: 10.78,
+    deliveryTariff: 12.35,
+    salePrice: 59.9,
+    stock: 40,
+  },
+  {
+    name: "Capinha Magnética Colorida Fosca com Kit de Película de Câmera - iPhone",
+    description:
+      "Capinha magnética com acabamento fosco e kit completo de películas de câmera",
+    baseModel: "iPhone 12 Pro Max",
+    colorVariant: "preta",
+    supplier: "capa25",
+    purchaseCost: 13.32,
+    boxCost: 0.43,
+    mlTariff: 10.78,
+    deliveryTariff: 12.35,
+    salePrice: 59.9,
+    stock: 40,
   },
 ]
 

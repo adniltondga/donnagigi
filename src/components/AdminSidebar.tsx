@@ -34,7 +34,6 @@ export function AdminSidebar() {
           </div>
           <h1 className="text-xl font-bold">Donna Gigi</h1>
         </div>
-        <p className="text-admin-400 text-sm">Admin Dashboard</p>
       </div>
 
       <nav className="flex-1 p-6 space-y-4">
@@ -69,46 +68,58 @@ export function AdminSidebar() {
             </li>
             <li>
               <Link
-                href="/admin/orders"
+                href="/admin/categories"
                 className={`block px-4 py-2 rounded-lg transition ${
-                  isActive("/admin/orders")
+                  isActive("/admin/categories")
                     ? "bg-primary-500 text-white"
                     : "text-admin-300 hover:bg-admin-700"
                 }`}
               >
-                🛒 Pedidos
+                🏷️ Categorias
               </Link>
             </li>
             <li>
               <Link
-                href="/admin/analytics"
+                href="/admin/suppliers"
                 className={`block px-4 py-2 rounded-lg transition ${
-                  isActive("/admin/analytics")
+                  isActive("/admin/suppliers")
                     ? "bg-primary-500 text-white"
                     : "text-admin-300 hover:bg-admin-700"
                 }`}
               >
-                📈 Análise
+                📦 Fornecedores
               </Link>
             </li>
           </ul>
         </div>
 
-        <div className="border-t border-admin-600 pt-4">
+        <div>
           <p className="text-admin-400 text-xs font-semibold uppercase mb-3">
-            Integrações
+            Catálogo
           </p>
           <ul className="space-y-2">
             <li>
               <Link
-                href="/admin/integracao"
+                href="/admin/device-models"
                 className={`block px-4 py-2 rounded-lg transition ${
-                  isActive("/admin/integracao")
+                  isActive("/admin/device-models")
                     ? "bg-primary-500 text-white"
                     : "text-admin-300 hover:bg-admin-700"
                 }`}
               >
-                🔗 Mercado Livre & Shopee
+                📱 Dispositivos
+              </Link>
+            </li>
+            <li>
+              <Link
+                href="/admin/device-colors"
+                className={`block px-4 py-2 rounded-lg transition ${
+                  isActive("/admin/device-colors")
+                    ? "bg-primary-500 text-white"
+                    : "text-admin-300 hover:bg-admin-700"
+                }`}
+              >
+                🎨 Cores
               </Link>
             </li>
           </ul>
