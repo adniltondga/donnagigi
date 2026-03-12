@@ -24,7 +24,6 @@ interface Product {
   id: string
   name: string
   description?: string
-  baseImage?: string
   categoryId?: string | null
   category?: { id: string; name: string; icon?: string } | null
   supplier?: string | null

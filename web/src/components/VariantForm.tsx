@@ -12,6 +12,7 @@ export interface Variant {
   modelId?: string
   colorId?: string
   stock: number
+  salePrice: number
   attributes?: Record<string, string>
   productId?: string
 }
@@ -79,6 +80,7 @@ export default function VariantForm({
     const newVariant: Variant = {
       cod: '',
       stock: 0,
+      salePrice: 0,
     }
     onVariantsChange([...variants, newVariant])
   }
@@ -271,6 +273,18 @@ export default function VariantForm({
                     </div>
 
                     <div>
+                      <label className="block text-sm font-medium mb-1">Preço Venda *</label>
+                      <Input
+                        type="number"
+                        placeholder="29.90"
+                        step="0.01"
+                        value={variant.salePrice}
+                        onChange={(e) => updateVariant(idx, 'salePrice', parseFloat(e.target.value) || 0)}
+                        required
+                      />
+                    </div>
+
+                    <div>
                       <label className="block text-sm font-medium mb-1">Estoque</label>
                       <Input
                         type="number"
@@ -309,7 +323,7 @@ export default function VariantForm({
         )}
 
         <p className="text-sm text-gray-500 mt-3">
-          ℹ️ Mínimo 1 variação obrigatória. Cada variação precisa de Modelo, Cor e COD.
+          ℹ️ Mínimo 1 variação obrigatória. Cada variação precisa de Modelo, Cor, COD e Preço Venda.
         </p>
       </div>
     </div>

@@ -46,9 +46,6 @@ export async function POST(req: NextRequest) {
     const category = await prisma.category.create({
       data: {
         name: body.name.trim(),
-        description: body.description || '',
-        icon: body.icon || null,
-        color: body.color || '#000000',
         order: body.order || 0,
       },
     })

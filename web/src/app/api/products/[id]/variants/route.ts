@@ -77,7 +77,7 @@ export async function GET(
       boxCost: variant.boxCost,
       stock: variant.stock,
       calculatedMargin: variant.calculatedMargin,
-      image: variant.image || product.baseImage,
+      image: variant.image,
       attributes: variant.attributes.reduce(
         (acc, va) => {
           acc[va.attributeValue.attribute.name] = va.attributeValue.value
@@ -94,7 +94,6 @@ export async function GET(
         id: product.id,
         name: product.name,
         description: product.description,
-        image: product.baseImage,
       },
       variants: formattedVariants,
       total: formattedVariants.length,
@@ -133,9 +132,17 @@ export async function POST(
     } = body
 
     // Validar dados obrigatórios
-    if (!cod || !salePrice) {
+    if (!cod || cod.trim() === '') {
       return NextResponse.json(
-        { error: "COD e salePrice são obrigatórios" },
+        { error: "COD é obrigatório" },
+        { status: 400 }
+      )
+    }
+
+    const salePriceNum = parseFloat(salePrice)
+    if (isNaN(salePriceNum) || salePriceNum <= 0) {
+      return NextResponse.json(
+        { error: "salePrice é obrigatório e deve ser maior que 0" },
         { status: 400 }
       )
     }

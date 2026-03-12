@@ -33,15 +33,12 @@ model Supplier {
 }
 
 model Category {
-  id          String   @id @default(cuid())
-  name        String   @unique
-  description String   @default("")
-  icon        String? // emoji ou URL do ícone
-  color       String   @default("#000000")
-  active      Boolean  @default(true)
-  order       Int      @default(0)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id        String   @id @default(cuid())
+  name      String   @unique
+  active    Boolean  @default(true)
+  order     Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   // Relações
   products Product[]
@@ -96,7 +93,6 @@ model Product {
   id          String    @id @default(cuid())
   name        String
   description String    @db.Text
-  baseImage   String    @default("") // Imagem padrão do produto
   categoryId  String?
   category    Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
   supplier    String? // "capa25"

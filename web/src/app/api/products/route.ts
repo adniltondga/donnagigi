@@ -54,7 +54,7 @@ export async function POST(req: NextRequest) {
     const body = await req.json()
 
     // Validar campos obrigatórios
-    const requiredFields = ['name', 'description', 'baseImage']
+    const requiredFields = ['name', 'description']
     for (const field of requiredFields) {
       if (!(field in body)) {
         return NextResponse.json(
@@ -75,9 +75,18 @@ export async function POST(req: NextRequest) {
     // Validar cada variação
     for (let i = 0; i < body.variants.length; i++) {
       const variant = body.variants[i]
-      if (!variant.cod || !variant.salePrice) {
+      
+      if (!variant.cod || variant.cod.trim() === '') {
         return NextResponse.json(
-          { success: false, error: `Variação ${i + 1}: COD e salePrice são obrigatórios` },
+          { success: false, error: `Variação ${i + 1}: COD é obrigatório` },
+          { status: 400 }
+        )
+      }
+      
+      const salePrice = parseFloat(variant.salePrice)
+      if (isNaN(salePrice) || salePrice <= 0) {
+        return NextResponse.json(
+          { success: false, error: `Variação ${i + 1}: salePrice é obrigatório e deve ser maior que 0` },
           { status: 400 }
         )
       }
@@ -88,7 +97,6 @@ export async function POST(req: NextRequest) {
       data: {
         name: body.name,
         description: body.description,
-        baseImage: body.baseImage || 'https://via.placeholder.com/300x300?text=Produto',
         categoryId: body.categoryId || null,
         supplier: body.supplier || null,
         mlListingId: body.mlListingId || null,
