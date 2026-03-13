@@ -40,7 +40,7 @@ export default function VendasPage() {
         const response = await fetch('/api/products');
         if (response.ok) {
           const data = await response.json();
-          setProducts(data);
+          setProducts(data.data);
         }
       } catch (error) {
         console.error('Erro ao carregar produtos:', error);
