@@ -56,6 +56,18 @@ export function AdminSidebar() {
             </li>
             <li>
               <Link
+                href="/admin/vendas"
+                className={`block px-4 py-2 rounded-lg transition ${
+                  isActive("/admin/vendas") || isActive("/admin/vendas/dashboard")
+                    ? "bg-primary-500 text-white"
+                    : "text-admin-300 hover:bg-admin-700"
+                }`}
+              >
+                💰 Vendas
+              </Link>
+            </li>
+            <li>
+              <Link
                 href="/admin/products"
                 className={`block px-4 py-2 rounded-lg transition ${
                   isActive("/admin/products")

@@ -505,12 +505,6 @@ export default function ProductsPage() {
                         <div className="space-y-2">
                           {product.variants.map((variant) => {
                             const salePrice = variant.salePrice || 0
-                            
-                            // Calcula custo com base em ML (padrão), passando o product para tarifas padrão
-                            const unitCost = calculateVariantCost(variant, product, 'ml')
-                            const margin = salePrice - unitCost
-                            const variantRevenue = salePrice * variant.stock
-                            const marginPercent = salePrice > 0 ? (margin / salePrice) * 100 : 0
 
                             const variantName = variant.model && variant.color
                               ? `${variant.model.name} - ${variant.color.name}`
