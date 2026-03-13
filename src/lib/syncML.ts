@@ -47,7 +47,7 @@ export async function syncProductToML(
       title: product.name,
       price: product.baseSalePrice || 0,
       description: product.description,
-      pictures: [product.baseImage],
+      pictures: [],
       category_id: "MLB100672", // Categoria padrão: acessórios de celular
       quantity: 0,
     }

@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx prisma:*)",
+      "Bash(git checkout:*)",
+      "Bash(npm run:*)"
+    ]
+  }
+}
