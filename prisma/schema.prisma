@@ -30,6 +30,9 @@ model Supplier {
   telephone String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  // Relações
+  bills Bill[]
 }
 
 model Category {
@@ -314,7 +317,7 @@ model Sale {
   quantity      Int   // Quantidade vendida
   salePrice     Float // Preço por unidade
   marketplace   String // "ml" ou "shopee"
-  
+
   // Valores calculados
   totalRevenue  Float // quantidade × salePrice
   totalCost     Float // custos totais da venda
@@ -328,4 +331,26 @@ model Sale {
   @@index([variantId])
   @@index([saleDate])
   @@index([marketplace])
+}
+
+// Contas a Pagar e Receber
+model Bill {
+  id          String    @id @default(cuid())
+  type        String    // "payable" | "receivable"
+  description String
+  amount      Float
+  dueDate     DateTime
+  paidDate    DateTime?
+  status      String    @default("pending") // "pending" | "paid" | "overdue" | "cancelled"
+  category    String    @default("outro")   // "fornecedor" | "marketplace_fee" | "venda" | "outro"
+  supplierId  String?
+  supplier    Supplier? @relation(fields: [supplierId], references: [id], onDelete: SetNull)
+  notes       String?   @db.Text
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([type])
+  @@index([status])
+  @@index([dueDate])
+  @@index([type, status])
 }

@@ -68,6 +68,18 @@ export function AdminSidebar() {
             </li>
             <li>
               <Link
+                href="/admin/financeiro"
+                className={`block px-4 py-2 rounded-lg transition ${
+                  pathname.startsWith("/admin/financeiro")
+                    ? "bg-primary-500 text-white"
+                    : "text-admin-300 hover:bg-admin-700"
+                }`}
+              >
+                💳 Financeiro
+              </Link>
+            </li>
+            <li>
+              <Link
                 href="/admin/products"
                 className={`block px-4 py-2 rounded-lg transition ${
                   isActive("/admin/products")
