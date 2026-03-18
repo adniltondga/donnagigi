@@ -16,6 +16,7 @@ interface SaleFormData {
   salePrice: number;
   marketplace: 'ml' | 'shopee';
   saleDate: string;
+  daysToReceive: number;
 }
 
 export default function VendasPage() {
@@ -25,6 +26,7 @@ export default function VendasPage() {
     salePrice: 0,
     marketplace: 'ml',
     saleDate: new Date().toISOString().split('T')[0],
+    daysToReceive: 3,
   });
 
   const [products, setProducts] = useState<ProductWithVariants[]>([]);
@@ -126,7 +128,11 @@ export default function VendasPage() {
     const { name, value } = e.target;
     setFormData((prev) => ({
       ...prev,
-      [name]: name === 'saleDate' || name === 'marketplace' ? value : parseFloat(value) || 0,
+      [name]: name === 'saleDate' || name === 'marketplace'
+        ? value
+        : name === 'quantity' || name === 'daysToReceive'
+          ? parseInt(value) || 0
+          : parseFloat(value) || 0,
     }));
   };
 
@@ -152,6 +158,7 @@ export default function VendasPage() {
           salePrice: 0,
           marketplace: 'ml',
           saleDate: new Date().toISOString().split('T')[0],
+          daysToReceive: 3,
         });
         setSelectedVariant(null);
         setPreview(null);
@@ -271,6 +278,23 @@ export default function VendasPage() {
               />
             </div>
 
+            {/* Prazo de Recebimento */}
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">
+                Prazo de Recebimento (dias)
+              </label>
+              <input
+                type="number"
+                name="daysToReceive"
+                min="0"
+                step="1"
+                value={formData.daysToReceive}
+                onChange={handleInputChange}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                required
+              />
+            </div>
+
             {/* Submit */}
             <button
               type="submit"
@@ -314,6 +338,17 @@ export default function VendasPage() {
                 <span className="text-gray-700 font-semibold">Margem de Lucro:</span>
                 <span className={`text-lg font-bold ${preview.profitMargin >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                   {preview.profitMargin.toFixed(1)}%
+                </span>
+              </div>
+
+              <div className="flex justify-between text-sm text-gray-500">
+                <span>Vencimento estimado:</span>
+                <span>
+                  {(() => {
+                    const d = new Date(formData.saleDate);
+                    d.setDate(d.getDate() + formData.daysToReceive);
+                    return d.toLocaleDateString('pt-BR');
+                  })()}
                 </span>
               </div>
             </div>

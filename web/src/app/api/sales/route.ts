@@ -6,7 +6,7 @@ import { calculateVariantCost } from '@/lib/costCalculation';
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { variantId, quantity, salePrice, marketplace, saleDate } = body;
+    const { variantId, quantity, salePrice, marketplace, saleDate, daysToReceive } = body;
 
     // Validação
     if (!variantId || !quantity || !salePrice || !marketplace) {
@@ -30,16 +30,34 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    if (typeof daysToReceive !== 'number' || daysToReceive < 0) {
+      return NextResponse.json(
+        { success: false, error: 'daysToReceive deve ser um número >= 0' },
+        { status: 400 }
+      );
+    }
+
     // Buscar variação e produto
     const variant = await prisma.productVariant.findUnique({
       where: { id: variantId },
-      include: { product: true },
+      include: { product: true, model: true, color: true },
     });
 
     if (!variant) {
       return NextResponse.json(
         { success: false, error: 'Variação não encontrada' },
         { status: 404 }
+      );
+    }
+
+    // Validar estoque
+    if (variant.stock < quantity) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: `Estoque insuficiente. Disponível: ${variant.stock}, solicitado: ${quantity}`,
+        },
+        { status: 422 }
       );
     }
 
@@ -50,20 +68,48 @@ export async function POST(request: NextRequest) {
     const profit = totalRevenue - totalCost;
     const profitMargin = totalRevenue > 0 ? (profit / totalRevenue) * 100 : 0;
 
-    // Criar venda
-    const sale = await prisma.sale.create({
-      data: {
-        variantId,
-        quantity,
-        salePrice,
-        marketplace,
-        totalCost,
-        totalRevenue,
-        profit,
-        profitMargin,
-        saleDate: saleDate ? new Date(saleDate) : new Date(),
-      },
-    });
+    // Preparar dados para a bill
+    const saleDateObj = saleDate ? new Date(saleDate) : new Date();
+    const dueDate = new Date(saleDateObj);
+    dueDate.setDate(dueDate.getDate() + daysToReceive);
+
+    const now = new Date();
+    const billStatus = dueDate < now ? 'overdue' : 'pending';
+
+    const marketplaceLabel = marketplace === 'ml' ? 'Mercado Livre' : 'Shopee';
+    const billDescription = `Venda ${variant.product.name}${variant.model ? ` - ${variant.model.name}` : ''}${variant.color ? ` (${variant.color.name})` : ''} [${variant.cod}] - ${marketplaceLabel}`;
+
+    // Criar venda, decrementar estoque e criar bill em uma transação
+    const [sale] = await prisma.$transaction([
+      prisma.sale.create({
+        data: {
+          variantId,
+          quantity,
+          salePrice,
+          marketplace,
+          totalCost,
+          totalRevenue,
+          profit,
+          profitMargin,
+          saleDate: saleDateObj,
+        },
+      }),
+      prisma.productVariant.update({
+        where: { id: variantId },
+        data: { stock: { decrement: quantity } },
+      }),
+      prisma.bill.create({
+        data: {
+          type: 'receivable',
+          description: billDescription,
+          amount: profit,
+          dueDate,
+          status: billStatus,
+          category: 'venda',
+          notes: `Quantidade: ${quantity} un. | Faturamento: R$ ${totalRevenue.toFixed(2)} | Custo: R$ ${totalCost.toFixed(2)}`,
+        },
+      }),
+    ]);
 
     return NextResponse.json({ success: true, data: sale }, { status: 201 });
   } catch (error) {
