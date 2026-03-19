@@ -14,10 +14,6 @@ export interface Variant {
   colorId?: string
   stock: number
   salePrice: number
-  mlTariff?: number
-  deliveryTariff?: number
-  shoppeeTariff?: number
-  shopeeDeliveryTariff?: number
   attributes?: Record<string, string>
   productId?: string
 }
@@ -293,41 +289,6 @@ export default function VariantForm({
                         value={variant.stock}
                         onChange={(e) => updateVariant(idx, 'stock', parseInt(e.target.value) || 0)}
                       />
-                    </div>
-                  </div>
-
-                  {/* Seção de Informações de Preço (Padrão) */}
-                  <div className="pt-4 border-t">
-                    <h5 className="font-medium text-sm mb-3 text-gray-700">📊 Informações de Preço (Padrão)</h5>
-                    <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <label className="block text-sm font-medium mb-1">Tarifa Mercado Livre (R$)</label>
-                        <CurrencyInput
-                          value={variant.mlTariff || 0}
-                          onChange={(value) => updateVariant(idx, 'mlTariff', value)}
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium mb-1">Tarifa Entrega ML (R$)</label>
-                        <CurrencyInput
-                          value={variant.deliveryTariff || 0}
-                          onChange={(value) => updateVariant(idx, 'deliveryTariff', value)}
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium mb-1">Tarifa Shopee (R$)</label>
-                        <CurrencyInput
-                          value={variant.shoppeeTariff || 0}
-                          onChange={(value) => updateVariant(idx, 'shoppeeTariff', value)}
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium mb-1">Tarifa Entrega Shopee (R$)</label>
-                        <CurrencyInput
-                          value={variant.shopeeDeliveryTariff || 0}
-                          onChange={(value) => updateVariant(idx, 'shopeeDeliveryTariff', value)}
-                        />
-                      </div>
                     </div>
                   </div>
 
