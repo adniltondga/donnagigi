@@ -17,7 +17,9 @@ export async function GET() {
   try {
     const clientId = process.env.ML_CLIENT_ID
     const clientSecret = process.env.ML_CLIENT_SECRET
-    const redirectUri = process.env.ML_REDIRECT_URI || "http://localhost:3000/api/mercadolivre/callback"
+    const redirectUri = process.env.ML_REDIRECT_URI || "https://www.donnagigi.com.br/api/mercadolivre/callback"
+    
+    console.log("[AUTH] Redirect URI:", redirectUri)
     
     // Validar variáveis de ambiente
     if (!clientId || !clientSecret) {
@@ -40,18 +42,21 @@ export async function GET() {
     const codeChallenge = generateCodeChallenge(codeVerifier)
 
     // URL EXATAMENTE conforme documentação do Mercado Livre para PKCE
-    // https://auth.mercadolivre.com.br/authorization?response_type=code&client_id=$APP_ID&redirect_uri=$YOUR_URL&code_challenge=$CODE_CHALLENGE&code_challenge_method=$CODE_METHOD
-    const authUrl = `https://auth.mercadolibre.com.br/authorization?response_type=code&client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&code_challenge=${codeChallenge}&code_challenge_method=S256`
+    // Sem passar scopes por enquanto - deixar o usuário autorizar no painel do ML
+    const authUrl = `https://auth.mercadolivre.com.br/authorization?response_type=code&client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&code_challenge=${codeChallenge}&code_challenge_method=S256`
 
     console.log("[PKCE] Iniciando autenticação com URL:", authUrl)
     console.log("[PKCE] Code Challenge:", codeChallenge)
+    console.log("[PKCE] Redirect URI sendo enviado:", redirectUri)
+    console.log("[PKCE] Client ID:", clientId)
 
     const response = NextResponse.redirect(authUrl)
 
     // Salvar code_verifier em cookie por 10 minutos (PKCE)
     response.cookies.set("ml_code_verifier", codeVerifier, {
       httpOnly: true,
-      secure: false,
+      secure: false, // Em dev é http, em prod é https (ajustado automaticamente)
+      sameSite: "lax", // Permite que cookie seja enviado no redirect de volta
       maxAge: 600,
       path: "/",
     })
