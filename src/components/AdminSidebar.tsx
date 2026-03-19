@@ -134,18 +134,6 @@ export function AdminSidebar() {
                 📱 Dispositivos
               </Link>
             </li>
-            <li>
-              <Link
-                href="/admin/device-colors"
-                className={`block px-4 py-2 rounded-lg transition ${
-                  isActive("/admin/device-colors")
-                    ? "bg-primary-500 text-white"
-                    : "text-admin-300 hover:bg-admin-700"
-                }`}
-              >
-                🎨 Cores
-              </Link>
-            </li>
           </ul>
         </div>
 

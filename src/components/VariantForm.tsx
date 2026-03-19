@@ -80,18 +80,12 @@ export default function VariantForm({
 
   async function fetchModelsAndColors() {
     try {
-      const [modelsRes, colorsRes] = await Promise.all([
-        fetch('/api/device-models'),
-        fetch('/api/device-colors'),
-      ])
-
+      const modelsRes = await fetch('/api/device-models')
       const modelsData = await modelsRes.json()
-      const colorsData = await colorsRes.json()
 
       if (modelsData.success) setModels(modelsData.data?.filter((m: any) => m.active) || [])
-      if (colorsData.success) setColors(colorsData.data?.filter((c: any) => c.active) || [])
     } catch (error) {
-      console.error('❌ Erro ao carregar modelos e cores:', error)
+      console.error('❌ Erro ao carregar modelos:', error)
     } finally {
       setLoadingData(false)
     }
