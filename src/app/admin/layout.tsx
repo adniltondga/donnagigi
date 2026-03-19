@@ -29,7 +29,7 @@ export default function AdminLayout({
   return (
     <div className="flex min-h-screen bg-admin-100">
       <AdminSidebar />
-      <main className="flex-1">
+      <main className="flex-1 overflow-y-auto">
         <div className="p-8">{children}</div>
       </main>
     </div>
