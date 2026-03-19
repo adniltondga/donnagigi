@@ -367,9 +367,9 @@ export default function ProductsPage() {
                   {/* HEADER DO PRODUTO */}
                   <div
                     onClick={() => setExpandedProduct(isExpanded ? null : product.id)}
-                    className="px-6 py-4 hover:bg-gray-50 cursor-pointer transition flex items-center justify-between"
+                    className="px-6 py-4 hover:bg-gray-50 cursor-pointer transition flex items-center justify-between overflow-x-auto"
                   >
-                    <div className="flex items-center gap-4 flex-1">
+                    <div className="flex items-center gap-4 flex-1 min-w-0">
                       {/* Botão expandir */}
                       <div className="flex-shrink-0">
                         {isExpanded ? (
@@ -408,16 +408,16 @@ export default function ProductsPage() {
                       </div>
                     </div>
 
-                    {/* STATS DO PRODUTO */}
-                    <div className="flex items-center gap-8 ml-4">
+                    {/* STATS DO PRODUTO + AÇÕES */}
+                    <div className="flex items-center gap-4 ml-4 flex-shrink-0">
                       {/* Variações */}
-                      <div className="text-right">
+                      <div className="text-right whitespace-nowrap">
                         <div className="text-sm text-gray-600">Variações</div>
                         <div className="text-lg font-bold text-blue-600">{variantCount}</div>
                       </div>
 
                       {/* Estoque */}
-                      <div className="text-right">
+                      <div className="text-right whitespace-nowrap">
                         <div className="text-sm text-gray-600">Estoque</div>
                         <div
                           className={`text-lg font-bold ${
@@ -429,7 +429,7 @@ export default function ProductsPage() {
                       </div>
 
                       {/* Preço */}
-                      <div className="text-right">
+                      <div className="text-right whitespace-nowrap">
                         <div className="text-sm text-gray-600">Preço</div>
                         <div className="text-lg font-bold text-gray-900">
                           {priceMin === priceMax ? (
@@ -444,7 +444,7 @@ export default function ProductsPage() {
                       </div>
 
                       {/* Ações */}
-                      <div className="flex gap-2 ml-4">
+                      <div className="flex gap-2 flex-shrink-0">
                         <Button
                           size="sm"
                           variant="outline"
