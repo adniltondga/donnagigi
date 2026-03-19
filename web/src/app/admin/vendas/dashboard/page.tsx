@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import CurrencyInput from '@/components/CurrencyInput';
 
 interface SaleData {
   id: string;
@@ -363,13 +364,12 @@ export default function VendasDashboard() {
                       </td>
                       <td className="px-6 py-4 text-right font-semibold">
                         {editingId === sale.id ? (
-                          <input
-                            type="number"
-                            step="0.01"
-                            value={editData?.salePrice || 0}
-                            onChange={(e) => setEditData({ ...editData, salePrice: parseFloat(e.target.value) })}
-                            className="w-24 px-2 py-1 border border-gray-300 rounded text-right"
-                          />
+                          <div className="w-32">
+                            <CurrencyInput
+                              value={editData?.salePrice || 0}
+                              onChange={(value) => setEditData({ ...editData, salePrice: value })}
+                            />
+                          </div>
                         ) : (
                           formatCurrency(sale.salePrice)
                         )}
