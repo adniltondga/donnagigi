@@ -185,6 +185,12 @@ export default function ProductsPage() {
   async function handleSaveVariant() {
     if (!editingVariant || !selectedProduct) return
 
+    console.log('💾 Salvando variação:', {
+      variantId: editingVariant.id,
+      salePrice: variantFormData.salePrice,
+      stock: variantFormData.stock,
+    })
+
     try {
       const response = await fetch(
         `/api/products/${selectedProduct.id}/variants/${editingVariant.id}`,

@@ -92,6 +92,37 @@ export function formatCurrency(value: number): string {
 }
 
 /**
+ * Converte string em formato brasileiro (R$ 1.234,56 ou 1.234,56 ou 1,234.56) para número
+ */
+export function parseCurrencyString(str: string): number {
+  if (!str || typeof str !== 'string') return 0
+  
+  // Remove espacos e caracteres especiais mantendo números, vírgula e ponto
+  const cleaned = str.replace(/[^\d.,]/g, '').trim()
+  
+  if (!cleaned) return 0
+  
+  // Se tem ponto e vírgula, a vírgula é o separador decimal (formato brasileiro)
+  if (cleaned.includes(',') && cleaned.includes('.')) {
+    // Formato: 1.000,00 ou 1.234,56
+    return parseFloat(cleaned.replace(/\./g, '').replace(',', '.'))
+  }
+  
+  // Se tem só vírgula, é decimal (formato brasileiro)
+  if (cleaned.includes(',') && !cleaned.includes('.')) {
+    return parseFloat(cleaned.replace(',', '.'))
+  }
+  
+  // Se tem só ponto, é decimal (formato anglicano)
+  if (cleaned.includes('.') && !cleaned.includes(',')) {
+    return parseFloat(cleaned)
+  }
+  
+  // Se não tem ponto nem vírgula, é número inteiro
+  return parseFloat(cleaned)
+}
+
+/**
  * Exemplo de uso:
  * 
  * const costs = {
