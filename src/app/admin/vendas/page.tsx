@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { ProductVariant, Product, DeviceModel, DeviceColor } from '@prisma/client';
+import CurrencyInput from '@/components/CurrencyInput';
 
 interface ProductWithVariants extends Product {
   variants: (ProductVariant & {
@@ -52,40 +53,45 @@ export default function VendasPage() {
     fetchProducts();
   }, []);
 
-  const calculateVariantCost = useCallback((variant: any): number => {
+  const calculateVariantCostDetails = useCallback((variant: any) => {
+    // Custo de compra: variante ou padrão do produto
     const purchaseCost =
-      variant.purchaseCost !== undefined && variant.purchaseCost !== null
-        ? variant.purchaseCost
-        : variant.product?.basePurchaseCost || 0;
+      (variant.purchaseCost ?? 0) > 0 ? variant.purchaseCost : variant.product?.basePurchaseCost ?? 0;
 
+    // Caixa: variante ou padrão do produto
     const boxCost =
-      variant.boxCost !== undefined && variant.boxCost !== null
-        ? variant.boxCost
-        : variant.product?.baseBoxCost || 0;
+      (variant.boxCost ?? 0) > 0 ? variant.boxCost : variant.product?.baseBoxCost ?? 0;
 
     if (formData.marketplace === 'ml') {
-      const mlTariff =
-        variant.mlTariff !== undefined && variant.mlTariff !== null
-          ? variant.mlTariff
-          : variant.product?.baseMLTariff || 0;
-      const deliveryTariff =
-        variant.deliveryTariff !== undefined && variant.deliveryTariff !== null
-          ? variant.deliveryTariff
-          : variant.product?.baseDeliveryTariff || 0;
-      return purchaseCost + boxCost + mlTariff + deliveryTariff;
+      // Tarifas: SEMPRE do padrão do produto
+      const mlTariff = variant.product?.baseMLTariff ?? 0;
+      const deliveryTariff = variant.product?.baseDeliveryTariff ?? 0;
+      return {
+        purchaseCost,
+        boxCost,
+        platformTariff: mlTariff,
+        deliveryTariff,
+        total: purchaseCost + boxCost + mlTariff + deliveryTariff,
+        marketplace: 'ml',
+      };
     } else {
-      const shoppeeTariff =
-        variant.shoppeeTariff !== undefined && variant.shoppeeTariff !== null
-          ? variant.shoppeeTariff
-          : variant.product?.baseShoppeeTariff || 0;
-      const shopeeDeliveryTariff =
-        variant.shopeeDeliveryTariff !== undefined &&
-        variant.shopeeDeliveryTariff !== null
-          ? variant.shopeeDeliveryTariff
-          : variant.product?.baseShopeeDeliveryTariff || 0;
-      return purchaseCost + boxCost + shoppeeTariff + shopeeDeliveryTariff;
+      // Tarifas: SEMPRE do padrão do produto
+      const shoppeeTariff = variant.product?.baseShoppeeTariff ?? 0;
+      const shopeeDeliveryTariff = variant.product?.baseShopeeDeliveryTariff ?? 0;
+      return {
+        purchaseCost,
+        boxCost,
+        platformTariff: shoppeeTariff,
+        deliveryTariff: shopeeDeliveryTariff,
+        total: purchaseCost + boxCost + shoppeeTariff + shopeeDeliveryTariff,
+        marketplace: 'shopee',
+      };
     }
   }, [formData.marketplace]);
+
+  const calculateVariantCost = useCallback((variant: any): number => {
+    return calculateVariantCostDetails(variant).total;
+  }, [calculateVariantCostDetails]);
 
   // Atualizar preview quando form mudar
   useEffect(() => {
@@ -94,7 +100,8 @@ export default function VendasPage() {
       return;
     }
 
-    const unitCost = calculateVariantCost(selectedVariant);
+    const costDetails = calculateVariantCostDetails(selectedVariant);
+    const unitCost = costDetails.total;
     const totalCost = unitCost * formData.quantity;
     const totalRevenue = formData.salePrice * formData.quantity;
     const profit = totalRevenue - totalCost;
@@ -106,9 +113,10 @@ export default function VendasPage() {
       totalRevenue,
       profit,
       profitMargin,
+      costDetails,
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [formData, selectedVariant, calculateVariantCost]);
+  }, [formData, selectedVariant, calculateVariantCostDetails]);
 
   const handleVariantChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const variantId = e.target.value;
@@ -236,14 +244,9 @@ export default function VendasPage() {
               <label className="block text-sm font-semibold text-gray-700 mb-2">
                 Preço de Venda (R$) *
               </label>
-              <input
-                type="number"
-                name="salePrice"
-                min="0"
-                step="0.01"
+              <CurrencyInput
                 value={formData.salePrice}
-                onChange={handleInputChange}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                onChange={(value) => setFormData((prev) => ({ ...prev, salePrice: value }))}
                 required
               />
             </div>
@@ -312,13 +315,35 @@ export default function VendasPage() {
             <h3 className="font-semibold text-gray-900 mb-4">📈 Preview</h3>
 
             <div className="space-y-3">
-              <div className="flex justify-between">
-                <span className="text-gray-600">Custo Unitário:</span>
-                <span className="font-semibold">R$ {preview.unitCost.toFixed(2)}</span>
+              {/* Breakdown de Custos */}
+              <div className="bg-white rounded p-3 border border-gray-200">
+                <p className="text-xs font-bold text-gray-700 mb-2">DETALHAMENTO DE CUSTOS:</p>
+                <div className="space-y-1 text-xs">
+                  <div className="flex justify-between text-gray-600">
+                    <span>Custo Compra:</span>
+                    <span>R$ {preview.costDetails.purchaseCost.toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between text-gray-600">
+                    <span>Custo Caixa:</span>
+                    <span>R$ {preview.costDetails.boxCost.toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between text-gray-600">
+                    <span>Taxa {preview.costDetails.marketplace === 'ml' ? 'ML' : 'Shopee'}:</span>
+                    <span>R$ {preview.costDetails.platformTariff.toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between text-gray-600">
+                    <span>Taxa Envio:</span>
+                    <span>R$ {preview.costDetails.deliveryTariff.toFixed(2)}</span>
+                  </div>
+                  <div className="border-t border-gray-200 pt-1 flex justify-between font-semibold text-gray-900">
+                    <span>Custo Unitário:</span>
+                    <span>R$ {preview.unitCost.toFixed(2)}</span>
+                  </div>
+                </div>
               </div>
 
               <div className="flex justify-between">
-                <span className="text-gray-600">Custo Total:</span>
+                <span className="text-gray-600">Custo Total ({formData.quantity}x):</span>
                 <span className="font-semibold">R$ {preview.totalCost.toFixed(2)}</span>
               </div>
 
