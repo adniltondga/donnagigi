@@ -49,13 +49,9 @@ export default function DeviceModelManager() {
   async function fetchData() {
     try {
       setLoading(true)
-      const [modelsRes, colorsRes] = await Promise.all([
-        fetch('/api/device-models'),
-        fetch('/api/device-colors'),
-      ])
+      const modelsRes = await fetch('/api/device-models')
 
       const modelsData = await modelsRes.json()
-      const colorsData = await colorsRes.json()
 
       if (modelsData.success) {
         const loadedModels = modelsData.data || []
@@ -66,10 +62,6 @@ export default function DeviceModelManager() {
         }))
         setModels(modelsWithColors)
         console.log(`✅ ${loadedModels.length} modelos carregados`, modelsWithColors)
-      }
-      if (colorsData.success) {
-        setColors(colorsData.data || [])
-        console.log(`✅ ${colorsData.data?.length || 0} cores carregadas`)
       }
     } catch (error) {
       console.error('❌ Erro ao buscar dados:', error)
