@@ -32,64 +32,12 @@ interface VariantFormProps {
   baseSalePrice?: number
 }
 
-interface DeviceModel {
-  id: string
-  name: string
-  modelColors: Array<{ color: { id: string; name: string; hexColor: string } }>
-}
-
-interface DeviceColor {
-  id: string
-  name: string
-  hexColor: string
-}
-
 export default function VariantForm({
   variants,
   onVariantsChange,
   baseSalePrice = 0,
 }: VariantFormProps) {
-  const [models, setModels] = useState<DeviceModel[]>([])
-  const [colors, setColors] = useState<DeviceColor[]>([])
-  const [loadingData, setLoadingData] = useState(true)
-  const [modelSearch, setModelSearch] = useState<Record<number, string>>({})
-  const [openDropdown, setOpenDropdown] = useState<number | null>(null)
-  const [loadingColors, setLoadingColors] = useState<Record<number, boolean>>({})
-
-  useEffect(() => {
-    fetchModelsAndColors()
-  }, [])
-
-  // Popular modelSearch quando há variantes com modelId já salvo
-  useEffect(() => {
-    if (models.length > 0 && variants.length > 0) {
-      const newModelSearch: Record<number, string> = { ...modelSearch }
-      
-      variants.forEach((variant, idx) => {
-        if (variant.modelId) {
-          const model = models.find((m) => m.id === variant.modelId)
-          if (model) {
-            newModelSearch[idx] = model.name
-          }
-        }
-      })
-      
-      setModelSearch(newModelSearch)
-    }
-  }, [models, variants, modelSearch])
-
-  async function fetchModelsAndColors() {
-    try {
-      const modelsRes = await fetch('/api/device-models')
-      const modelsData = await modelsRes.json()
-
-      if (modelsData.success) setModels(modelsData.data?.filter((m: any) => m.active) || [])
-    } catch (error) {
-      console.error('❌ Erro ao carregar modelos:', error)
-    } finally {
-      setLoadingData(false)
-    }
-  }
+  const [loadingData, setLoadingData] = useState(false)
 
   function addVariant() {
     const newVariant: Variant = {
