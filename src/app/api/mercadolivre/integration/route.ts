@@ -97,7 +97,7 @@ export async function DELETE() {
     // Deletar todos os produtos sincronizados também
     await prisma.mLProduct.deleteMany({
       where: {
-        mlIntegrationId: mlIntegration.id,
+        integrationId: mlIntegration.id,
       },
     })
 

@@ -1,6 +1,5 @@
 'use client'
 
-import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Trash2, Plus } from 'lucide-react'
@@ -37,8 +36,6 @@ export default function VariantForm({
   onVariantsChange,
   baseSalePrice = 0,
 }: VariantFormProps) {
-  const [loadingData, setLoadingData] = useState(false)
-
   function addVariant() {
     const newVariant: Variant = {
       cod: '',
@@ -56,47 +53,6 @@ export default function VariantForm({
     const updated = [...variants]
     updated[index] = { ...updated[index], [field]: value }
     onVariantsChange(updated)
-  }
-
-  function getAvailableColors(modelId?: string) {
-    if (!modelId) return colors
-    const model = models.find((m) => m.id === modelId)
-    if (!model) return []
-    
-    const availableColors = model.modelColors?.map((mc) => mc.color) || []
-    return availableColors
-  }
-
-  function getFilteredModels(searchText: string) {
-    if (!searchText) return models
-    return models.filter((model) =>
-      model.name.toLowerCase().includes(searchText.toLowerCase())
-    )
-  }
-
-  function handleModelSelect(idx: number, modelId: string) {
-    const selectedModel = models.find((m) => m.id === modelId)
-    setLoadingColors({ ...loadingColors, [idx]: true })
-    
-    // Simula um pequeno delay para mostrar o loading
-    setTimeout(() => {
-      // Atualiza TUDO de uma vez, em vez de duas chamadas separadas
-      const updated = [...variants]
-      updated[idx] = {
-        ...updated[idx],
-        modelId: modelId,
-        colorId: undefined
-      }
-      onVariantsChange(updated)
-      
-      setModelSearch({ ...modelSearch, [idx]: selectedModel?.name || '' })
-      setOpenDropdown(null)
-      setLoadingColors({ ...loadingColors, [idx]: false })
-    }, 300)
-  }
-
-  if (loadingData) {
-    return <div className="p-4 text-center">Carregando modelos e cores...</div>
   }
 
   return (

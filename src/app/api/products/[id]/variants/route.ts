@@ -1,8 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
 import prisma from "@/lib/prisma"
-import {
-  getProductStockSummary,
-} from "@/lib/variants"
 
 /**
  * GET /api/products/[id]/variants
@@ -13,12 +10,11 @@ import {
  * - modelo: string (filtro)
  */
 export async function GET(
-  request: NextRequest,
+  _request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
     const productId = params.id
-    const searchParams = request.nextUrl.searchParams
 
     // Verificar se produto existe
     const product = await prisma.product.findUnique({
@@ -32,62 +28,21 @@ export async function GET(
       )
     }
 
-    // Buscar variações com aplicar filtros
-    let variants = await prisma.productVariant.findMany({
+    // Buscar variações
+    const variants = await prisma.productVariant.findMany({
       where: { productId, active: true },
-      include: {
-        model: true,
-        color: true,
-        attributes: {
-          include: {
-            attributeValue: {
-              include: { attribute: true },
-            },
-          },
-        },
+      select: {
+        id: true,
+        cod: true,
+        title: true,
+        salePrice: true,
+        stock: true,
+        mlListingId: true,
+        active: true,
+        createdAt: true,
+        updatedAt: true,
       },
     })
-
-    // Aplicar filtros se fornecidos
-    if (searchParams.size > 0) {
-      const filters: Record<string, string> = {}
-      searchParams.forEach((value, key) => {
-        filters[key] = value
-      })
-      variants = variants.filter((variant) => {
-        const variantAttrs = variant.attributes.reduce(
-          (acc, va) => {
-            acc[va.attributeValue.attribute.name] = va.attributeValue.value
-            return acc
-          },
-          {} as Record<string, string>
-        )
-        return Object.entries(filters).every(
-          ([key, value]) => variantAttrs[key] === value
-        )
-      })
-    }
-
-    // Formatar resposta
-    const formattedVariants = variants.map((variant) => ({
-      id: variant.id,
-      cod: variant.cod,
-      salePrice: variant.salePrice,
-      purchaseCost: variant.purchaseCost,
-      boxCost: variant.boxCost,
-      stock: variant.stock,
-      calculatedMargin: variant.calculatedMargin,
-      image: variant.image,
-      attributes: variant.attributes.reduce(
-        (acc, va) => {
-          acc[va.attributeValue.attribute.name] = va.attributeValue.value
-          return acc
-        },
-        {} as Record<string, string>
-      ),
-      mlListed: variant.mlListed,
-      mlListingId: variant.mlListingId,
-    }))
 
     return NextResponse.json({
       product: {
@@ -95,9 +50,8 @@ export async function GET(
         name: product.name,
         description: product.description,
       },
-      variants: formattedVariants,
-      total: formattedVariants.length,
-      stockSummary: await getProductStockSummary(productId),
+      variants: variants,
+      total: variants.length,
     })
   } catch (error) {
     console.error("Erro ao buscar variações:", error)
@@ -122,13 +76,9 @@ export async function POST(
 
     const {
       cod,
-      modelId,
-      colorId,
+      title,
       salePrice,
-      purchaseCost,
-      boxCost,
       stock,
-      image,
     } = body
 
     // Validar dados obrigatórios
@@ -152,18 +102,10 @@ export async function POST(
       data: {
         productId,
         cod,
-        modelId: modelId || null,
-        colorId: colorId || null,
+        title: title || null,
         salePrice: parseFloat(salePrice),
-        purchaseCost: purchaseCost ? parseFloat(purchaseCost) : null,
-        boxCost: boxCost ? parseFloat(boxCost) : null,
         stock: stock ? parseInt(stock) : 0,
-        image: image || null,
         active: true,
-      },
-      include: {
-        model: true,
-        color: true,
       },
     })
 
