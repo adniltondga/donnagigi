@@ -59,10 +59,10 @@ export default function ProductsPage() {
     salePrice: 0,
     purchaseCost: 0,
     boxCost: 0,
-    mlTariff: 0,
-    deliveryTariff: 0,
-    shoppeeTariff: 0,
-    shopeeDeliveryTariff: 0,
+    mlTariff: 0, // Sempre do produto (baseMLTariff)
+    deliveryTariff: 0, // Sempre do produto (baseDeliveryTariff)
+    shoppeeTariff: 0, // Sempre do produto (baseShoppeeTariff)
+    shopeeDeliveryTariff: 0, // Sempre do produto (baseShopeeDeliveryTariff)
   })
 
   useEffect(() => {
@@ -151,13 +151,6 @@ export default function ProductsPage() {
             deliveryTariff: product.baseDeliveryTariff || 0,
             shoppeeTariff: product.baseShoppeeTariff || 0,
             shopeeDeliveryTariff: product.baseShopeeDeliveryTariff || 0,
-          })
-          
-          console.log('💰 Valores calculados:', {
-            purchaseCost: variant.purchaseCost || product.basePurchaseCost || 0,
-            boxCost: variant.boxCost || product.baseBoxCost || 0,
-            mlTariff: product.baseMLTariff || 0,
-            deliveryTariff: product.baseDeliveryTariff || 0,
           })
         }
       } catch (error) {
