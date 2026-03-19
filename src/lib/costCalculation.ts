@@ -6,12 +6,10 @@ export function calculateVariantCost(
   marketplace: 'ml' | 'shopee' = 'ml'
 ): number {
   // Custo de compra: variante ou padrão do produto
-  const purchaseCost =
-    (variant.purchaseCost ?? 0) > 0 ? variant.purchaseCost : product?.basePurchaseCost ?? 0;
+  const purchaseCost = ((variant.purchaseCost ?? 0) > 0 ? variant.purchaseCost : product?.basePurchaseCost) ?? 0;
 
   // Caixa: variante ou padrão do produto
-  const boxCost =
-    (variant.boxCost ?? 0) > 0 ? variant.boxCost : product?.baseBoxCost ?? 0;
+  const boxCost = ((variant.boxCost ?? 0) > 0 ? variant.boxCost : product?.baseBoxCost) ?? 0;
 
   if (marketplace === 'ml') {
     // Tarifas: SEMPRE do padrão do produto

@@ -76,7 +76,7 @@ export default function VariantForm({
       
       setModelSearch(newModelSearch)
     }
-  }, [models])
+  }, [models, variants, modelSearch])
 
   async function fetchModelsAndColors() {
     try {
