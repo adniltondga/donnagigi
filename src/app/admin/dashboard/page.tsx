@@ -1,13 +1,49 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
 import { Package, TrendingUp, DollarSign, Tag, ShoppingCart } from "lucide-react";
-import { mockProducts } from "@/lib/mockData";
 
 export default function Dashboard() {
-  const totalProducts = mockProducts.length;
-  const totalStock = mockProducts.reduce((sum, p) => sum + p.stock, 0);
-  const totalValue = mockProducts.reduce((sum, p) => sum + p.price * p.stock, 0);
+  const [totalProducts, setTotalProducts] = useState(0);
+  const [totalStock, setTotalStock] = useState(0);
+  const [totalValue, setTotalValue] = useState(0);
+  const [totalCategories, setTotalCategories] = useState(0);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchDashboardData = async () => {
+      try {
+        // Buscar produtos reais do banco de dados
+        const res = await fetch('/api/products?limit=1000');
+        const data = await res.json();
+
+        if (data.success && data.data) {
+          const products = data.data;
+          
+          // Calcular totais reais
+          const prodCount = products.length;
+          const stock = products.reduce((sum: number, p: any) => sum + (p.variants?.reduce((s: number, v: any) => s + (v.stock || 0), 0) || 0), 0);
+          const value = products.reduce((sum: number, p: any) => {
+            return sum + (p.variants?.reduce((s: number, v: any) => s + ((v.salePrice || p.baseSalePrice || 0) * (v.stock || 0)), 0) || 0);
+          }, 0);
+
+          const categories = new Set(products.map((p: any) => p.categoryId)).size;
+
+          setTotalProducts(prodCount);
+          setTotalStock(stock);
+          setTotalValue(value);
+          setTotalCategories(categories);
+        }
+      } catch (error) {
+        console.error('Erro ao buscar dados do dashboard:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchDashboardData();
+  }, []);
 
   const salesData = [
     { month: "Jan", sales: 12, revenue: 358.8 },
@@ -25,28 +61,28 @@ export default function Dashboard() {
   const stats = [
     {
       label: "Total de Produtos",
-      value: totalProducts,
+      value: loading ? "..." : totalProducts,
       icon: Package,
       color: "bg-blue-500",
       textColor: "text-blue-600",
     },
     {
       label: "Itens em Estoque",
-      value: totalStock,
+      value: loading ? "..." : totalStock,
       icon: ShoppingCart,
       color: "bg-green-500",
       textColor: "text-green-600",
     },
     {
       label: "Valor Total (R$)",
-      value: totalValue.toFixed(2),
+      value: loading ? "..." : totalValue.toFixed(2),
       icon: DollarSign,
       color: "bg-yellow-500",
       textColor: "text-yellow-600",
     },
     {
       label: "Categorias",
-      value: 1,
+      value: loading ? "..." : totalCategories,
       icon: Tag,
       color: "bg-purple-500",
       textColor: "text-purple-600",
