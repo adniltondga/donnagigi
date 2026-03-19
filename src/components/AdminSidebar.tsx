@@ -148,6 +148,26 @@ export function AdminSidebar() {
             </li>
           </ul>
         </div>
+
+        <div>
+          <p className="text-admin-400 text-xs font-semibold uppercase mb-3">
+            Integrações
+          </p>
+          <ul className="space-y-2">
+            <li>
+              <Link
+                href="/admin/integracao"
+                className={`block px-4 py-2 rounded-lg transition ${
+                  isActive("/admin/integracao")
+                    ? "bg-primary-500 text-white"
+                    : "text-admin-300 hover:bg-admin-700"
+                }`}
+              >
+                🔗 Mercado Livre
+              </Link>
+            </li>
+          </ul>
+        </div>
       </nav>
 
       <div className="p-6 border-t border-admin-700">

@@ -2,12 +2,14 @@
 
 import { useEffect, useState } from "react"
 import { useSearchParams } from "next/navigation"
-import { AlertCircle, CheckCircle, Loader, LogOut } from "lucide-react"
+import { AlertCircle, CheckCircle, Loader, LogOut, RefreshCw } from "lucide-react"
 
 export default function IntegracaoContent() {
   const searchParams = useSearchParams()
-  const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle")
+  const [status, setStatus] = useState<"idle" | "loading" | "success" | "error" | "syncing">("idle")
   const [message, setMessage] = useState("")
+  const [syncResult, setSyncResult] = useState<any>(null)
+  const [isLoadingIntegration, setIsLoadingIntegration] = useState(true)
   const [integration, setIntegration] = useState<{
     configured: boolean
     sellerID?: string
@@ -38,6 +40,9 @@ export default function IntegracaoContent() {
       setIntegration(data)
     } catch (error) {
       console.error("Erro ao verificar integração:", error)
+      setIntegration({ configured: false })
+    } finally {
+      setIsLoadingIntegration(false)
     }
   }
 
@@ -46,32 +51,11 @@ export default function IntegracaoContent() {
   }, [])
 
   // Iniciar login com Mercado Livre
-  const handleLoginML = async () => {
+  const handleLoginML = () => {
     setStatus("loading")
-    try {
-      const res = await fetch("/api/mercadolivre/auth")
-      
-      if (!res.ok) {
-        const error = await res.json()
-        setStatus("error")
-        setMessage(
-          error.details ||
-          error.error ||
-          "Erro ao conectar com Mercado Livre"
-        )
-        return
-      }
-
-      // Se OK, NextResponse.redirect vai redirecionar
-      window.location.href = "/api/mercadolivre/auth"
-    } catch (error) {
-      setStatus("error")
-      setMessage(
-        error instanceof Error
-          ? error.message
-          : "Erro ao conectar com servidor"
-      )
-    }
+    // Redirecionar direto para o endpoint de autenticação
+    // O navegador vai seguir o redirect 307 para Mercado Livre
+    window.location.href = "/api/mercadolivre/auth"
   }
 
   // Desconectar do Mercado Livre
@@ -93,6 +77,40 @@ export default function IntegracaoContent() {
         setStatus("error")
         setMessage("Erro ao desconectar")
       }
+    }
+  }
+
+  // Sincronizar produtos do Mercado Livre
+  const handleSyncProducts = async () => {
+    setStatus("syncing")
+    setMessage("")
+    setSyncResult(null)
+
+    try {
+      const res = await fetch("/api/ml/sync", {
+        method: "GET",
+      })
+
+      const data = await res.json()
+
+      if (!res.ok) {
+        setStatus("error")
+        setMessage(data.error || "Erro ao sincronizar produtos")
+        return
+      }
+
+      setSyncResult(data)
+      setStatus("success")
+      setMessage(data.message)
+      
+      // Limpar mensagem após 10 segundos
+      setTimeout(() => {
+        setStatus("idle")
+        setMessage("")
+      }, 10000)
+    } catch (error) {
+      setStatus("error")
+      setMessage(`Erro ao conectar: ${error instanceof Error ? error.message : "Erro desconhecido"}`)
     }
   }
 
@@ -149,7 +167,11 @@ export default function IntegracaoContent() {
           </div>
         </div>
 
-        {integration?.configured ? (
+        {isLoadingIntegration ? (
+          <div className="flex items-center justify-center py-8">
+            <Loader className="animate-spin text-primary-500" size={32} />
+          </div>
+        ) : integration?.configured ? (
           <div className="space-y-4">
             {/* Status Conectado */}
             <div className="bg-green-50 border border-green-200 rounded-lg p-4">
@@ -185,6 +207,24 @@ export default function IntegracaoContent() {
             {/* Buttons */}
             <div className="flex gap-3">
               <button
+                onClick={handleSyncProducts}
+                disabled={status === "syncing"}
+                className="flex-1 bg-green-100 hover:bg-green-200 disabled:bg-green-300 text-green-700 hover:text-green-800 disabled:text-green-600 font-semibold px-4 py-2 rounded-lg transition flex items-center justify-center gap-2"
+              >
+                {status === "syncing" ? (
+                  <>
+                    <Loader className="animate-spin" size={18} />
+                    Sincronizando...
+                  </>
+                ) : (
+                  <>
+                    <RefreshCw size={18} />
+                    Sincronizar Produtos (até 25)
+                  </>
+                )}
+              </button>
+
+              <button
                 onClick={handleDisconnect}
                 className="flex-1 bg-red-100 hover:bg-red-200 text-red-700 font-semibold px-4 py-2 rounded-lg transition flex items-center justify-center gap-2"
               >
@@ -192,6 +232,49 @@ export default function IntegracaoContent() {
                 Desconectar
               </button>
             </div>
+
+            {/* Sync Result */}
+            {syncResult && (
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 space-y-3">
+                <p className="text-sm font-semibold text-blue-900">📊 Resultado da Sincronização:</p>
+                
+                {syncResult.stats && (
+                  <div className="grid grid-cols-3 gap-2">
+                    <div className="bg-white p-2 rounded text-center">
+                      <p className="text-xs text-gray-600">Total</p>
+                      <p className="text-lg font-bold text-blue-600">{syncResult.stats.total}</p>
+                    </div>
+                    <div className="bg-white p-2 rounded text-center">
+                      <p className="text-xs text-gray-600">Sincronizados</p>
+                      <p className="text-lg font-bold text-green-600">{syncResult.stats.synced}</p>
+                    </div>
+                    <div className="bg-white p-2 rounded text-center">
+                      <p className="text-xs text-gray-600">Erros</p>
+                      <p className="text-lg font-bold text-red-600">{syncResult.stats.failed}</p>
+                    </div>
+                  </div>
+                )}
+
+                {syncResult.data && syncResult.data.length > 0 && (
+                  <div className="space-y-2 max-h-32 overflow-y-auto">
+                    <p className="text-xs font-semibold text-blue-900">✅ Produtos Sincronizados:</p>
+                    {syncResult.data.slice(0, 10).map((product: any) => (
+                      <div key={product.id} className="bg-white p-2 rounded text-xs">
+                        <div className="flex justify-between">
+                          <span className="font-medium text-gray-900">{product.name}</span>
+                          <span className="text-green-600">R$ {product.price.toFixed(2)}</span>
+                        </div>
+                      </div>
+                    ))}
+                    {syncResult.data.length > 10 && (
+                      <p className="text-xs text-gray-600 text-center">
+                        ... e {syncResult.data.length - 10} mais produtos
+                      </p>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         ) : (
           <div className="space-y-4">
