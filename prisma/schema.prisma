@@ -178,6 +178,8 @@ model ProductVariant {
   colorId String?
   color   DeviceColor? @relation(fields: [colorId], references: [id], onDelete: SetNull)
 
+  // Informações do ML
+  title String? // Título específico da variante (herdado do ML)
   cod   String  @unique // Código da variação (ex: "VAR-001")
   image String? // Imagem específica da variante (opcional)
 
