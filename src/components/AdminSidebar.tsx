@@ -117,25 +117,7 @@ export function AdminSidebar() {
           </ul>
         </div>
 
-        <div>
-          <p className="text-admin-400 text-xs font-semibold uppercase mb-3">
-            Catálogo
-          </p>
-          <ul className="space-y-2">
-            <li>
-              <Link
-                href="/admin/device-models"
-                className={`block px-4 py-2 rounded-lg transition ${
-                  isActive("/admin/device-models")
-                    ? "bg-primary-500 text-white"
-                    : "text-admin-300 hover:bg-admin-700"
-                }`}
-              >
-                📱 Dispositivos
-              </Link>
-            </li>
-          </ul>
-        </div>
+
 
         <div>
           <p className="text-admin-400 text-xs font-semibold uppercase mb-3">
