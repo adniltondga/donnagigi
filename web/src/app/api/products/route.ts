@@ -193,6 +193,8 @@ export async function POST(req: NextRequest) {
         data: {
           productId: product.id,
           cod: variantData.cod,
+          modelId: variantData.modelId || null,
+          colorId: variantData.colorId || null,
           image: variantData.image || null,
           purchaseCost: variantData.purchaseCost ? parseFloat(variantData.purchaseCost) : null,
           boxCost: variantData.boxCost ? parseFloat(variantData.boxCost) : null,

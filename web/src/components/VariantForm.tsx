@@ -60,6 +60,24 @@ export default function VariantForm({
     fetchModelsAndColors()
   }, [])
 
+  // Popular modelSearch quando há variantes com modelId já salvo
+  useEffect(() => {
+    if (models.length > 0 && variants.length > 0) {
+      const newModelSearch: Record<number, string> = { ...modelSearch }
+      
+      variants.forEach((variant, idx) => {
+        if (variant.modelId) {
+          const model = models.find((m) => m.id === variant.modelId)
+          if (model) {
+            newModelSearch[idx] = model.name
+          }
+        }
+      })
+      
+      setModelSearch(newModelSearch)
+    }
+  }, [models])
+
   async function fetchModelsAndColors() {
     try {
       const [modelsRes, colorsRes] = await Promise.all([

@@ -78,6 +78,8 @@ export async function PATCH(request: NextRequest, { params }: Params) {
         ...(body.deliveryTariff !== undefined && { deliveryTariff: body.deliveryTariff }),
         ...(body.shoppeeTariff !== undefined && { shoppeeTariff: body.shoppeeTariff }),
         ...(body.shopeeDeliveryTariff !== undefined && { shopeeDeliveryTariff: body.shopeeDeliveryTariff }),
+        ...(body.modelId !== undefined && { modelId: body.modelId || null }),
+        ...(body.colorId !== undefined && { colorId: body.colorId || null }),
       },
       include: {
         attributes: {
