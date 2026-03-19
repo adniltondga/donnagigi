@@ -100,8 +100,8 @@ export default function ProductFormDialog({ product, onClose }: ProductFormDialo
     product?.variants?.map((v: any) => ({
       id: v.id,
       cod: v.cod,
-      modelId: v.modelId,
-      colorId: v.colorId,
+      modelId: v.modelId || v.model?.id,
+      colorId: v.colorId || v.color?.id,
       stock: v.stock,
       salePrice: v.salePrice || 0,
       attributes: v.attributes || {},
@@ -233,6 +233,43 @@ export default function ProductFormDialog({ product, onClose }: ProductFormDialo
           const data = await response.json()
           setError(data.error || 'Erro ao atualizar produto')
           return
+        }
+
+        // Atualizar variações existentes (com ID)
+        const existingVariants = variants.filter(v => v.id)
+        if (existingVariants.length > 0) {
+          for (const variant of existingVariants) {
+            const salePriceNum = typeof variant.salePrice === 'string' 
+              ? parseFloat(variant.salePrice) 
+              : variant.salePrice
+            
+            console.log('📝 Atualizando variação existente:', {
+              variantId: variant.id,
+              cod: variant.cod,
+              salePrice: salePriceNum,
+              stock: variant.stock,
+              modelId: variant.modelId,
+              colorId: variant.colorId,
+            })
+
+            const variantResponse = await fetch(`/api/products/${product.id}/variants/${variant.id}`, {
+              method: 'PATCH',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                cod: variant.cod,
+                modelId: variant.modelId || null,
+                colorId: variant.colorId || null,
+                stock: variant.stock || 0,
+                salePrice: salePriceNum,
+              }),
+            })
+
+            if (!variantResponse.ok) {
+              const data = await variantResponse.json()
+              setError(data.error || 'Erro ao atualizar variação')
+              return
+            }
+          }
         }
 
         // Adicionar novas variações (sem ID)
