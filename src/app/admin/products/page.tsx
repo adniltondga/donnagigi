@@ -357,9 +357,10 @@ export default function ProductsPage() {
           <div className="divide-y">
             {filteredProducts.map((product) => {
               const productStock = product.variants?.reduce((s, v) => s + (v.stock || 0), 0) || 0
-              const priceMin = product.variants?.length ? Math.min(...product.variants.map(v => v.salePrice || 0)) : 0
-              const priceMax = product.variants?.length ? Math.max(...product.variants.map(v => v.salePrice || 0)) : 0
-              const productRevenue = product.variants?.reduce((s, v) => s + (v.salePrice || 0) * (v.stock || 0), 0) || 0
+              const getPriceForVariant = (variant: any) => variant.salePrice && variant.salePrice > 0 ? variant.salePrice : (product.baseSalePrice || 0)
+              const priceMin = product.variants?.length ? Math.min(...product.variants.map(getPriceForVariant)) : (product.baseSalePrice || 0)
+              const priceMax = product.variants?.length ? Math.max(...product.variants.map(getPriceForVariant)) : (product.baseSalePrice || 0)
+              const productRevenue = product.variants?.reduce((s, v) => s + (getPriceForVariant(v)) * (v.stock || 0), 0) || 0
               const isExpanded = expandedProduct === product.id
               const variantCount = product.variants?.length || 0
 
@@ -441,14 +442,6 @@ export default function ProductsPage() {
                               <span className="text-xs text-gray-500">a {formatCurrency(priceMax)}</span>
                             </div>
                           )}
-                        </div>
-                      </div>
-
-                      {/* Receita */}
-                      <div className="text-right">
-                        <div className="text-sm text-gray-600">Receita</div>
-                        <div className="text-lg font-bold text-green-600">
-                          {formatCurrency(productRevenue)}
                         </div>
                       </div>
 
