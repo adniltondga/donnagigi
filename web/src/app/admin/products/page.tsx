@@ -359,7 +359,6 @@ export default function ProductsPage() {
               const getPriceForVariant = (variant: any) => variant.salePrice && variant.salePrice > 0 ? variant.salePrice : (product.baseSalePrice || 0)
               const priceMin = product.variants?.length ? Math.min(...product.variants.map(getPriceForVariant)) : (product.baseSalePrice || 0)
               const priceMax = product.variants?.length ? Math.max(...product.variants.map(getPriceForVariant)) : (product.baseSalePrice || 0)
-              const productRevenue = product.variants?.reduce((s, v) => s + (getPriceForVariant(v)) * (v.stock || 0), 0) || 0
               const isExpanded = expandedProduct === product.id
               const variantCount = product.variants?.length || 0
 

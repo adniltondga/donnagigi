@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { ProductVariant, Product, DeviceModel, DeviceColor } from '@prisma/client';
-import CurrencyInput from '@/components/CurrencyInput';
 
 interface ProductWithVariants extends Product {
   variants: (ProductVariant & {
@@ -31,10 +30,18 @@ export default function VendasPage() {
   });
 
   const [products, setProducts] = useState<ProductWithVariants[]>([]);
+  const [selectedProduct, setSelectedProduct] = useState<ProductWithVariants | null>(null);
   const [selectedVariant, setSelectedVariant] = useState<any>(null);
   const [preview, setPreview] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [expandCostDetails, setExpandCostDetails] = useState(false);
+
+  // Autocomplete
+  const [productSearch, setProductSearch] = useState('');
+  const [variantSearch, setVariantSearch] = useState('');
+  const [openProductDropdown, setOpenProductDropdown] = useState(false);
+  const [openVariantDropdown, setOpenVariantDropdown] = useState(false);
 
   // Carregar produtos ao montar
   useEffect(() => {
@@ -53,19 +60,52 @@ export default function VendasPage() {
     fetchProducts();
   }, []);
 
-  const calculateVariantCostDetails = useCallback((variant: any) => {
-    // Custo de compra: variante ou padrão do produto
-    const purchaseCost =
-      (variant.purchaseCost ?? 0) > 0 ? variant.purchaseCost : variant.product?.basePurchaseCost ?? 0;
+  // Filtrar produtos
+  const filteredProducts = products.filter(p =>
+    p.name.toLowerCase().includes(productSearch.toLowerCase())
+  );
 
-    // Caixa: variante ou padrão do produto
-    const boxCost =
-      (variant.boxCost ?? 0) > 0 ? variant.boxCost : variant.product?.baseBoxCost ?? 0;
+  // Filtrar variações do produto selecionado
+  const filteredVariants = selectedProduct
+    ? selectedProduct.variants.filter(v =>
+        `${selectedProduct.name} - ${v.model?.name} (${v.color?.name}) - ${v.cod}`
+          .toLowerCase()
+          .includes(variantSearch.toLowerCase())
+      )
+    : [];
+
+  // Selecionar produto
+  const handleSelectProduct = (product: ProductWithVariants) => {
+    setSelectedProduct(product);
+    setProductSearch(product.name);
+    setOpenProductDropdown(false);
+    setSelectedVariant(null);
+    setVariantSearch('');
+    setFormData(prev => ({ ...prev, variantId: '' }));
+  };
+
+  // Selecionar variação
+  const handleSelectVariant = (variant: any) => {
+    setSelectedVariant(variant);
+    setFormData(prev => ({
+      ...prev,
+      variantId: variant.id,
+      salePrice: variant.salePrice || 0,
+    }));
+    setVariantSearch(`${selectedProduct?.name} - ${variant.model?.name} (${variant.color?.name}) - ${variant.cod}`);
+    setOpenVariantDropdown(false);
+  };
+
+  const calculateVariantCostDetails = useCallback((variant: any) => {
+    const product = selectedProduct;
+    if (!product) return { purchaseCost: 0, boxCost: 0, platformTariff: 0, deliveryTariff: 0, total: 0, marketplace: formData.marketplace };
+
+    const purchaseCost = (variant.purchaseCost ?? 0) > 0 ? variant.purchaseCost : product.basePurchaseCost ?? 0;
+    const boxCost = (variant.boxCost ?? 0) > 0 ? variant.boxCost : product.baseBoxCost ?? 0;
 
     if (formData.marketplace === 'ml') {
-      // Tarifas: SEMPRE do padrão do produto
-      const mlTariff = variant.product?.baseMLTariff ?? 0;
-      const deliveryTariff = variant.product?.baseDeliveryTariff ?? 0;
+      const mlTariff = product.baseMLTariff ?? 0;
+      const deliveryTariff = product.baseDeliveryTariff ?? 0;
       return {
         purchaseCost,
         boxCost,
@@ -75,9 +115,8 @@ export default function VendasPage() {
         marketplace: 'ml',
       };
     } else {
-      // Tarifas: SEMPRE do padrão do produto
-      const shoppeeTariff = variant.product?.baseShoppeeTariff ?? 0;
-      const shopeeDeliveryTariff = variant.product?.baseShopeeDeliveryTariff ?? 0;
+      const shoppeeTariff = product.baseShoppeeTariff ?? 0;
+      const shopeeDeliveryTariff = product.baseShopeeDeliveryTariff ?? 0;
       return {
         purchaseCost,
         boxCost,
@@ -87,11 +126,7 @@ export default function VendasPage() {
         marketplace: 'shopee',
       };
     }
-  }, [formData.marketplace]);
-
-  const calculateVariantCost = useCallback((variant: any): number => {
-    return calculateVariantCostDetails(variant).total;
-  }, [calculateVariantCostDetails]);
+  }, [formData.marketplace, selectedProduct]);
 
   // Atualizar preview quando form mudar
   useEffect(() => {
@@ -115,22 +150,7 @@ export default function VendasPage() {
       profitMargin,
       costDetails,
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [formData, selectedVariant, calculateVariantCostDetails]);
-
-  const handleVariantChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const variantId = e.target.value;
-    setFormData({ ...formData, variantId });
-
-    if (variantId) {
-      const variant = products
-        .flatMap((p) => p.variants.map((v) => ({ ...v, product: p })))
-        .find((v) => v.id === variantId);
-      setSelectedVariant(variant);
-    } else {
-      setSelectedVariant(null);
-    }
-  };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -140,7 +160,7 @@ export default function VendasPage() {
         ? value
         : name === 'quantity' || name === 'daysToReceive'
           ? parseInt(value) || 0
-          : parseFloat(value) || 0,
+          : value,
     }));
   };
 
@@ -181,7 +201,7 @@ export default function VendasPage() {
   };
 
   return (
-    <div className="max-w-4xl mx-auto">
+    <div className="max-w-4xl mx-auto p-6">
       <h1 className="text-3xl font-bold text-gray-900 mb-8">📊 Registrar Venda</h1>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -200,27 +220,79 @@ export default function VendasPage() {
               </div>
             )}
 
-            {/* Variação */}
+            {/* Produto */}
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-2">
-                Produto / Variação *
+                Produto *
               </label>
-              <select
-                value={formData.variantId}
-                onChange={handleVariantChange}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                required
-              >
-                <option value="">Selecione uma variação</option>
-                {products.flatMap((product) =>
-                  product.variants.map((variant) => (
-                    <option key={variant.id} value={variant.id}>
-                      {product.name} - {variant.model?.name} ({variant.color?.name}) - {variant.cod}
-                    </option>
-                  ))
+              <div className="relative">
+                <input
+                  type="text"
+                  placeholder="Digite para buscar..."
+                  value={productSearch}
+                  onChange={(e) => {
+                    setProductSearch(e.target.value);
+                    setOpenProductDropdown(true);
+                  }}
+                  onFocus={() => setOpenProductDropdown(true)}
+                  onBlur={() => setTimeout(() => setOpenProductDropdown(false), 150)}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                  required
+                />
+                {openProductDropdown && filteredProducts.length > 0 && (
+                  <div className="absolute top-full left-0 right-0 mt-1 bg-white border rounded shadow-lg z-10 max-h-48 overflow-y-auto">
+                    {filteredProducts.map((product) => (
+                      <button
+                        key={product.id}
+                        type="button"
+                        onClick={() => handleSelectProduct(product)}
+                        className="w-full text-left px-4 py-2 hover:bg-blue-100 transition border-b last:border-b-0"
+                      >
+                        {product.name}
+                      </button>
+                    ))}
+                  </div>
                 )}
-              </select>
+              </div>
             </div>
+
+            {/* Variação */}
+            {selectedProduct && (
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Variação (Modelo - Cor) *
+                </label>
+                <div className="relative">
+                  <input
+                    type="text"
+                    placeholder="Digite para buscar variação..."
+                    value={variantSearch}
+                    onChange={(e) => {
+                      setVariantSearch(e.target.value);
+                      setOpenVariantDropdown(true);
+                    }}
+                    onFocus={() => setOpenVariantDropdown(true)}
+                    onBlur={() => setTimeout(() => setOpenVariantDropdown(false), 150)}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                    required
+                  />
+                  {openVariantDropdown && filteredVariants.length > 0 && (
+                    <div className="absolute top-full left-0 right-0 mt-1 bg-white border rounded shadow-lg z-10 max-h-48 overflow-y-auto">
+                      {filteredVariants.map((variant) => (
+                        <button
+                          key={variant.id}
+                          type="button"
+                          onClick={() => handleSelectVariant(variant)}
+                          className="w-full text-left px-4 py-2 hover:bg-blue-100 transition border-b last:border-b-0"
+                        >
+                          {variant.model?.name} - {variant.color?.name} (COD: {variant.cod})
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
 
             {/* Quantidade */}
             <div>
@@ -240,16 +312,22 @@ export default function VendasPage() {
             </div>
 
             {/* Preço de Venda */}
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
-                Preço de Venda (R$) *
-              </label>
-              <CurrencyInput
-                value={formData.salePrice}
-                onChange={(value) => setFormData((prev) => ({ ...prev, salePrice: value }))}
-                required
-              />
-            </div>
+            {selectedVariant && (
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Preço de Venda (R$) *
+                </label>
+                <div className="px-4 py-2 border border-gray-300 rounded-lg bg-gray-100 text-gray-700 font-semibold">
+                  {new Intl.NumberFormat('pt-BR', {
+                    style: 'currency',
+                    currency: 'BRL',
+                  }).format(formData.salePrice)}
+                </div>
+                <p className="text-xs text-gray-500 mt-1">
+                  Preço automático da variação: {selectedVariant.cod}
+                </p>
+              </div>
+            )}
 
             {/* Marketplace */}
             <div>
@@ -267,7 +345,7 @@ export default function VendasPage() {
               </select>
             </div>
 
-            {/* Data da Venda */}
+            {/* Data */}
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-2">
                 Data da Venda
@@ -281,100 +359,87 @@ export default function VendasPage() {
               />
             </div>
 
-            {/* Prazo de Recebimento */}
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
-                Prazo de Recebimento (dias)
-              </label>
-              <input
-                type="number"
-                name="daysToReceive"
-                min="0"
-                step="1"
-                value={formData.daysToReceive}
-                onChange={handleInputChange}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                required
-              />
-            </div>
-
-            {/* Submit */}
+            {/* Button */}
             <button
               type="submit"
-              disabled={loading}
-              className="w-full bg-gradient-to-r from-primary-500 to-primary-600 hover:from-primary-600 hover:to-primary-700 disabled:opacity-50 text-white font-semibold py-2 px-4 rounded-lg transition"
+              disabled={loading || !selectedVariant}
+              className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white font-semibold py-2 px-4 rounded-lg transition"
             >
-              {loading ? 'Registrando...' : '✅ Registrar Venda'}
+              {loading ? 'Registrando...' : 'Registrar Venda'}
             </button>
           </form>
         </div>
 
         {/* Preview */}
         {preview && (
-          <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg shadow p-6 h-fit sticky top-8">
-            <h3 className="font-semibold text-gray-900 mb-4">📈 Preview</h3>
-
-            <div className="space-y-3">
-              {/* Breakdown de Custos */}
-              <div className="bg-white rounded p-3 border border-gray-200">
-                <p className="text-xs font-bold text-gray-700 mb-2">DETALHAMENTO DE CUSTOS:</p>
-                <div className="space-y-1 text-xs">
-                  <div className="flex justify-between text-gray-600">
-                    <span>Custo Compra:</span>
-                    <span>R$ {preview.costDetails.purchaseCost.toFixed(2)}</span>
+          <div className="bg-white rounded-lg shadow p-6">
+            <h3 className="text-lg font-semibold mb-4">Resumo da Venda</h3>
+            <div className="space-y-3 text-sm">
+              {/* Custo Total expandível */}
+              <div className="border-t pt-3">
+                <button
+                  type="button"
+                  onClick={() => setExpandCostDetails(!expandCostDetails)}
+                  className="w-full flex justify-between items-center hover:bg-gray-50 p-2 rounded transition"
+                >
+                  <span>Custo Total: </span>
+                  <div className="flex items-center gap-2">
+                    <span className="font-semibold">{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(preview.totalCost)}</span>
+                    <span className={`text-xs transition ${expandCostDetails ? 'rotate-180' : ''}`}>▼</span>
                   </div>
-                  <div className="flex justify-between text-gray-600">
-                    <span>Custo Caixa:</span>
-                    <span>R$ {preview.costDetails.boxCost.toFixed(2)}</span>
+                </button>
+                
+                {/* Detalhamento do Custo */}
+                {expandCostDetails && (
+                  <div className="mt-3 p-3 bg-gray-50 rounded space-y-2 text-xs">
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Custo Compra Unitário:</span>
+                      <span>{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(preview.costDetails.purchaseCost)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Custo Caixa Unitário:</span>
+                      <span>{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(preview.costDetails.boxCost)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Tarifa Plataforma Unitária:</span>
+                      <span>{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(preview.costDetails.platformTariff)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Tarifa Entrega Unitária:</span>
+                      <span>{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(preview.costDetails.deliveryTariff)}</span>
+                    </div>
+                    <div className="border-t pt-2 flex justify-between font-semibold">
+                      <span className="text-gray-700">Total Unitário:</span>
+                      <span>{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(preview.unitCost)}</span>
+                    </div>
+                    <div className="flex justify-between font-semibold text-blue-600">
+                      <span>× {formData.quantity} unidades</span>
+                      <span>= {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(preview.totalCost)}</span>
+                    </div>
                   </div>
-                  <div className="flex justify-between text-gray-600">
-                    <span>Taxa {preview.costDetails.marketplace === 'ml' ? 'ML' : 'Shopee'}:</span>
-                    <span>R$ {preview.costDetails.platformTariff.toFixed(2)}</span>
+                )}
+              </div>
+              
+              <div className="flex justify-between border-t pt-3">
+                <span>Faturamento Total:</span>
+                <span className="font-semibold text-green-600">{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(preview.totalRevenue)}</span>
+              </div>
+              
+              {/* Lucro Líquido destacado no footer */}
+              <div className="border-t pt-3 mt-4 bg-gradient-to-r from-green-50 to-emerald-50 p-4 rounded-lg">
+                <div className="flex items-end justify-between">
+                  <div>
+                    <p className="text-xs text-gray-600 mb-1">Lucro Líquido</p>
+                    <p className={`text-2xl font-bold ${preview.profit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                      {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(preview.profit)}
+                    </p>
                   </div>
-                  <div className="flex justify-between text-gray-600">
-                    <span>Taxa Envio:</span>
-                    <span>R$ {preview.costDetails.deliveryTariff.toFixed(2)}</span>
-                  </div>
-                  <div className="border-t border-gray-200 pt-1 flex justify-between font-semibold text-gray-900">
-                    <span>Custo Unitário:</span>
-                    <span>R$ {preview.unitCost.toFixed(2)}</span>
+                  <div className="text-right">
+                    <p className={`text-xs font-semibold ${preview.profitMargin >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                      {preview.profitMargin.toFixed(2)}%
+                    </p>
                   </div>
                 </div>
-              </div>
-
-              <div className="flex justify-between">
-                <span className="text-gray-600">Custo Total ({formData.quantity}x):</span>
-                <span className="font-semibold">R$ {preview.totalCost.toFixed(2)}</span>
-              </div>
-
-              <div className="border-t border-gray-300 pt-3 flex justify-between">
-                <span className="text-gray-600">Faturamento:</span>
-                <span className="font-semibold text-lg">R$ {preview.totalRevenue.toFixed(2)}</span>
-              </div>
-
-              <div className="flex justify-between">
-                <span className="text-gray-600">Lucro Bruto:</span>
-                <span className={`font-semibold text-lg ${preview.profit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                  R$ {preview.profit.toFixed(2)}
-                </span>
-              </div>
-
-              <div className="bg-white rounded p-3 flex justify-between">
-                <span className="text-gray-700 font-semibold">Margem de Lucro:</span>
-                <span className={`text-lg font-bold ${preview.profitMargin >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                  {preview.profitMargin.toFixed(1)}%
-                </span>
-              </div>
-
-              <div className="flex justify-between text-sm text-gray-500">
-                <span>Vencimento estimado:</span>
-                <span>
-                  {(() => {
-                    const d = new Date(formData.saleDate);
-                    d.setDate(d.getDate() + formData.daysToReceive);
-                    return d.toLocaleDateString('pt-BR');
-                  })()}
-                </span>
               </div>
             </div>
           </div>
