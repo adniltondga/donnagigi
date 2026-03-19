@@ -17,56 +17,24 @@ export async function GET(req: NextRequest) {
           id: true,
           name: true,
           description: true,
-          categoryId: true,
-          supplier: true,
           mlListingId: true,
-          shopeeListingId: true,
           baseSalePrice: true,
-          basePurchaseCost: true,
-          baseBoxCost: true,
-          baseMLTariff: true,
-          baseDeliveryTariff: true,
-          baseShoppeeTariff: true,
-          baseShopeeDeliveryTariff: true,
-          baseMLPrice: true,
-          shopeePrice: true,
           minStock: true,
           active: true,
           createdAt: true,
           updatedAt: true,
-          category: true,
           variants: {
             where: { active: true },
             select: {
               id: true,
-              productId: true,
-              modelId: true,
-              model: true,
-              colorId: true,
-              color: true,
               cod: true,
-              image: true,
-              purchaseCost: true,
-              boxCost: true,
-              mlTariff: true,
-              deliveryTariff: true,
-              shoppeeTariff: true,
-              shopeeDeliveryTariff: true,
+              title: true,
               salePrice: true,
-              calculatedMargin: true,
               stock: true,
-              mlListed: true,
               mlListingId: true,
-              mlListingUrl: true,
-              shopeeListed: true,
-              shopeeListingId: true,
-              shopeeListingUrl: true,
               active: true,
               createdAt: true,
               updatedAt: true,
-              attributes: {
-                include: { attributeValue: true }
-              }
             }
           }
         }
@@ -98,7 +66,7 @@ export async function POST(req: NextRequest) {
     const body = await req.json()
 
     // Validar campos obrigatórios
-    const requiredFields = ['name', 'description']
+    const requiredFields = ['name']
     for (const field of requiredFields) {
       if (!(field in body)) {
         return NextResponse.json(
@@ -140,96 +108,27 @@ export async function POST(req: NextRequest) {
     const product = await prisma.product.create({
       data: {
         name: body.name,
-        description: body.description,
-        categoryId: body.categoryId || null,
-        supplier: body.supplier || null,
+        description: body.description || null,
         mlListingId: body.mlListingId || null,
-        shopeeListingId: body.shopeeListingId || null,
         baseSalePrice: body.baseSalePrice ? parseFloat(body.baseSalePrice) : null,
-        basePurchaseCost: body.basePurchaseCost ? parseFloat(body.basePurchaseCost) : 0,
-        baseBoxCost: body.baseBoxCost ? parseFloat(body.baseBoxCost) : 0,
-        baseMLTariff: body.baseMLTariff ? parseFloat(body.baseMLTariff) : 0,
-        baseDeliveryTariff: body.baseDeliveryTariff ? parseFloat(body.baseDeliveryTariff) : 0,
-        baseMLPrice: body.baseMLPrice ? parseFloat(body.baseMLPrice) : null,
-        shopeePrice: body.shopeePrice ? parseFloat(body.shopeePrice) : null,
-        baseShoppeeTariff: body.baseShoppeeTariff ? parseFloat(body.baseShoppeeTariff) : 0,
-        baseShopeeDeliveryTariff: body.baseShopeeDeliveryTariff ? parseFloat(body.baseShopeeDeliveryTariff) : 0,
         minStock: body.minStock ? parseInt(body.minStock) : 5,
       },
     })
 
-    // 2. Criar Atributos (se fornecidos)
-    const attributeMap: Record<string, string> = {} // name -> id
-    
-    if (body.attributes && Array.isArray(body.attributes)) {
-      for (const attr of body.attributes) {
-        if (!attr.name || !attr.values) continue
-
-        const productAttr = await prisma.productAttribute.create({
-          data: {
-            productId: product.id,
-            name: attr.name,
-            type: attr.type || 'text',
-          },
-        })
-        attributeMap[attr.name] = productAttr.id
-
-        // Criar valores do atributo
-        for (const value of attr.values) {
-          await prisma.productAttributeValue.create({
-            data: {
-              attributeId: productAttr.id,
-              value,
-            },
-          })
-        }
-      }
-    }
-
-    // 3. Criar Variações
+    // 2. Criar Variações
     const createdVariants = []
     for (const variantData of body.variants) {
       const variant = await prisma.productVariant.create({
         data: {
           productId: product.id,
           cod: variantData.cod,
-          modelId: variantData.modelId || null,
-          colorId: variantData.colorId || null,
-          image: variantData.image || null,
-          purchaseCost: variantData.purchaseCost ? parseFloat(variantData.purchaseCost) : null,
-          boxCost: variantData.boxCost ? parseFloat(variantData.boxCost) : null,
-          mlTariff: variantData.mlTariff ? parseFloat(variantData.mlTariff) : 0,
-          deliveryTariff: variantData.deliveryTariff ? parseFloat(variantData.deliveryTariff) : 0,
+          title: variantData.title || null,
           salePrice: parseFloat(variantData.salePrice),
           stock: variantData.stock ? parseInt(variantData.stock) : 0,
+          mlListingId: variantData.mlListingId || null,
           active: true,
         },
       })
-
-      // Associar atributos à variante (se fornecidos)
-      if (variantData.attributes && typeof variantData.attributes === 'object') {
-        for (const [attrName, attrValue] of Object.entries(variantData.attributes)) {
-          const attrId = attributeMap[attrName]
-          if (!attrId) continue
-
-          // Encontrar o valor do atributo
-          const attrVal = await prisma.productAttributeValue.findFirst({
-            where: {
-              attributeId: attrId,
-              value: String(attrValue),
-            },
-          })
-
-          if (attrVal) {
-            await prisma.variantAttributeValue.create({
-              data: {
-                variantId: variant.id,
-                attributeValueId: attrVal.id,
-              },
-            })
-          }
-        }
-      }
 
       createdVariants.push(variant)
     }

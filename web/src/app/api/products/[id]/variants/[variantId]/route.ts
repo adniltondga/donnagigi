@@ -15,17 +15,6 @@ export async function GET(_request: NextRequest, { params }: Params) {
 
     const variant = await prisma.productVariant.findUnique({
       where: { id: variantId },
-      include: {
-        attributes: {
-          include: {
-            attributeValue: {
-              include: {
-                attribute: true,
-              },
-            },
-          },
-        },
-      },
     })
 
     if (!variant || variant.productId !== productId) {
@@ -72,25 +61,8 @@ export async function PATCH(request: NextRequest, { params }: Params) {
       data: {
         ...(body.stock !== undefined && { stock: body.stock }),
         ...(body.salePrice !== undefined && { salePrice: body.salePrice ? parseFloat(body.salePrice) : body.salePrice }),
-        ...(body.purchaseCost !== undefined && { purchaseCost: body.purchaseCost }),
-        ...(body.boxCost !== undefined && { boxCost: body.boxCost }),
-        ...(body.mlTariff !== undefined && { mlTariff: body.mlTariff }),
-        ...(body.deliveryTariff !== undefined && { deliveryTariff: body.deliveryTariff }),
-        ...(body.shoppeeTariff !== undefined && { shoppeeTariff: body.shoppeeTariff }),
-        ...(body.shopeeDeliveryTariff !== undefined && { shopeeDeliveryTariff: body.shopeeDeliveryTariff }),
-        ...(body.modelId !== undefined && { modelId: body.modelId || null }),
-        ...(body.colorId !== undefined && { colorId: body.colorId || null }),
-      },
-      include: {
-        attributes: {
-          include: {
-            attributeValue: {
-              include: {
-                attribute: true,
-              },
-            },
-          },
-        },
+        ...(body.title !== undefined && { title: body.title || null }),
+        ...(body.mlListingId !== undefined && { mlListingId: body.mlListingId || null }),
       },
     })
 

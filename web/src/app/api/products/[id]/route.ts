@@ -9,21 +9,18 @@ export async function GET(
     const product = await prisma.product.findUnique({
       where: { id: params.id },
       include: {
-        category: true,
         variants: {
           where: { active: true },
-          include: {
-            model: true,
-            color: true,
-            attributes: {
-              include: {
-                attributeValue: {
-                  include: {
-                    attribute: true,
-                  },
-                },
-              },
-            },
+          select: {
+            id: true,
+            cod: true,
+            title: true,
+            salePrice: true,
+            stock: true,
+            mlListingId: true,
+            active: true,
+            createdAt: true,
+            updatedAt: true,
           },
         },
       },
@@ -92,38 +89,23 @@ export async function PUT(
       data: {
         ...(body.name && { name: body.name }),
         ...(body.description !== undefined && { description: body.description }),
-        ...(body.categoryId !== undefined && { 
-          category: body.categoryId 
-            ? { connect: { id: body.categoryId } } 
-            : { disconnect: true }
-        }),
-        ...(body.supplier !== undefined && { supplier: body.supplier }),
         ...(body.mlListingId !== undefined && { mlListingId: body.mlListingId || null }),
-        ...(body.shopeeListingId !== undefined && { shopeeListingId: body.shopeeListingId || null }),
         ...(body.baseSalePrice !== undefined && { baseSalePrice: body.baseSalePrice ? parseFloat(body.baseSalePrice) : null }),
-        ...(body.basePurchaseCost !== undefined && { basePurchaseCost: body.basePurchaseCost ? parseFloat(body.basePurchaseCost) : 0 }),
-        ...(body.baseBoxCost !== undefined && { baseBoxCost: body.baseBoxCost ? parseFloat(body.baseBoxCost) : 0 }),
-        ...(body.baseMLTariff !== undefined && { baseMLTariff: body.baseMLTariff ? parseFloat(body.baseMLTariff) : 0 }),
-        ...(body.baseDeliveryTariff !== undefined && { baseDeliveryTariff: body.baseDeliveryTariff ? parseFloat(body.baseDeliveryTariff) : 0 }),
-        ...(body.baseMLPrice !== undefined && { baseMLPrice: body.baseMLPrice ? parseFloat(body.baseMLPrice) : null }),
-        ...(body.shopeePrice !== undefined && { shopeePrice: body.shopeePrice ? parseFloat(body.shopeePrice) : null }),
-        ...(body.baseShoppeeTariff !== undefined && { baseShoppeeTariff: body.baseShoppeeTariff ? parseFloat(body.baseShoppeeTariff) : 0 }),
-        ...(body.baseShopeeDeliveryTariff !== undefined && { baseShopeeDeliveryTariff: body.baseShopeeDeliveryTariff ? parseFloat(body.baseShopeeDeliveryTariff) : 0 }),
+        ...(body.minStock !== undefined && { minStock: body.minStock ? parseInt(body.minStock) : 0 }),
       },
       include: {
-        category: true,
         variants: {
           where: { active: true },
-          include: {
-            attributes: {
-              include: {
-                attributeValue: {
-                  include: {
-                    attribute: true,
-                  },
-                },
-              },
-            },
+          select: {
+            id: true,
+            cod: true,
+            title: true,
+            salePrice: true,
+            stock: true,
+            mlListingId: true,
+            active: true,
+            createdAt: true,
+            updatedAt: true,
           },
         },
       },
