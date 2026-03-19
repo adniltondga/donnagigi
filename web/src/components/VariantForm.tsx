@@ -29,6 +29,7 @@ interface VariantFormProps {
   attributes: Attribute[]
   onVariantsChange: (variants: Variant[]) => void
   onAttributesChange: (attributes: Attribute[]) => void
+  baseSalePrice?: number
 }
 
 interface DeviceModel {
@@ -46,6 +47,7 @@ interface DeviceColor {
 export default function VariantForm({
   variants,
   onVariantsChange,
+  baseSalePrice = 0,
 }: VariantFormProps) {
   const [models, setModels] = useState<DeviceModel[]>([])
   const [colors, setColors] = useState<DeviceColor[]>([])
@@ -81,7 +83,7 @@ export default function VariantForm({
     const newVariant: Variant = {
       cod: '',
       stock: 0,
-      salePrice: 0,
+      salePrice: baseSalePrice || 0,
     }
     onVariantsChange([...variants, newVariant])
   }
@@ -274,7 +276,14 @@ export default function VariantForm({
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium mb-1">Preço Venda *</label>
+                      <label className="block text-sm font-medium mb-1">
+                        Preço Venda * 
+                        {baseSalePrice > 0 && (
+                          <span className="text-xs text-blue-600 font-normal ml-2">
+                            (padrão: R$ {baseSalePrice.toFixed(2)})
+                          </span>
+                        )}
+                      </label>
                       <CurrencyInput
                         value={variant.salePrice || 0}
                         onChange={(value) => updateVariant(idx, 'salePrice', value)}

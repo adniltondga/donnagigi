@@ -164,6 +164,16 @@ export default function ProductFormDialog({ product, onClose }: ProductFormDialo
 
       // Para novo produto, usar POST
       if (!product) {
+        console.log('📦 Criando novo produto com variações:', {
+          variants: variants.map(v => ({
+            cod: v.cod,
+            salePrice: v.salePrice,
+            stock: v.stock,
+            modelId: v.modelId,
+            colorId: v.colorId,
+          }))
+        })
+        
         const response = await fetch('/api/products', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -229,6 +239,18 @@ export default function ProductFormDialog({ product, onClose }: ProductFormDialo
         const newVariants = variants.filter(v => !v.id)
         if (newVariants.length > 0) {
           for (const variant of newVariants) {
+            const salePriceNum = typeof variant.salePrice === 'string' 
+              ? parseFloat(variant.salePrice) 
+              : variant.salePrice
+            
+            console.log('📝 Criando variação:', {
+              cod: variant.cod,
+              salePrice: salePriceNum,
+              stock: variant.stock,
+              modelId: variant.modelId,
+              colorId: variant.colorId,
+            })
+
             const variantResponse = await fetch(`/api/products/${product.id}/variants`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
@@ -237,7 +259,7 @@ export default function ProductFormDialog({ product, onClose }: ProductFormDialo
                 modelId: variant.modelId || null,
                 colorId: variant.colorId || null,
                 stock: variant.stock || 0,
-                salePrice: variant.salePrice || 0,
+                salePrice: salePriceNum,
                 attributes: variant.attributes || {},
               }),
             })
@@ -444,6 +466,7 @@ export default function ProductFormDialog({ product, onClose }: ProductFormDialo
             attributes={attributes}
             onVariantsChange={setVariants}
             onAttributesChange={setAttributes}
+            baseSalePrice={formData.baseSalePrice}
           />
 
           {product && (
