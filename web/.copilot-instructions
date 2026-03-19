@@ -1,0 +1,262 @@
+# 🤖 INSTRUÇÕES DO COPILOT - DONNA GIGI
+
+Arquivo de configuração e instruções para o GitHub Copilot ao trabalhar no projeto Donna Gigi.
+
+## 📋 CONTEXTO DO PROJETO
+
+**Nome**: Donna Gigi E-Commerce
+**Stack**: Next.js 14 + TypeScript + React + Tailwind + PostgreSQL (Neon)
+**Deployment**: Vercel
+**Domínio**: donnagigi.com.br
+
+## 🎯 PRIORIDADES
+
+1. **Integração Mercado Livre** - Sincronizar 25 produtos de ML para DB
+2. **OAuth 2.0 PKCE** - Autenticação segura com ML
+3. **API Endpoints** - `/api/ml/sync`, `/api/mercadolivre/auth`, `/api/mercadolivre/callback`
+4. **Database** - PostgreSQL com Prisma ORM
+
+## 🔑 INFORMAÇÕES CRÍTICAS
+
+### Seller Mercado Livre
+- **ID**: 267571726
+- **Nickname**: DONNAGIGI
+- **Total Produtos**: 41 listados
+- **Alvo Sincronismo**: 25 produtos
+
+### URLs Base
+- **ML API**: `https://api.mercadolivre.com`
+- **ML Auth**: `https://auth.mercadolibre.com.br`
+- **Local Dev**: `http://localhost:3000`
+- **Production**: `https://donnagigi.com.br`
+
+### Autenticação ML
+- ✅ **Funciona**: Query string `?access_token=TOKEN`
+- ❌ **Problema**: Bearer header em contextos estáticos
+- 📋 **Sempre usar**: Query string para ML API
+
+## 🚨 PROBLEMAS CONHECIDOS & SOLUÇÕES
+
+### 1. Sincronismo retorna 1 produto em vez de 25
+**Causa**: Response não está sendo desembrulhada corretamente
+**Solução**: Aplicar `map(item => item.body || item)` em fetchProductsBatch()
+
+### 2. "fetch failed" em sync/route.ts
+**Causa**: Bearer header em contexto que não suporta
+**Solução**: Usar query string `?access_token=TOKEN` em todas URLs ML
+
+### 3. Portas 3000/3001 ocupadas
+**Solução**: `lsof -ti:3000,3001 | xargs kill -9`
+
+### 4. Token expirado no banco
+**Verificar**: `MLIntegration.expiresAt > now()`
+**Solução**: Implementar refresh_token flow (TODO)
+
+## 📁 ESTRUTURA IMPORTANTE
+
+```
+src/app/api/
+├─ ml/
+│  ├─ sync/route.ts              ⭐ MAIN: Sincronizar 25 produtos
+│  ├─ enrich/
+│  │  ├─ test/route.ts           🧪 Testar mapeamento (preview)
+│  │  ├─ apply/route.ts          💾 Aplicar mapeamento (save)
+│  │  └─ batch/route.ts          ⚡ Enriquecer all (batch)
+│  ├─ debug/                     🐛 Endpoints de teste
+│  └─ sync-mock/route.ts         📦 Versão mock sem API
+├─ mercadolivre/
+│  ├─ auth/route.ts              ✅ OAuth start
+│  └─ callback/route.ts          ✅ OAuth token exchange
+
+prisma/
+├─ schema.prisma                 Database models
+└─ migrations/                   Migration history (15+)
+```
+
+## ✅ CHECKLIST ANTES DE QUALQUER MUDANÇA
+
+- [ ] Entendi o fluxo OAuth PKCE completo?
+- [ ] Sei o que é response `{code, body}` wrapper?
+- [ ] Sei qual endpoint ML usar: /items/search, /items?ids=...?
+- [ ] Vou usar query string, NÃO Bearer header?
+- [ ] Vou testar localmente ANTES de commitar?
+
+## 🛠️ COMANDOS ÚTEIS (Copilot - use quando necessário)
+
+```bash
+# Iniciar dev
+lsof -ti:3000,3001 | xargs kill -9 2>/dev/null && npm run dev
+
+# Verificar token no DB
+node << 'EOF'
+const { PrismaClient } = require('@prisma/client');
+const prisma = new PrismaClient();
+(async () => {
+  const i = await prisma.mLIntegration.findFirst();
+  console.log('Token:', i?.accessToken?.substring(0, 30) + '...');
+  console.log('Expires:', i?.expiresAt);
+  await prisma.$disconnect();
+})();
+EOF
+
+# Limpar banco
+node << 'EOF'
+const { PrismaClient } = require('@prisma/client');
+const prisma = new PrismaClient();
+(async () => {
+  await prisma.product.deleteMany({});
+  console.log('✅ Banco limpo');
+  await prisma.$disconnect();
+})();
+EOF
+
+# Testar sync
+curl -s http://localhost:3000/api/ml/sync | jq '.stats'
+```
+
+## 🎓 REGRAS PARA O COPILOT
+
+1. **Sempre use query string** para autenticação ML API
+2. **Sempre desembrulhe** response `{code, body}`
+3. **Sempre logar** status e sample da response
+4. **Sempre testar** cada endpoint em isolado
+5. **Nunca commitar** sem verificar no DB
+6. **Nunca criar** endpoints de teste permanentes
+7. **Sempre usar** `export const dynamic = 'force-dynamic'` em routes dinâmicas
+8. **Sempre usar** Prisma `upsert` para evitar duplicatas
+
+## 📋 DEPARA (MAPPING) ML → APP
+
+**Arquivo Técnico**: `/docs/ML_DEPARA_CAMPOS.md`
+**Guia Rápido**: `/docs/ML_ENRIQUECIMENTO_RAPIDO.md`
+
+### Mapeamento de Campos
+| Campo ML | Campo App | Tipo | Obrigatório |
+|----------|-----------|------|-------------|
+| `id` | `mlListingId` | String | ✅ |
+| `title` | `name` | String | ✅ |
+| `description.plain_text` | `description` | Text | ✅ |
+| `price` | `baseSalePrice` | Float | ✅ |
+| `price` | `baseMLPrice` | Float | ✅ |
+| `inventory.quantity` | `minStock` | Integer | ✅ |
+| `status` | `active` | Boolean | ✅ |
+| `pictures[0].url` | (futuro) | URL | ❌ |
+| `category_id` | `categoryId` | String | ❌ |
+
+### Endpoints de Enriquecimento
+- `GET /api/ml/enrich/test?mlListingId=MLB...` - Preview (não salva)
+- `POST /api/ml/enrich/apply` - Salva 1 produto
+- `GET /api/ml/enrich/batch` - Enriquece todos
+
+### Regra: Desembrulhamento
+```js
+// ML retorna wrapper: {code, body, index}
+// Desembrulhar com:
+const items = mlResponse.map(item => item.body || item);
+```
+
+### Validações
+- Campos obrigatórios: id, title, price, status
+- Campos com fallback: description (usa title), quantity (usa 5), imageUrl (null)
+- Avisos: Registra mas não bloqueia
+
+## 📊 ENDPOINTS ML USADOS
+
+| Endpoint | URL | Uso |
+|----------|-----|-----|
+| Get User | `/users/me` | Validar auth |
+| List Items | `/users/{id}/items/search` | Listar 41 produtos |
+| Get Details | `/items?ids=ID1,ID2,ID3` | Buscar detalhes (20 por vez) |
+
+## 🔐 VARIÁVEIS DE AMBIENTE
+
+```
+DATABASE_URL=postgresql://...       (Neon)
+ML_CLIENT_ID=...                    (From ML App)
+ML_CLIENT_SECRET=...                 (From ML App)
+```
+
+## 🚀 PROCESSO CORRETO DE SYNC
+
+```
+1. Validar token em DB
+2. GET /users/me?access_token=TOKEN
+3. GET /users/{id}/items/search?access_token=TOKEN → 41 IDs
+4. Slice 25 primeiros IDs
+5. Loop batches de 20:
+   - GET /items?ids=ID1,...ID20?access_token=TOKEN
+   - Desembrulhar: map(item => item.body)
+   - Save/upsert cada produto
+6. Return stats {total, synced, failed}
+```
+
+## ⚠️ ERROS COMUNS & LIKE
+
+| Erro | Causa | Solução |
+|------|-------|---------|
+| 403 PolicyAgent | Scopes não ativados | ML dashboard |
+| fetch failed | Bearer em contexto errado | Use query string |
+| null em body | Response não desembrulhada | Map item.body |
+| 1 produto vs 25 | Todos mesma ID | Check mlListingId |
+
+## 🔍 QUICK DEBUG
+
+Se sync for mal:
+
+```bash
+# 1. Verificar token
+curl -s "https://api.mercadolivre.com/users/me?access_token=TOKEN"
+
+# 2. Verificar items/search
+curl -s "https://api.mercadolivre.com/users/267571726/items/search?access_token=TOKEN"
+
+# 3. Verificar items details
+curl -s "https://api.mercadolivre.com/items?ids=MLB123,MLB456&access_token=TOKEN" | jq '.[0]'
+```
+
+## 📈 LOGGING PADRÃO
+
+Sempre logar:
+1. **Token**: primeiros 20 chars
+2. **Endpoint**: URL sem token
+3. **Status**: HTTP response status
+4. **Format**: Array? Object? {code, body}?
+5. **Sample**: Primeiro item da response
+6. **Count**: Quantos items processados
+
+## 🎯 ESTADO ATUAL
+
+**Status**: ✅ Sincronismo + Enriquecimento + Variações FUNCIONANDO
+**Bloqueador Resolvido**: Response desembrulhamento ✅
+**Produtos**: 25 sincronizados + 50 enriquecidos + variações processadas ✅
+**Taxa Sucesso**: 100% (25/25 produtos, variações criadas)
+**Deploy**: Pronto para production
+
+## 🆕 VARIAÇÕES IMPLEMENTADAS
+
+**Problema Resolvido**: Produtos com cores/modelos não eram criados com variantes
+**Solução**: Função `processProductVariations()` no sync
+**Resultado**: ProductVariant criada para cada variation do ML
+
+**Processo**:
+1. Sync detecta `variations[]` em cada produto
+2. Para cada variation:
+   - Gera `cod` único (ex: MLB-COL-PR para Preto)
+   - Extrai price e stock
+   - Cria ProductVariant
+3. Produto fica com múltiplas opções de compra
+
+**Status**: ✅ Testado e funcionando (variantes aparecem no BD)
+
+## 📞 CONTATO PARA CONTEXTO
+
+Se perguntar sobre ML, refira a:
+- `/memories/ml-agente-especialista.md` - Agente especialista
+- `/memories/ml-integration.md` - Docs técnicas
+- `/docs/` - Documentação do projeto
+
+---
+
+**Data**: 19 de março de 2026
+**Versão**: 1.0
+**Próxima Review**: Quando sincronismo funcionar com 25 produtos
