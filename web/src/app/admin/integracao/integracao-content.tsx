@@ -102,7 +102,41 @@ export default function IntegracaoContent() {
       setSyncResult(data)
       setStatus("success")
       setMessage(data.message)
-      
+
+      // Limpar mensagem após 10 segundos
+      setTimeout(() => {
+        setStatus("idle")
+        setMessage("")
+      }, 10000)
+    } catch (error) {
+      setStatus("error")
+      setMessage(`Erro ao conectar: ${error instanceof Error ? error.message : "Erro desconhecido"}`)
+    }
+  }
+
+  // Sincronizar pedidos do Mercado Livre para financeiro
+  const handleSyncOrders = async () => {
+    setStatus("syncing")
+    setMessage("")
+    setSyncResult(null)
+
+    try {
+      const res = await fetch("/api/ml/sync-orders", {
+        method: "GET",
+      })
+
+      const data = await res.json()
+
+      if (!res.ok) {
+        setStatus("error")
+        setMessage(data.error || "Erro ao sincronizar vendas")
+        return
+      }
+
+      setSyncResult(data)
+      setStatus("success")
+      setMessage(data.message)
+
       // Limpar mensagem após 10 segundos
       setTimeout(() => {
         setStatus("idle")
@@ -205,31 +239,51 @@ export default function IntegracaoContent() {
             </div>
 
             {/* Buttons */}
-            <div className="flex gap-3">
+            <div className="flex flex-col gap-3">
+              <div className="flex gap-3">
+                <button
+                  onClick={handleSyncProducts}
+                  disabled={status === "syncing"}
+                  className="flex-1 bg-green-100 hover:bg-green-200 disabled:bg-green-300 text-green-700 hover:text-green-800 disabled:text-green-600 font-semibold px-4 py-2 rounded-lg transition flex items-center justify-center gap-2"
+                >
+                  {status === "syncing" ? (
+                    <>
+                      <Loader className="animate-spin" size={18} />
+                      Sincronizando...
+                    </>
+                  ) : (
+                    <>
+                      <RefreshCw size={18} />
+                      Sincronizar Produtos (até 25)
+                    </>
+                  )}
+                </button>
+
+                <button
+                  onClick={handleDisconnect}
+                  className="flex-1 bg-red-100 hover:bg-red-200 text-red-700 font-semibold px-4 py-2 rounded-lg transition flex items-center justify-center gap-2"
+                >
+                  <LogOut size={18} />
+                  Desconectar
+                </button>
+              </div>
+
               <button
-                onClick={handleSyncProducts}
+                onClick={handleSyncOrders}
                 disabled={status === "syncing"}
-                className="flex-1 bg-green-100 hover:bg-green-200 disabled:bg-green-300 text-green-700 hover:text-green-800 disabled:text-green-600 font-semibold px-4 py-2 rounded-lg transition flex items-center justify-center gap-2"
+                className="w-full bg-blue-100 hover:bg-blue-200 disabled:bg-blue-300 text-blue-700 hover:text-blue-800 disabled:text-blue-600 font-semibold px-4 py-2 rounded-lg transition flex items-center justify-center gap-2"
               >
                 {status === "syncing" ? (
                   <>
                     <Loader className="animate-spin" size={18} />
-                    Sincronizando...
+                    Sincronizando Vendas...
                   </>
                 ) : (
                   <>
                     <RefreshCw size={18} />
-                    Sincronizar Produtos (até 25)
+                    Sincronizar Vendas para Financeiro
                   </>
                 )}
-              </button>
-
-              <button
-                onClick={handleDisconnect}
-                className="flex-1 bg-red-100 hover:bg-red-200 text-red-700 font-semibold px-4 py-2 rounded-lg transition flex items-center justify-center gap-2"
-              >
-                <LogOut size={18} />
-                Desconectar
               </button>
             </div>
 

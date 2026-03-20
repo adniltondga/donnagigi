@@ -80,19 +80,46 @@ model MLIntegration {
 // Rastreamento de produtos no Mercado Livre
 model MLProduct {
   id        String   @id @default(cuid())
-  
+
   // Relação com variante
   variantId String
   variant   ProductVariant @relation(fields: [variantId], references: [id], onDelete: Cascade)
-  
+
   // Relação com integração
   integrationId String
   integration   MLIntegration @relation(fields: [integrationId], references: [id], onDelete: Cascade)
-  
+
   // Dados do ML
   mlListingId   String?
   status        String   @default("active")
-  
+
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
+}
+
+// Fornecedor
+model Supplier {
+  id        String   @id @default(cuid())
+  name      String
+  bills     Bill[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// Conta (contas a pagar/receber)
+model Bill {
+  id          String   @id @default(cuid())
+  type        String   // "payable" | "receivable"
+  description String
+  amount      Float
+  dueDate     DateTime
+  paidDate    DateTime?
+  status      String   @default("pending") // pending | paid | overdue | cancelled
+  category    String   @default("outro") // fornecedor | marketplace_fee | venda | outro
+  supplierId  String?
+  supplier    Supplier? @relation(fields: [supplierId], references: [id], onDelete: SetNull)
+  notes       String?  @db.Text
+  mlOrderId   String?  @unique  // evita duplicatas de pedidos ML
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }
