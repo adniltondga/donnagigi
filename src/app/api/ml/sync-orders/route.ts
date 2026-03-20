@@ -1,6 +1,71 @@
 import prisma from '@/lib/prisma';
 import { NextRequest, NextResponse } from 'next/server';
 
+// Função para renovar token se expirou
+async function refreshTokenIfNeeded() {
+  const integration = await prisma.mLIntegration.findFirst();
+
+  if (!integration) {
+    throw new Error('Mercado Livre not configured');
+  }
+
+  // Verificar se token expirou
+  if (new Date() <= integration.expiresAt) {
+    return integration; // Token ainda é válido
+  }
+
+  // Token expirou, tentar renovar com refreshToken
+  if (!integration.refreshToken) {
+    throw new Error('Mercado Livre token expired and refresh token not available');
+  }
+
+  const clientId = process.env.ML_CLIENT_ID;
+  const clientSecret = process.env.ML_CLIENT_SECRET;
+
+  if (!clientId || !clientSecret) {
+    throw new Error('Mercado Livre credentials not configured');
+  }
+
+  const tokenUrl = 'https://api.mercadolibre.com/oauth/token';
+
+  const tokenParams = new URLSearchParams({
+    grant_type: 'refresh_token',
+    client_id: clientId,
+    client_secret: clientSecret,
+    refresh_token: integration.refreshToken,
+  });
+
+  const tokenResponse = await fetch(tokenUrl, {
+    method: 'POST',
+    body: tokenParams.toString(),
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded',
+    },
+  });
+
+  if (!tokenResponse.ok) {
+    throw new Error('Failed to refresh Mercado Livre token');
+  }
+
+  const tokenData = await tokenResponse.json();
+
+  // Atualizar no banco
+  const expiresAt = new Date();
+  expiresAt.setSeconds(expiresAt.getSeconds() + tokenData.expires_in);
+
+  const updatedIntegration = await prisma.mLIntegration.update({
+    where: { id: integration.id },
+    data: {
+      accessToken: tokenData.access_token,
+      refreshToken: tokenData.refresh_token || integration.refreshToken,
+      expiresAt: expiresAt,
+    },
+  });
+
+  console.log('✅ Mercado Livre token renovado com sucesso');
+  return updatedIntegration;
+}
+
 interface MLOrder {
   id: number;
   status: string;
@@ -35,23 +100,8 @@ interface MLOrdersResponse {
 
 export async function GET(req: NextRequest) {
   try {
-    // Obter integração do Mercado Livre
-    const integration = await prisma.mLIntegration.findFirst();
-
-    if (!integration || !integration.accessToken) {
-      return NextResponse.json(
-        { error: 'Mercado Livre not configured' },
-        { status: 400 }
-      );
-    }
-
-    // Verificar se token expirou
-    if (new Date() > integration.expiresAt) {
-      return NextResponse.json(
-        { error: 'Mercado Livre token expired' },
-        { status: 401 }
-      );
-    }
+    // Obter integração e renovar token se necessário
+    const integration = await refreshTokenIfNeeded();
 
     const sellerId = integration.sellerID;
     const accessToken = integration.accessToken;
