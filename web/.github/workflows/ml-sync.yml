@@ -1,0 +1,94 @@
+name: 🔄 ML Auto Sync - Polling
+
+on:
+  schedule:
+    # Executar sincronização a cada 15 minutos
+    - cron: '*/15 * * * *'
+  
+  # Permite disparar manualmente via GitHub UI
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Ambiente (production ou development)'
+        required: true
+        default: 'production'
+        type: choice
+        options:
+          - production
+          - development
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    name: Sincronizar Mercado Livre
+    
+    steps:
+      - name: 📋 Debug Info
+        run: |
+          echo "🕐 Timestamp: $(date)"
+          echo "⏰ Cron Schedule: */15 * * * *"
+          echo "📍 Action: ML Auto Sync - Polling"
+      
+      - name: 🔄 Trigger ML Polling Sync
+        continue-on-error: true
+        run: |
+          URL="${{ secrets.ML_SYNC_URL }}"
+          TOKEN="${{ secrets.ML_POLLING_SECRET }}"
+          
+          if [ -z "$URL" ] || [ -z "$TOKEN" ]; then
+            echo "❌ Secrets não configurados!"
+            echo "Por favor, defina em Settings → Secrets:"
+            echo "  - ML_SYNC_URL"
+            echo "  - ML_POLLING_SECRET"
+            exit 1
+          fi
+          
+          echo "📡 Chamando: $URL?token=***"
+          
+          RESPONSE=$(curl -X POST \
+            "${URL}?token=${TOKEN}" \
+            -H "Content-Type: application/json" \
+            -w "\n%{http_code}" \
+            --max-time 60 \
+            2>&1)
+          
+          # Separar resposta do status code
+          HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
+          BODY=$(echo "$RESPONSE" | head -n-1)
+          
+          echo "📬 Status Code: $HTTP_CODE"
+          echo "📨 Response:"
+          echo "$BODY" | jq . 2>/dev/null || echo "$BODY"
+          
+          if [ "$HTTP_CODE" = "200" ]; then
+            echo "✅ Sincronização disparada com sucesso"
+          else
+            echo "⚠️ Status code inesperado: $HTTP_CODE"
+            exit 1
+          fi
+      
+      - name: 📧 Notificar sucesso (opcional)
+        if: success()
+        run: echo "✅ ML Auto Sync completou com sucesso em $(date)"
+      
+      - name: 🚨 Notificar erro (opcional)
+        if: failure()
+        run: echo "❌ ML Auto Sync falhou em $(date)"
+
+# 📌 SETUP NECESSÁRIO:
+#
+# 1. Defina as secrets no GitHub:
+#    Settings → Secrets and variables → Actions
+#    
+#    ML_SYNC_URL: https://seu-dominio.com/api/ml/polling-sync
+#    ML_POLLING_SECRET: seu-token-super-secreto
+#
+# 2. Este workflow roda automaticamente a cada 15 minutos
+#    ou manualmente via "Run workflow" button
+#
+# 3. Você pode mudar a frequência editando o cron:
+#    - '0 * * * *'      = A cada hora
+#    - '*/30 * * * *'   = A cada 30 minutos
+#    - '0 9 * * *'      = Diariamente às 9:00 UTC
+#
+# 📚 Cron reference: https://crontab.guru

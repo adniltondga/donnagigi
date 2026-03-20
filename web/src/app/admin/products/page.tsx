@@ -6,7 +6,7 @@ import { formatCurrency } from '@/lib/calculations'
 import ProductFormDialog from '@/components/ProductFormDialog'
 import ImageUploadVariant from '@/components/ImageUploadVariant'
 import CurrencyInput from '@/components/CurrencyInput'
-import { ChevronDown, ChevronRight, Edit2, Trash2, Package, Search, X } from 'lucide-react'
+import { ChevronDown, ChevronRight, Edit2, Trash2, Package, Search, X, MoreVertical } from 'lucide-react'
 
 interface ProductVariant {
   id: string
@@ -72,6 +72,8 @@ export default function ProductsPage() {
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all')
   const [totalActive, setTotalActive] = useState(0)
   const [totalInactive, setTotalInactive] = useState(0)
+  const [allProducts, setAllProducts] = useState<Product[]>([])
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null)
 
   function parseVariantTitle(title?: string) {
     if (!title) return null
@@ -106,36 +108,80 @@ export default function ProductsPage() {
     fetchProducts()
   }, [currentPage, itemsPerPage])
 
-  async function fetchProducts() {
+  // Quando filtro de status muda, carregar todos os produtos e resetar página
+  useEffect(() => {
+    setCurrentPage(1)
+    fetchAllProductsForFilter()
+  }, [statusFilter])
+
+  async function fetchAllProductsForFilter() {
     try {
       setLoading(true)
       setError(null)
-      const response = await fetch(`/api/products?page=${currentPage}&limit=${itemsPerPage}`)
+      
+      // Buscar TODOS os produtos (sem paginação)
+      const response = await fetch(`/api/products?limit=1000`)
       const data = await response.json()
+      
       if (data.success) {
-        setProducts(data.data || [])
-        setTotalItems(data.pagination?.total || 0)
-        setTotalPages(data.pagination?.pages || 0)
+        const allProds = data.data || []
+        setAllProducts(allProds)
         
-        // Buscar contagem de ativos/inativos - carregar todos para contar
-        try {
-          const allResponse = await fetch(`/api/products?limit=1000`)
-          const allData = await allResponse.json()
-          if (allData.success && allData.data) {
-            const active = allData.data.filter((p: Product) => p.active).length
-            const inactive = allData.data.filter((p: Product) => !p.active).length
-            setTotalActive(active)
-            setTotalInactive(inactive)
-          }
-        } catch (err) {
-          console.error('Erro ao contar ativos/inativos:', err)
-        }
+        // Contar ativos e inativos
+        const active = allProds.filter((p: Product) => p.active).length
+        const inactive = allProds.filter((p: Product) => !p.active).length
+        setTotalActive(active)
+        setTotalInactive(inactive)
+        
+        // Filtrar conforme status
+        const filtered = allProds.filter((product: Product) => {
+          if (statusFilter === 'all') return true
+          if (statusFilter === 'active') return product.active
+          if (statusFilter === 'inactive') return !product.active
+          return true
+        })
+        
+        // Paginar os filtrados
+        setTotalItems(filtered.length)
+        setTotalPages(Math.ceil(filtered.length / itemsPerPage))
+        
+        // Pegar apenas a página 1
+        const paginatedProducts = filtered.slice(0, itemsPerPage)
+        setProducts(paginatedProducts)
       } else {
         setError(data.error || 'Erro ao carregar produtos')
       }
     } catch (error) {
-      console.error('Erro ao carregar produtos:', error)
-      setError('Erro ao conectar com a API')
+      console.error('Erro ao filtrar produtos:', error)
+      setError('Erro ao connect com API')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  async function fetchProducts() {
+    try {
+      setLoading(true)
+      setError(null)
+      
+      // Se já tem produtos carregados, usar filtro local
+      if (allProducts.length > 0) {
+        const filtered = allProducts.filter((product: Product) => {
+          if (statusFilter === 'all') return true
+          if (statusFilter === 'active') return product.active
+          if (statusFilter === 'inactive') return !product.active
+          return true
+        })
+        
+        // Paginar
+        const start = (currentPage - 1) * itemsPerPage
+        const end = start + itemsPerPage
+        setProducts(filtered.slice(start, end))
+        setTotalItems(filtered.length)
+        setTotalPages(Math.ceil(filtered.length / itemsPerPage))
+      }
+    } catch (error) {
+      console.error('Erro ao paginar produtos:', error)
     } finally {
       setLoading(false)
     }
@@ -607,45 +653,46 @@ export default function ProductsPage() {
 
                       {/* Ações */}
                       <div className="flex gap-2 flex-shrink-0">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={(e) => handleToggleStatus(product, e)}
-                          disabled={deleting === product.id}
-                          className={`gap-1 ${product.active ? 'text-green-700 border-green-300 hover:bg-green-50' : 'text-red-700 border-red-300 hover:bg-red-50'}`}
-                          title={product.active ? 'Desativar produto' : 'Ativar produto'}
-                        >
-                          {product.active ? '✓' : '✕'}
-                          <span className="hidden sm:inline">{product.active ? 'Ativo' : 'Inativo'}</span>
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            handleEdit(product)
-                          }}
-                          disabled={deleting === product.id}
-                          className="gap-1"
-                        >
-                          <Edit2 className="w-4 h-4" />
-                          <span className="hidden sm:inline">Editar</span>
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="destructive"
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            handleDelete(product.id)
-                          }}
-                          disabled={deleting === product.id}
-                          className="gap-1"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                          <span className="hidden sm:inline">
-                            {deleting === product.id ? 'Deletando...' : 'Deletar'}
-                          </span>
-                        </Button>
+                        {/* Menu com 3 pontinhos */}
+                        <div className="relative">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="px-2"
+                            onClick={() => setOpenMenuId(openMenuId === product.id ? null : product.id)}
+                            disabled={deleting === product.id}
+                          >
+                            <MoreVertical className="w-4 h-4" />
+                          </Button>
+                          
+                          {/* Dropdown Menu */}
+                          {openMenuId === product.id && (
+                            <div className="absolute right-0 mt-1 w-48 bg-white border rounded-lg shadow-lg z-50">
+                              <button
+                                className="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center gap-2 text-sm"
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  handleEdit(product)
+                                  setOpenMenuId(null)
+                                }}
+                              >
+                                <Edit2 className="w-4 h-4" />
+                                Editar
+                              </button>
+                              <button
+                                className="w-full text-left px-4 py-2 hover:bg-red-50 flex items-center gap-2 text-sm text-red-600"
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  handleDelete(product.id)
+                                  setOpenMenuId(null)
+                                }}
+                              >
+                                <Trash2 className="w-4 h-4" />
+                                {deleting === product.id ? 'Deletando...' : 'Deletar'}
+                              </button>
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </div>
                   </div>
