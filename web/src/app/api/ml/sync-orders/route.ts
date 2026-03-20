@@ -200,22 +200,33 @@ export async function GET(req: NextRequest) {
       createdBills.push(saleBill);
 
       // Extrair taxas reais do ML
-      // O ML pode retornar em várias estruturas: charges, fees, ou item_fees
+      // As taxas vêm em order_items[].sale_fee
       let totalFee = 0;
       let feeDetails = '';
 
-      if (order.charges && order.charges.length > 0) {
-        totalFee = order.charges.reduce((sum: number, charge: any) => sum + (charge.amount || 0), 0);
-        feeDetails = order.charges.map((c: any) => `${c.type}: R$ ${c.amount}`).join(', ');
+      if (order.order_items && order.order_items.length > 0) {
+        // Somar sale_fee de todos os itens
+        totalFee = order.order_items.reduce((sum: number, item: any) => {
+          return sum + (item.sale_fee || 0);
+        }, 0);
+
+        if (totalFee > 0) {
+          feeDetails = `Sale Fee: R$ ${totalFee.toFixed(2)}`;
+        }
       }
 
-      // Fallback: tentar pegar de outro campo se existir
+      // Fallback: se não tem sale_fee, tentar outros campos
       if (totalFee === 0) {
-        // Tentar pegar de item_fees ou marketplace_fee
-        if (order.item_fees && order.item_fees.length > 0) {
-          totalFee = order.item_fees.reduce((sum: number, fee: any) => sum + (fee.amount || 0), 0);
-          feeDetails = 'Taxas de item';
+        // Tentar marketplace_fee do payment
+        if (order.payments && order.payments.length > 0) {
+          totalFee = order.payments.reduce((sum: number, payment: any) => {
+            return sum + (payment.marketplace_fee || 0);
+          }, 0);
+          if (totalFee > 0) {
+            feeDetails = 'Marketplace Fee (payment)';
+          }
         }
+
         // Se ainda não tem, usar cálculo aproximado
         if (totalFee === 0 && order.total_amount) {
           totalFee = order.total_amount * 0.13;
