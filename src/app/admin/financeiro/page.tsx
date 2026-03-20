@@ -610,16 +610,7 @@ export default function FinanceiroPage() {
                           {formatDate(bill.dueDate)}
                         </td>
                         <td className="px-6 py-3 text-sm text-gray-900">
-                          <div className="flex items-center gap-2">
-                            <span>{bill.description}</span>
-                            {bill.notes && (
-                              <Info
-                                size={16}
-                                className="text-blue-500 cursor-help flex-shrink-0"
-                                title={bill.notes}
-                              />
-                            )}
-                          </div>
+                          {bill.description}
                         </td>
                         <td className="px-6 py-3 text-sm text-gray-600">
                           {categoryLabel[bill.category]}
@@ -628,7 +619,17 @@ export default function FinanceiroPage() {
                           {bill.type === 'payable' ? 'A Pagar' : 'A Receber'}
                         </td>
                         <td className="px-6 py-3 text-sm font-semibold text-gray-900">
-                          {formatCurrency(bill.amount)}
+                          <div className="flex items-center gap-2">
+                            <span>{formatCurrency(bill.amount)}</span>
+                            {bill.notes && bill.type === 'receivable' && (
+                              <span title={bill.notes} className="cursor-help">
+                                <Info
+                                  size={16}
+                                  className="text-blue-500 hover:text-blue-700 flex-shrink-0"
+                                />
+                              </span>
+                            )}
+                          </div>
                         </td>
                         <td className="px-6 py-3">
                           <span className={`px-3 py-1 rounded-full text-xs font-semibold ${statusClasses[bill.status]}`}>
