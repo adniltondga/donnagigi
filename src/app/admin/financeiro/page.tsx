@@ -78,6 +78,11 @@ export default function FinanceiroPage() {
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [page, setPage] = useState(1);
+  const [notesModal, setNotesModal] = useState<{ isOpen: boolean; notes: string; billId: string }>({
+    isOpen: false,
+    notes: '',
+    billId: '',
+  });
 
   const [formData, setFormData] = useState<FormData>({
     type: 'payable',
@@ -273,6 +278,20 @@ export default function FinanceiroPage() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const openNotesModal = (notes: string, billId: string) => {
+    setNotesModal({ isOpen: true, notes, billId });
+  };
+
+  const closeNotesModal = () => {
+    setNotesModal({ isOpen: false, notes: '', billId: '' });
+  };
+
+  const copyNotes = () => {
+    navigator.clipboard.writeText(notesModal.notes);
+    setMessage({ type: 'success', text: 'Copiado para clipboard!' });
+    setTimeout(() => setMessage(null), 2000);
   };
 
   return (
@@ -622,12 +641,15 @@ export default function FinanceiroPage() {
                           <div className="flex items-center gap-2">
                             <span>{formatCurrency(bill.amount)}</span>
                             {bill.notes && bill.type === 'receivable' && (
-                              <span title={bill.notes} className="cursor-help">
+                              <button
+                                onClick={() => openNotesModal(bill.notes || '', bill.id)}
+                                className="cursor-pointer p-1 hover:bg-blue-100 rounded transition"
+                              >
                                 <Info
                                   size={16}
                                   className="text-blue-500 hover:text-blue-700 flex-shrink-0"
                                 />
-                              </span>
+                              </button>
                             )}
                           </div>
                         </td>
@@ -717,6 +739,44 @@ export default function FinanceiroPage() {
           Próxima →
         </button>
       </div>
+
+      {/* Notes Modal */}
+      {notesModal.isOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full p-6 space-y-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-xl font-bold text-gray-900">📝 Detalhes</h2>
+              <button
+                onClick={closeNotesModal}
+                className="text-gray-500 hover:text-gray-700 text-2xl"
+              >
+                ×
+              </button>
+            </div>
+
+            <div className="bg-gray-50 rounded-lg p-4 max-h-64 overflow-y-auto">
+              <p className="text-sm text-gray-700 whitespace-pre-wrap font-mono leading-relaxed">
+                {notesModal.notes}
+              </p>
+            </div>
+
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={copyNotes}
+                className="bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg transition"
+              >
+                📋 Copiar
+              </button>
+              <button
+                onClick={closeNotesModal}
+                className="bg-gray-300 hover:bg-gray-400 text-gray-800 font-semibold py-2 px-4 rounded-lg transition"
+              >
+                Fechar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
