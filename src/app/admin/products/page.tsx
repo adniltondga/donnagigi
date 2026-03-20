@@ -2,11 +2,12 @@
 
 import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
 import { formatCurrency } from '@/lib/calculations'
 import ProductFormDialog from '@/components/ProductFormDialog'
 import ImageUploadVariant from '@/components/ImageUploadVariant'
 import CurrencyInput from '@/components/CurrencyInput'
-import { ChevronDown, ChevronRight, Edit2, Trash2, Package, Search, X, MoreVertical } from 'lucide-react'
+import { ChevronDown, ChevronRight, Edit2, Trash2, Package, Search, X } from 'lucide-react'
 
 interface ProductVariant {
   id: string
@@ -73,7 +74,6 @@ export default function ProductsPage() {
   const [totalActive, setTotalActive] = useState(0)
   const [totalInactive, setTotalInactive] = useState(0)
   const [allProducts, setAllProducts] = useState<Product[]>([])
-  const [openMenuId, setOpenMenuId] = useState<string | null>(null)
 
   function parseVariantTitle(title?: string) {
     if (!title) return null
@@ -217,40 +217,6 @@ export default function ProductsPage() {
       alert('Erro ao deletar produto')
     } finally {
       setDeleting(null)
-    }
-  }
-
-  async function handleToggleStatus(product: Product, e: React.MouseEvent) {
-    e.stopPropagation()
-    
-    try {
-      const response = await fetch(`/api/products/${product.id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ active: !product.active }),
-      })
-      const data = await response.json()
-
-      if (response.ok && data.success) {
-        // Atualizar produtos no estado
-        setProducts(products.map((p) => 
-          p.id === product.id ? { ...p, active: !p.active } : p
-        ))
-        // Atualizar contagens de ativos/inativos
-        if (!product.active) {
-          setTotalActive(totalActive + 1)
-          setTotalInactive(Math.max(0, totalInactive - 1))
-        } else {
-          setTotalActive(Math.max(0, totalActive - 1))
-          setTotalInactive(totalInactive + 1)
-        }
-        alert(data.message || 'Status atualizado com sucesso!')
-      } else {
-        alert(data.error || 'Erro ao atualizar status')
-      }
-    } catch (error) {
-      console.error('Erro:', error)
-      alert('Erro ao atualizar status do produto')
     }
   }
 
@@ -439,16 +405,27 @@ export default function ProductsPage() {
         </div>
       )}
 
-      {/* Pesquisa */}
-      <div className="bg-white p-4 rounded-lg border space-y-3">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold">Produtos</h1>
+          <p className="text-gray-600 mt-1">{totalItems} produtos no total</p>
+        </div>
+        <Button onClick={handleCreate} className="bg-primary-600 hover:bg-primary-700">
+          + Novo Produto
+        </Button>
+      </div>
+
+      {/* Busca e Filtros */}
+      <div className="bg-white border border-gray-200 rounded-lg p-4 space-y-4">
         <div className="relative">
           <Search className="absolute left-3 top-3 w-5 h-5 text-gray-400" />
           <input
             type="text"
-            placeholder="Pesquisar por nome do produto, código ML ou código Shopee..."
+            placeholder="Buscar por nome, código ML ou Shopee..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-10 pr-10 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full pl-10 pr-10 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           />
           {searchTerm && (
             <button
@@ -460,74 +437,54 @@ export default function ProductsPage() {
           )}
         </div>
 
-        {/* Filtro de Status */}
-        <div className="flex items-center gap-2">
-          <span className="text-sm font-medium text-gray-700">Status:</span>
-          <div className="flex gap-2">
-            <button
-              onClick={() => setStatusFilter('all')}
-              className={`px-3 py-1 rounded text-sm transition ${
-                statusFilter === 'all'
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
-            >
-              Todos ({totalItems})
-            </button>
-            <button
-              onClick={() => setStatusFilter('active')}
-              className={`px-3 py-1 rounded text-sm transition ${
-                statusFilter === 'active'
-                  ? 'bg-green-600 text-white'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
-            >
-              Ativos ({totalActive})
-            </button>
-            <button
-              onClick={() => setStatusFilter('inactive')}
-              className={`px-3 py-1 rounded text-sm transition ${
-                statusFilter === 'inactive'
-                  ? 'bg-red-600 text-white'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
-            >
-              Inativos ({totalInactive})
-            </button>
-          </div>
+        <div className="flex flex-wrap items-center gap-3">
+          <span className="text-sm font-medium text-gray-700">Filtrar:</span>
+          <Badge 
+            variant={statusFilter === 'all' ? 'default' : 'outline'}
+            className="cursor-pointer"
+            onClick={() => setStatusFilter('all')}
+          >
+            Todos ({totalItems})
+          </Badge>
+          <Badge 
+            variant={statusFilter === 'active' ? 'default' : 'outline'}
+            className="cursor-pointer bg-green-100 text-green-800 hover:bg-green-200"
+            onClick={() => setStatusFilter('active')}
+          >
+            ✓ Ativos ({totalActive})
+          </Badge>
+          <Badge 
+            variant={statusFilter === 'inactive' ? 'destructive' : 'outline'}
+            className="cursor-pointer"
+            onClick={() => setStatusFilter('inactive')}
+          >
+            ✕ Inativos ({totalInactive})
+          </Badge>
         </div>
       </div>
 
-      {/* Resumo */}
-      <div className="grid grid-cols-4 gap-4">
-        <div className="bg-white p-4 rounded-lg border">
-          <p className="text-sm text-gray-600">Total de Produtos</p>
-          <p className="text-2xl font-bold">{totalItems}</p>
-          <p className="text-xs text-gray-500 mt-1">Exibindo {products.length} nesta página</p>
+      {/* Cards de Resumo */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="bg-white p-6 rounded-lg border border-gray-200 hover:border-gray-300 transition">
+          <p className="text-sm text-gray-600 font-medium">Total de Produtos</p>
+          <p className="text-3xl font-bold text-gray-900 mt-2">{totalItems}</p>
+          <p className="text-xs text-gray-500 mt-2">ø {products.length} por página</p>
         </div>
-        <div className="bg-white p-4 rounded-lg border">
-          <p className="text-sm text-gray-600">Estoque Total (Página)</p>
-          <p className="text-2xl font-bold">{totalStockQuantity}</p>
+        <div className="bg-white p-6 rounded-lg border border-gray-200 hover:border-gray-300 transition">
+          <p className="text-sm text-gray-600 font-medium">Estoque (Página)</p>
+          <p className="text-3xl font-bold text-blue-600 mt-2">{totalStockQuantity}</p>
+          <p className="text-xs text-gray-500 mt-2">unidades</p>
         </div>
-        <div className="bg-white p-4 rounded-lg border">
-          <p className="text-sm text-gray-600">Receita Total (Página)</p>
-          <p className="text-2xl font-bold text-green-600">
-            {formatCurrency(totalRevenue)}
-          </p>
+        <div className="bg-white p-6 rounded-lg border border-gray-200 hover:border-gray-300 transition">
+          <p className="text-sm text-gray-600 font-medium">Receita (Página)</p>
+          <p className="text-3xl font-bold text-green-600 mt-2">{formatCurrency(totalRevenue)}</p>
+          <p className="text-xs text-gray-500 mt-2">faturamento</p>
         </div>
-        <div className="bg-white p-4 rounded-lg border">
-          <p className="text-sm text-gray-600">Custo Total (Página)</p>
-          <p className="text-2xl font-bold text-red-600">
-            {formatCurrency(totalCost)}
-          </p>
+        <div className="bg-white p-6 rounded-lg border border-gray-200 hover:border-gray-300 transition">
+          <p className="text-sm text-gray-600 font-medium">Custo (Página)</p>
+          <p className="text-3xl font-bold text-red-600 mt-2">{formatCurrency(totalCost)}</p>
+          <p className="text-xs text-gray-500 mt-2">gasto</p>
         </div>
-      </div>
-
-      {/* Novo Produto */}
-      <div>
-        <Button onClick={handleCreate} className="bg-blue-600 hover:bg-blue-700">
-          + Novo Produto
-        </Button>
       </div>
 
       {/* Tabela com Produtos e Variações */}
@@ -652,47 +609,32 @@ export default function ProductsPage() {
                       </div>
 
                       {/* Ações */}
-                      <div className="flex gap-2 flex-shrink-0">
-                        {/* Menu com 3 pontinhos */}
-                        <div className="relative">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="px-2"
-                            onClick={() => setOpenMenuId(openMenuId === product.id ? null : product.id)}
-                            disabled={deleting === product.id}
-                          >
-                            <MoreVertical className="w-4 h-4" />
-                          </Button>
-                          
-                          {/* Dropdown Menu */}
-                          {openMenuId === product.id && (
-                            <div className="absolute right-0 mt-1 w-48 bg-white border rounded-lg shadow-lg z-50">
-                              <button
-                                className="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center gap-2 text-sm"
-                                onClick={(e) => {
-                                  e.stopPropagation()
-                                  handleEdit(product)
-                                  setOpenMenuId(null)
-                                }}
-                              >
-                                <Edit2 className="w-4 h-4" />
-                                Editar
-                              </button>
-                              <button
-                                className="w-full text-left px-4 py-2 hover:bg-red-50 flex items-center gap-2 text-sm text-red-600"
-                                onClick={(e) => {
-                                  e.stopPropagation()
-                                  handleDelete(product.id)
-                                  setOpenMenuId(null)
-                                }}
-                              >
-                                <Trash2 className="w-4 h-4" />
-                                {deleting === product.id ? 'Deletando...' : 'Deletar'}
-                              </button>
-                            </div>
-                          )}
-                        </div>
+                      <div className="flex gap-1 flex-shrink-0">
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            handleEdit(product)
+                          }}
+                          disabled={deleting === product.id}
+                          title="Editar produto"
+                        >
+                          <Edit2 className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            handleDelete(product.id)
+                          }}
+                          disabled={deleting === product.id}
+                          className="hover:text-red-600"
+                          title="Deletar produto"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
                       </div>
                     </div>
                   </div>
@@ -1095,6 +1037,7 @@ export default function ProductsPage() {
           </div>
         </div>
       )}
+
     </div>
   )
 }
