@@ -234,24 +234,50 @@ export async function GET(req: NextRequest) {
         }
       }
 
-      // Só criar bill de taxa se houver valor
+      // Criar bill de taxa de venda se houver valor
       if (totalFee > 0) {
         const feeBill = await prisma.bill.create({
           data: {
             type: 'payable',
             category: 'marketplace_fee',
-            description: `Taxa ML - ${itemTitle}`,
+            description: `Taxa ML (Venda) - ${itemTitle}`,
             amount: totalFee,
             dueDate: orderDate,
             paidDate: closedDate,
             status: 'paid',
             mlOrderId: `fee_${order.id}`,
-            notes: `Taxa de marketplace: ${feeDetails || 'Descontada pelo ML no repasse.'}`,
+            notes: `Taxa de marketplace de venda: ${feeDetails}`,
           },
           include: { supplier: true },
         });
 
         createdBills.push(feeBill);
+      }
+
+      // Extrair taxa de envio (list_cost)
+      let shippingFee = 0;
+      if (order.shipping?.list_cost) {
+        shippingFee = order.shipping.list_cost;
+      }
+
+      // Criar bill de taxa de envio se houver valor
+      if (shippingFee > 0) {
+        const shippingBill = await prisma.bill.create({
+          data: {
+            type: 'payable',
+            category: 'marketplace_fee',
+            description: `Taxa ML (Envio) - ${itemTitle}`,
+            amount: shippingFee,
+            dueDate: orderDate,
+            paidDate: closedDate,
+            status: 'paid',
+            mlOrderId: `shipping_${order.id}`,
+            notes: `Taxa de envio cobrada pelo ML: R$ ${shippingFee.toFixed(2)}`,
+          },
+          include: { supplier: true },
+        });
+
+        createdBills.push(shippingBill);
       }
     }
 
