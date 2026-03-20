@@ -69,6 +69,9 @@ export default function ProductsPage() {
   const [itemsPerPage, setItemsPerPage] = useState(10)
   const [totalItems, setTotalItems] = useState(0)
   const [totalPages, setTotalPages] = useState(0)
+  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all')
+  const [totalActive, setTotalActive] = useState(0)
+  const [totalInactive, setTotalInactive] = useState(0)
 
   function parseVariantTitle(title?: string) {
     if (!title) return null
@@ -84,12 +87,13 @@ export default function ProductsPage() {
   }
 
   function extractMLCode(mlListingId?: string) {
-    if (!mlListingId) return null
+    if (!mlListingId) return ''
     // Remove "MLB" prefix if exists
     return mlListingId.replace(/^MLB/, '')
   }
 
-  async function copyToClipboard(text: string) {
+  async function copyToClipboard(text: string | undefined) {
+    if (!text) return
     try {
       await navigator.clipboard.writeText(text)
       alert('Código copiado!')
@@ -112,6 +116,20 @@ export default function ProductsPage() {
         setProducts(data.data || [])
         setTotalItems(data.pagination?.total || 0)
         setTotalPages(data.pagination?.pages || 0)
+        
+        // Buscar contagem de ativos/inativos - carregar todos para contar
+        try {
+          const allResponse = await fetch(`/api/products?limit=1000`)
+          const allData = await allResponse.json()
+          if (allData.success && allData.data) {
+            const active = allData.data.filter((p: Product) => p.active).length
+            const inactive = allData.data.filter((p: Product) => !p.active).length
+            setTotalActive(active)
+            setTotalInactive(inactive)
+          }
+        } catch (err) {
+          console.error('Erro ao contar ativos/inativos:', err)
+        }
       } else {
         setError(data.error || 'Erro ao carregar produtos')
       }
@@ -134,7 +152,16 @@ export default function ProductsPage() {
       const data = await response.json()
 
       if (response.ok && data.success) {
+        const deletedProduct = products.find(p => p.id === id)
         setProducts(products.filter((p) => p.id !== id))
+        
+        // Atualizar contagens
+        setTotalItems(Math.max(0, totalItems - 1))
+        if (deletedProduct?.active) {
+          setTotalActive(Math.max(0, totalActive - 1))
+        } else {
+          setTotalInactive(Math.max(0, totalInactive - 1))
+        }
         alert('Produto deletado com sucesso!')
       } else {
         alert(data.error || 'Erro ao deletar produto')
@@ -144,6 +171,40 @@ export default function ProductsPage() {
       alert('Erro ao deletar produto')
     } finally {
       setDeleting(null)
+    }
+  }
+
+  async function handleToggleStatus(product: Product, e: React.MouseEvent) {
+    e.stopPropagation()
+    
+    try {
+      const response = await fetch(`/api/products/${product.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ active: !product.active }),
+      })
+      const data = await response.json()
+
+      if (response.ok && data.success) {
+        // Atualizar produtos no estado
+        setProducts(products.map((p) => 
+          p.id === product.id ? { ...p, active: !p.active } : p
+        ))
+        // Atualizar contagens de ativos/inativos
+        if (!product.active) {
+          setTotalActive(totalActive + 1)
+          setTotalInactive(Math.max(0, totalInactive - 1))
+        } else {
+          setTotalActive(Math.max(0, totalActive - 1))
+          setTotalInactive(totalInactive + 1)
+        }
+        alert(data.message || 'Status atualizado com sucesso!')
+      } else {
+        alert(data.error || 'Erro ao atualizar status')
+      }
+    } catch (error) {
+      console.error('Erro:', error)
+      alert('Erro ao atualizar status do produto')
     }
   }
 
@@ -302,11 +363,17 @@ export default function ProductsPage() {
   // Filtrar produtos
   const filteredProducts = products.filter((product) => {
     const searchLower = searchTerm.toLowerCase()
-    return (
+    const matchesSearch =
       product.name.toLowerCase().includes(searchLower) ||
       (product.mlListingId && product.mlListingId.toLowerCase().includes(searchLower)) ||
       (product.shopeeListingId && product.shopeeListingId.toLowerCase().includes(searchLower))
-    )
+    
+    const matchesStatus =
+      statusFilter === 'all' ||
+      (statusFilter === 'active' && product.active) ||
+      (statusFilter === 'inactive' && !product.active)
+    
+    return matchesSearch && matchesStatus
   })
 
   return (
@@ -327,7 +394,7 @@ export default function ProductsPage() {
       )}
 
       {/* Pesquisa */}
-      <div className="bg-white p-4 rounded-lg border">
+      <div className="bg-white p-4 rounded-lg border space-y-3">
         <div className="relative">
           <Search className="absolute left-3 top-3 w-5 h-5 text-gray-400" />
           <input
@@ -345,6 +412,43 @@ export default function ProductsPage() {
               <X className="w-5 h-5" />
             </button>
           )}
+        </div>
+
+        {/* Filtro de Status */}
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-medium text-gray-700">Status:</span>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setStatusFilter('all')}
+              className={`px-3 py-1 rounded text-sm transition ${
+                statusFilter === 'all'
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              Todos ({totalItems})
+            </button>
+            <button
+              onClick={() => setStatusFilter('active')}
+              className={`px-3 py-1 rounded text-sm transition ${
+                statusFilter === 'active'
+                  ? 'bg-green-600 text-white'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              Ativos ({totalActive})
+            </button>
+            <button
+              onClick={() => setStatusFilter('inactive')}
+              className={`px-3 py-1 rounded text-sm transition ${
+                statusFilter === 'inactive'
+                  ? 'bg-red-600 text-white'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              Inativos ({totalInactive})
+            </button>
+          </div>
         </div>
       </div>
 
@@ -422,7 +526,18 @@ export default function ProductsPage() {
                         </div>
 
                         <div className="flex-1 min-w-0">
-                          <h3 className="font-semibold text-gray-900 truncate text-sm">{product.name}</h3>
+                          <div className="flex items-center gap-2">
+                            <h3 className="font-semibold text-gray-900 truncate text-sm">{product.name}</h3>
+                            <span 
+                              className={`text-xs font-medium px-2 py-1 rounded-full shrink-0 ${
+                                product.active 
+                                  ? 'bg-green-100 text-green-700' 
+                                  : 'bg-red-100 text-red-700'
+                              }`}
+                            >
+                              {product.active ? '✓ Ativo' : '✕ Inativo'}
+                            </span>
+                          </div>
                           <div className="flex gap-2 mt-1 flex-wrap">
                             {product.category && (
                               <span className="text-xs bg-gray-100 px-2 py-1 rounded text-gray-600">
@@ -430,9 +545,20 @@ export default function ProductsPage() {
                               </span>
                             )}
                             {product.mlListingId && (
-                              <span className="text-xs bg-yellow-100 px-2 py-1 rounded text-yellow-700 font-mono">
-                                {product.mlListingId}
-                              </span>
+                              <div className="flex items-center gap-2">
+                                <span className="text-xs bg-yellow-100 px-2 py-1 rounded text-yellow-700 font-mono">
+                                  ML: {extractMLCode(product.mlListingId)}
+                                </span>
+                                <button
+                                  onClick={() => copyToClipboard(extractMLCode(product.mlListingId || ''))}
+                                  className="p-1 hover:bg-yellow-200 rounded transition"
+                                  title="Copiar código ML"
+                                >
+                                  <svg className="w-4 h-4 text-yellow-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                                  </svg>
+                                </button>
+                              </div>
                             )}
                             {product.shopeeListingId && (
                               <span className="text-xs bg-red-100 px-2 py-1 rounded text-red-700 font-mono">
@@ -481,6 +607,17 @@ export default function ProductsPage() {
 
                       {/* Ações */}
                       <div className="flex gap-2 flex-shrink-0">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={(e) => handleToggleStatus(product, e)}
+                          disabled={deleting === product.id}
+                          className={`gap-1 ${product.active ? 'text-green-700 border-green-300 hover:bg-green-50' : 'text-red-700 border-red-300 hover:bg-red-50'}`}
+                          title={product.active ? 'Desativar produto' : 'Ativar produto'}
+                        >
+                          {product.active ? '✓' : '✕'}
+                          <span className="hidden sm:inline">{product.active ? 'Ativo' : 'Inativo'}</span>
+                        </Button>
                         <Button
                           size="sm"
                           variant="outline"
