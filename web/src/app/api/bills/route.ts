@@ -11,7 +11,7 @@ export async function GET(req: NextRequest) {
     const [bills, total, summary] = await Promise.all([
       prisma.bill.findMany({
         include: { supplier: true },
-        orderBy: { dueDate: 'asc' },
+        orderBy: { dueDate: 'desc' },
         skip,
         take: limit,
       }),
