@@ -54,23 +54,50 @@ export async function GET(req: NextRequest) {
 
     const orderDetail = await detailResponse.json();
 
+    // Buscar detalhes de envio
+    let shippingDetail = null;
+    if (orderDetail.shipping?.id) {
+      try {
+        const shippingResponse = await fetch(
+          `https://api.mercadolibre.com/shipments/${orderDetail.shipping.id}`,
+          {
+            headers: {
+              Authorization: `Bearer ${accessToken}`,
+            },
+          }
+        );
+        if (shippingResponse.ok) {
+          shippingDetail = await shippingResponse.json();
+        }
+      } catch (error) {
+        console.error('Erro ao buscar detalhes de envio:', error);
+      }
+    }
+
     // Retornar estrutura completa para debug
     return NextResponse.json({
       message: 'Debug info for first order',
       orderId: order.id,
       summary: {
         total_amount: orderDetail.total_amount,
-        shipping_cost: orderDetail.shipping?.cost,
+        sale_fees: orderDetail.order_items?.map((item: any) => ({
+          item: item.item.title,
+          sale_fee: item.sale_fee,
+        })),
+      },
+      shippingInfo: {
+        shippingId: orderDetail.shipping?.id,
+        shippingDetail: shippingDetail,
+      },
+      paymentInfo: {
+        payments: orderDetail.payments?.map((p: any) => ({
+          status: p.status,
+          marketplace_fee: p.marketplace_fee,
+          shipping_cost: p.shipping_cost,
+          transaction_amount: p.transaction_amount,
+        })),
       },
       fullOrder: orderDetail,
-      // Procurar por campos de taxa
-      taxFields: {
-        charges: orderDetail.charges,
-        fees: orderDetail.fees,
-        item_fees: orderDetail.item_fees,
-        marketplace_fees: orderDetail.marketplace_fees,
-        'Order Details': Object.keys(orderDetail).filter(k => k.includes('fee') || k.includes('charge')),
-      },
     });
   } catch (error) {
     console.error('Debug error:', error);
