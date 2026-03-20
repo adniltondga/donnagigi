@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { formatCurrency } from '@/lib/calculations';
+import { Info } from 'lucide-react';
 
 interface Supplier {
   id: string;
@@ -609,7 +610,16 @@ export default function FinanceiroPage() {
                           {formatDate(bill.dueDate)}
                         </td>
                         <td className="px-6 py-3 text-sm text-gray-900">
-                          {bill.description}
+                          <div className="flex items-center gap-2">
+                            <span>{bill.description}</span>
+                            {bill.notes && (
+                              <Info
+                                size={16}
+                                className="text-blue-500 cursor-help flex-shrink-0"
+                                title={bill.notes}
+                              />
+                            )}
+                          </div>
                         </td>
                         <td className="px-6 py-3 text-sm text-gray-600">
                           {categoryLabel[bill.category]}
