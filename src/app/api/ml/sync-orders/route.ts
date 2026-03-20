@@ -234,26 +234,6 @@ export async function GET(req: NextRequest) {
         }
       }
 
-      // Criar bill de taxa de venda se houver valor
-      if (totalFee > 0) {
-        const feeBill = await prisma.bill.create({
-          data: {
-            type: 'payable',
-            category: 'marketplace_fee',
-            description: `Taxa ML (Venda) - ${itemTitle}`,
-            amount: totalFee,
-            dueDate: orderDate,
-            paidDate: closedDate,
-            status: 'paid',
-            mlOrderId: `fee_${order.id}`,
-            notes: `Taxa de marketplace de venda: ${feeDetails}`,
-          },
-          include: { supplier: true },
-        });
-
-        createdBills.push(feeBill);
-      }
-
       // Extrair taxa de envio (list_cost)
       // Precisa buscar os detalhes de envio via API
       let shippingFee = 0;
@@ -278,24 +258,32 @@ export async function GET(req: NextRequest) {
         }
       }
 
-      // Criar bill de taxa de envio se houver valor
-      if (shippingFee > 0) {
-        const shippingBill = await prisma.bill.create({
+      // Agrupar todas as taxas em um único registro
+      const totalTaxes = totalFee + shippingFee;
+      if (totalTaxes > 0) {
+        const taxBreakdown = [
+          feeDetails ? `Venda: ${feeDetails}` : '',
+          shippingFee > 0 ? `Envio: R$ ${shippingFee.toFixed(2)}` : '',
+        ]
+          .filter(Boolean)
+          .join(' + ');
+
+        const taxesBill = await prisma.bill.create({
           data: {
             type: 'payable',
             category: 'marketplace_fee',
-            description: `Taxa ML (Envio) - ${itemTitle}`,
-            amount: shippingFee,
+            description: `Taxas ML - ${itemTitle}`,
+            amount: totalTaxes,
             dueDate: orderDate,
             paidDate: closedDate,
             status: 'paid',
-            mlOrderId: `shipping_${order.id}`,
-            notes: `Taxa de envio cobrada pelo ML: R$ ${shippingFee.toFixed(2)}`,
+            mlOrderId: `taxes_${order.id}`,
+            notes: `Taxas totais do Mercado Livre: ${taxBreakdown}. Total: R$ ${totalTaxes.toFixed(2)}`,
           },
           include: { supplier: true },
         });
 
-        createdBills.push(shippingBill);
+        createdBills.push(taxesBill);
       }
     }
 
