@@ -11,6 +11,7 @@ import { ChevronDown, ChevronRight, Edit2, Trash2, Package, Search, X } from 'lu
 interface ProductVariant {
   id: string
   cod: string
+  title?: string
   modelId?: string | null
   colorId?: string | null
   model?: { id: string; name: string } | null
@@ -64,19 +65,53 @@ export default function ProductsPage() {
     shoppeeTariff: 0, // Sempre do produto (baseShoppeeTariff)
     shopeeDeliveryTariff: 0, // Sempre do produto (baseShopeeDeliveryTariff)
   })
+  const [currentPage, setCurrentPage] = useState(1)
+  const [itemsPerPage, setItemsPerPage] = useState(10)
+  const [totalItems, setTotalItems] = useState(0)
+  const [totalPages, setTotalPages] = useState(0)
+
+  function parseVariantTitle(title?: string) {
+    if (!title) return null
+    const parts: Record<string, string> = {}
+    const regex = /([^:,]+):([^,]+)/g
+    let match
+    while ((match = regex.exec(title)) !== null) {
+      const key = match[1].trim().toLowerCase()
+      const value = match[2].trim()
+      parts[key] = value
+    }
+    return Object.keys(parts).length > 0 ? parts : null
+  }
+
+  function extractMLCode(mlListingId?: string) {
+    if (!mlListingId) return null
+    // Remove "MLB" prefix if exists
+    return mlListingId.replace(/^MLB/, '')
+  }
+
+  async function copyToClipboard(text: string) {
+    try {
+      await navigator.clipboard.writeText(text)
+      alert('Código copiado!')
+    } catch (err) {
+      console.error('Erro ao copiar:', err)
+    }
+  }
 
   useEffect(() => {
     fetchProducts()
-  }, [])
+  }, [currentPage, itemsPerPage])
 
   async function fetchProducts() {
     try {
       setLoading(true)
       setError(null)
-      const response = await fetch('/api/products')
+      const response = await fetch(`/api/products?page=${currentPage}&limit=${itemsPerPage}`)
       const data = await response.json()
       if (data.success) {
         setProducts(data.data || [])
+        setTotalItems(data.pagination?.total || 0)
+        setTotalPages(data.pagination?.pages || 0)
       } else {
         setError(data.error || 'Erro ao carregar produtos')
       }
@@ -241,7 +276,7 @@ export default function ProductsPage() {
     }
   }
 
-  // Cálculos com base em variações
+  // Cálculos com base em variações (apenas da página atual)
   const totalStockQuantity = products.reduce(
     (sum, p) => sum + (p.variants?.reduce((vs, v) => vs + (v.stock || 0), 0) || 0),
     0
@@ -317,20 +352,21 @@ export default function ProductsPage() {
       <div className="grid grid-cols-4 gap-4">
         <div className="bg-white p-4 rounded-lg border">
           <p className="text-sm text-gray-600">Total de Produtos</p>
-          <p className="text-2xl font-bold">{products.length}</p>
+          <p className="text-2xl font-bold">{totalItems}</p>
+          <p className="text-xs text-gray-500 mt-1">Exibindo {products.length} nesta página</p>
         </div>
         <div className="bg-white p-4 rounded-lg border">
-          <p className="text-sm text-gray-600">Estoque Total</p>
+          <p className="text-sm text-gray-600">Estoque Total (Página)</p>
           <p className="text-2xl font-bold">{totalStockQuantity}</p>
         </div>
         <div className="bg-white p-4 rounded-lg border">
-          <p className="text-sm text-gray-600">Receita Total</p>
+          <p className="text-sm text-gray-600">Receita Total (Página)</p>
           <p className="text-2xl font-bold text-green-600">
             {formatCurrency(totalRevenue)}
           </p>
         </div>
         <div className="bg-white p-4 rounded-lg border">
-          <p className="text-sm text-gray-600">Custo Total</p>
+          <p className="text-sm text-gray-600">Custo Total (Página)</p>
           <p className="text-2xl font-bold text-red-600">
             {formatCurrency(totalCost)}
           </p>
@@ -386,7 +422,7 @@ export default function ProductsPage() {
                         </div>
 
                         <div className="flex-1 min-w-0">
-                          <h3 className="font-semibold text-gray-900 truncate">{product.name}</h3>
+                          <h3 className="font-semibold text-gray-900 truncate text-sm">{product.name}</h3>
                           <div className="flex gap-2 mt-1 flex-wrap">
                             {product.category && (
                               <span className="text-xs bg-gray-100 px-2 py-1 rounded text-gray-600">
@@ -395,12 +431,12 @@ export default function ProductsPage() {
                             )}
                             {product.mlListingId && (
                               <span className="text-xs bg-yellow-100 px-2 py-1 rounded text-yellow-700 font-mono">
-                                ML: {product.mlListingId}
+                                {product.mlListingId}
                               </span>
                             )}
                             {product.shopeeListingId && (
                               <span className="text-xs bg-red-100 px-2 py-1 rounded text-red-700 font-mono">
-                                SP: {product.shopeeListingId}
+                                {product.shopeeListingId}
                               </span>
                             )}
                           </div>
@@ -488,6 +524,7 @@ export default function ProductsPage() {
                         <div className="space-y-2">
                           {product.variants.map((variant) => {
                             const salePrice = variant.salePrice || 0
+                            const parsedTitle = parseVariantTitle(variant.title)
 
                             const variantName = variant.model && variant.color
                               ? `${variant.model.name} - ${variant.color.name}`
@@ -498,13 +535,29 @@ export default function ProductsPage() {
                                 key={variant.id}
                                 className="bg-white border rounded p-3 grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3 items-center"
                               >
-                                {/* Variação (Modelo - Cor) */}
-                                <div className="sm:col-span-1 lg:col-span-2">
-                                  <div className="text-xs text-gray-500">Variação</div>
-                                  <div className="text-sm font-medium text-gray-700 truncate">
-                                    {variantName}
-                                  </div>
-                                  <div className="text-xs text-gray-400">{variant.cod}</div>
+                                {/* Variação (Modelo - Cor ou Parsed Title) */}
+                                <div className="sm:col-span-2 lg:col-span-2">
+                                  <div className="text-xs text-gray-500 font-semibold">Variação</div>
+                                  {parsedTitle ? (
+                                    <div className="mt-2 space-y-1.5">
+                                      {parsedTitle.cor && (
+                                        <div className="flex items-center gap-2 text-sm">
+                                          <span className="text-base">🎨</span>
+                                          <span className="font-medium text-gray-700">{parsedTitle.cor}</span>
+                                        </div>
+                                      )}
+                                      {parsedTitle['nome do desenho'] && (
+                                        <div className="flex items-center gap-2 text-sm">
+                                          <span className="text-base">📸</span>
+                                          <span className="text-gray-600">{parsedTitle['nome do desenho']}</span>
+                                        </div>
+                                      )}
+                                    </div>
+                                  ) : (
+                                    <div className="text-sm font-medium text-gray-700 truncate mt-1">
+                                      {variantName}
+                                    </div>
+                                  )}
                                 </div>
 
                                 {/* Preço */}
@@ -598,6 +651,85 @@ export default function ProductsPage() {
           </div>
         )}
       </div>
+
+      {/* Paginação */}
+      {!loading && totalPages > 1 && (
+        <div className="bg-white rounded-lg border p-4">
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-gray-600">Itens por página:</span>
+              <select
+                value={itemsPerPage}
+                onChange={(e) => {
+                  setItemsPerPage(parseInt(e.target.value))
+                  setCurrentPage(1)
+                }}
+                className="border rounded px-3 py-1 text-sm"
+              >
+                <option value="5">5</option>
+                <option value="10">10</option>
+                <option value="20">20</option>
+                <option value="50">50</option>
+              </select>
+            </div>
+
+            <div className="text-sm text-gray-600">
+              Página <span className="font-semibold">{currentPage}</span> de <span className="font-semibold">{totalPages}</span>
+              {' '}({totalItems} produtos no total)
+            </div>
+
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                disabled={currentPage === 1}
+              >
+                ← Anterior
+              </Button>
+
+              <div className="flex gap-1">
+                {Array.from({ length: totalPages }, (_, i) => i + 1)
+                  .filter(page => {
+                    // Mostrar página atual, primeira, última e +/- 1 página
+                    return (
+                      page === currentPage ||
+                      page === 1 ||
+                      page === totalPages ||
+                      Math.abs(page - currentPage) === 1
+                    )
+                  })
+                  .map((page, index, array) => (
+                    <div key={page}>
+                      {index > 0 && array[index - 1] !== page - 1 && (
+                        <span className="px-2 py-1 text-gray-400">...</span>
+                      )}
+                      <button
+                        onClick={() => setCurrentPage(page)}
+                        className={`px-3 py-1 rounded border transition ${
+                          currentPage === page
+                            ? 'bg-blue-600 text-white border-blue-600'
+                            : 'border-gray-300 hover:border-blue-600 hover:text-blue-600'
+                        }`}
+                      >
+                        {page}
+                      </button>
+                    </div>
+                  ))}
+              </div>
+
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+                disabled={currentPage === totalPages}
+              >
+                Próximo →
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Modal de Formulário */}
       {showForm && (

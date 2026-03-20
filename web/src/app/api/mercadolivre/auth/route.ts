@@ -41,9 +41,14 @@ export async function GET() {
     const codeVerifier = randomBytes(64).toString("base64url")
     const codeChallenge = generateCodeChallenge(codeVerifier)
 
-    // URL EXATAMENTE conforme documentação do Mercado Livre para PKCE
-    // Sem passar scopes por enquanto - deixar o usuário autorizar no painel do ML
-    const authUrl = `https://auth.mercadolivre.com.br/authorization?response_type=code&client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&code_challenge=${codeChallenge}&code_challenge_method=S256`
+    // Scopes necessários para sincronizar produtos
+    // read = Permissão de leitura (listagens, produtos, usuário)
+    // offline_access = Refresh token para manter token ativo
+    const scopes = ["offline_access", "read"]
+    const scopeString = scopes.join(" ")
+
+    // URL conforme documentação do Mercado Livre com PKCE + scopes
+    const authUrl = `https://auth.mercadolivre.com.br/authorization?response_type=code&client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&code_challenge=${codeChallenge}&code_challenge_method=S256&scope=${encodeURIComponent(scopeString)}`
 
     console.log("[PKCE] Iniciando autenticação com URL:", authUrl)
     console.log("[PKCE] Code Challenge:", codeChallenge)
