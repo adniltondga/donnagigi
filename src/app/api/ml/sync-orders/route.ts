@@ -87,6 +87,11 @@ interface MLOrder {
     quantity: number;
     unit_price: number;
   }>;
+  // Taxas cobradas pelo ML
+  charges?: Array<{
+    type: string;
+    amount: number;
+  }>;
 }
 
 interface MLOrdersResponse {
@@ -126,7 +131,32 @@ export async function GET(req: NextRequest) {
     }
 
     const data: MLOrdersResponse = await mlResponse.json();
-    const orders = data.results || [];
+    let orders = data.results || [];
+
+    // Buscar detalhes completos de cada pedido (para pegar as taxas reais)
+    console.log(`📦 Buscando detalhes de ${orders.length} pedidos...`);
+    const ordersWithDetails = await Promise.all(
+      orders.map(async (order) => {
+        try {
+          const detailResponse = await fetch(
+            `https://api.mercadolibre.com/orders/${order.id}`,
+            {
+              headers: {
+                Authorization: `Bearer ${accessToken}`,
+              },
+            }
+          );
+          if (detailResponse.ok) {
+            return await detailResponse.json();
+          }
+          return order;
+        } catch (error) {
+          console.error(`Erro ao buscar detalhes do pedido ${order.id}:`, error);
+          return order;
+        }
+      })
+    );
+    orders = ordersWithDetails;
 
     let created = 0;
     let skipped = 0;
@@ -169,24 +199,49 @@ export async function GET(req: NextRequest) {
       created++;
       createdBills.push(saleBill);
 
-      // Criar conta a pagar (taxa do ML - 13% médio)
-      const fee = order.total_amount * 0.13;
-      const feeBill = await prisma.bill.create({
-        data: {
-          type: 'payable',
-          category: 'marketplace_fee',
-          description: `Taxa ML - ${itemTitle}`,
-          amount: fee,
-          dueDate: orderDate,
-          paidDate: closedDate,
-          status: 'paid',
-          mlOrderId: `fee_${order.id}`,
-          notes: `Taxa de marketplace referente ao pedido #${order.id}`,
-        },
-        include: { supplier: true },
-      });
+      // Extrair taxas reais do ML
+      // O ML pode retornar em várias estruturas: charges, fees, ou item_fees
+      let totalFee = 0;
+      let feeDetails = '';
 
-      createdBills.push(feeBill);
+      if (order.charges && order.charges.length > 0) {
+        totalFee = order.charges.reduce((sum: number, charge: any) => sum + (charge.amount || 0), 0);
+        feeDetails = order.charges.map((c: any) => `${c.type}: R$ ${c.amount}`).join(', ');
+      }
+
+      // Fallback: tentar pegar de outro campo se existir
+      if (totalFee === 0) {
+        // Tentar pegar de item_fees ou marketplace_fee
+        if (order.item_fees && order.item_fees.length > 0) {
+          totalFee = order.item_fees.reduce((sum: number, fee: any) => sum + (fee.amount || 0), 0);
+          feeDetails = 'Taxas de item';
+        }
+        // Se ainda não tem, usar cálculo aproximado
+        if (totalFee === 0 && order.total_amount) {
+          totalFee = order.total_amount * 0.13;
+          feeDetails = 'Cálculo aproximado (13%)';
+        }
+      }
+
+      // Só criar bill de taxa se houver valor
+      if (totalFee > 0) {
+        const feeBill = await prisma.bill.create({
+          data: {
+            type: 'payable',
+            category: 'marketplace_fee',
+            description: `Taxa ML - ${itemTitle}`,
+            amount: totalFee,
+            dueDate: orderDate,
+            paidDate: closedDate,
+            status: 'paid',
+            mlOrderId: `fee_${order.id}`,
+            notes: `Taxa de marketplace: ${feeDetails || 'Descontada pelo ML no repasse.'}`,
+          },
+          include: { supplier: true },
+        });
+
+        createdBills.push(feeBill);
+      }
     }
 
     return NextResponse.json({
