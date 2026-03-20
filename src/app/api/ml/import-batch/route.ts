@@ -26,6 +26,7 @@ interface MLVariation {
   price: number
   quantity: number
   seller_sku?: string
+  user_product_id?: string
 }
 
 interface MLProduct {
@@ -113,7 +114,7 @@ export async function POST(request: NextRequest) {
                 : mlProduto.title
 
               const cod =
-                variation.seller_sku || `ML_${mlProduto.id}_${variation.id}`
+                variation.user_product_id || variation.seller_sku || `ML_${mlProduto.id}_${variation.id}`
 
               return prisma.productVariant.create({
                 data: {
