@@ -215,8 +215,8 @@ export async function GET(req: NextRequest) {
         }
       }
 
-      // Extrair taxa de envio (list_cost)
-      // Precisa buscar os detalhes de envio via API
+      // Extrair taxa de envio
+      // Fórmula: list_cost - cost = taxa final que o vendedor paga
       let shippingFee = 0;
       if (order.shipping?.id) {
         try {
@@ -230,9 +230,10 @@ export async function GET(req: NextRequest) {
           );
           if (shippingResponse.ok) {
             const shippingDetail = await shippingResponse.json();
-            if (shippingDetail.shipping_option?.list_cost) {
-              shippingFee = shippingDetail.shipping_option.list_cost;
-            }
+            const listCost = shippingDetail.shipping_option?.list_cost || 0;
+            const subsidizedCost = shippingDetail.shipping_option?.cost || 0;
+            // Taxa real = valor base - subsídio do ML
+            shippingFee = listCost - subsidizedCost;
           }
         } catch (error) {
           console.error(`Erro ao buscar taxa de envio para pedido ${order.id}:`, error);
