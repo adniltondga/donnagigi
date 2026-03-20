@@ -180,25 +180,6 @@ export async function GET(req: NextRequest) {
       const orderDate = new Date(order.date_closed || order.date_created);
       const closedDate = new Date(order.date_closed || order.date_created);
 
-      // Criar conta a receber (venda)
-      const saleBill = await prisma.bill.create({
-        data: {
-          type: 'receivable',
-          category: 'venda',
-          description: `Venda ML - ${itemTitle}`,
-          amount: order.total_amount,
-          dueDate: orderDate,
-          paidDate: closedDate,
-          status: 'paid',
-          mlOrderId: `order_${order.id}`,
-          notes: `Pedido Mercado Livre #${order.id} - Comprador: ${order.buyer.nickname}`,
-        },
-        include: { supplier: true },
-      });
-
-      created++;
-      createdBills.push(saleBill);
-
       // Extrair taxas reais do ML
       // As taxas vêm em order_items[].sale_fee
       let totalFee = 0;
@@ -211,7 +192,7 @@ export async function GET(req: NextRequest) {
         }, 0);
 
         if (totalFee > 0) {
-          feeDetails = `Sale Fee: R$ ${totalFee.toFixed(2)}`;
+          feeDetails = `Taxa de venda: R$ ${totalFee.toFixed(2)}`;
         }
       }
 
@@ -258,33 +239,35 @@ export async function GET(req: NextRequest) {
         }
       }
 
-      // Agrupar todas as taxas em um único registro
+      // Calcular valor líquido (o que realmente vai receber)
       const totalTaxes = totalFee + shippingFee;
-      if (totalTaxes > 0) {
-        const taxBreakdown = [
-          feeDetails ? `Venda: ${feeDetails}` : '',
-          shippingFee > 0 ? `Envio: R$ ${shippingFee.toFixed(2)}` : '',
-        ]
-          .filter(Boolean)
-          .join(' + ');
+      const netAmount = order.total_amount - totalTaxes;
 
-        const taxesBill = await prisma.bill.create({
-          data: {
-            type: 'payable',
-            category: 'marketplace_fee',
-            description: `Taxas ML - ${itemTitle}`,
-            amount: totalTaxes,
-            dueDate: orderDate,
-            paidDate: closedDate,
-            status: 'paid',
-            mlOrderId: `taxes_${order.id}`,
-            notes: `Taxas totais do Mercado Livre: ${taxBreakdown}. Total: R$ ${totalTaxes.toFixed(2)}`,
-          },
-          include: { supplier: true },
-        });
+      // Criar única conta a receber com valor líquido
+      const taxBreakdown = [
+        feeDetails,
+        shippingFee > 0 ? `Taxa de envio: R$ ${shippingFee.toFixed(2)}` : '',
+      ]
+        .filter(Boolean)
+        .join(' + ');
 
-        createdBills.push(taxesBill);
-      }
+      const saleBill = await prisma.bill.create({
+        data: {
+          type: 'receivable',
+          category: 'venda',
+          description: `Venda ML - ${itemTitle}`,
+          amount: netAmount,
+          dueDate: orderDate,
+          paidDate: closedDate,
+          status: 'paid',
+          mlOrderId: `order_${order.id}`,
+          notes: `Pedido #${order.id} | Bruto: R$ ${order.total_amount.toFixed(2)} | Taxas: ${taxBreakdown} (Total: R$ ${totalTaxes.toFixed(2)}) | Líquido: R$ ${netAmount.toFixed(2)} | Comprador: ${order.buyer.nickname}`,
+        },
+        include: { supplier: true },
+      });
+
+      created++;
+      createdBills.push(saleBill);
     }
 
     return NextResponse.json({
