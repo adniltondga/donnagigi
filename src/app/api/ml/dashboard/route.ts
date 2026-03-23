@@ -9,7 +9,7 @@ export const dynamic = "force-dynamic"
  * Página interativa com botão de login e instruções
  */
 
-export async function GET(request: NextRequest) {
+export async function GET(_request: NextRequest) {
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000"
 
   // Buscar status

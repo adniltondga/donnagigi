@@ -10,7 +10,7 @@ import crypto from "crypto"
  * - Instruções para capturar o código de retorno
  */
 
-export async function GET(request: NextRequest) {
+export async function GET(_request: NextRequest) {
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000"
   
   // Gerar PKCE code_verifier e code_challenge

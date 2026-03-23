@@ -54,19 +54,21 @@ export async function PUT(
       }
     }
 
+    const updateData = {
+      ...(description && { description }),
+      ...(amount && { amount: parseFloat(amount) }),
+      ...(dueDate && { dueDate: new Date(dueDate) }),
+      ...(category && { category }),
+      ...(supplierId !== undefined && { supplierId: supplierId || null }),
+      ...(notes !== undefined && { notes: notes || null }),
+      ...(productId !== undefined && { productId: productId || null }),
+      ...(productCost !== undefined && { productCost: finalProductCost !== null && finalProductCost !== undefined ? parseFloat(finalProductCost.toString()) : null }),
+      ...(deliveryCost !== undefined && { deliveryCost: finalDeliveryCost !== null && finalDeliveryCost !== undefined ? parseFloat(finalDeliveryCost.toString()) : null }),
+    };
+
     const bill = await prisma.bill.update({
       where: { id: params.id },
-      data: {
-        ...(description && { description }),
-        ...(amount && { amount: parseFloat(amount) }),
-        ...(dueDate && { dueDate: new Date(dueDate) }),
-        ...(category && { category }),
-        ...(supplierId !== undefined && { supplierId: supplierId || null }),
-        ...(notes !== undefined && { notes: notes || null }),
-        ...(productId !== undefined && { productId: productId || null }),
-        ...(productCost !== undefined && { productCost: finalProductCost ? parseFloat(finalProductCost.toString()) : null }),
-        ...(deliveryCost !== undefined && { deliveryCost: finalDeliveryCost ? parseFloat(finalDeliveryCost.toString()) : null }),
-      },
+      data: updateData,
       include: { supplier: true, product: true },
     });
 

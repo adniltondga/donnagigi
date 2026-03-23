@@ -8,13 +8,7 @@ interface VariantFormProps {
   baseSalePrice?: number
 }
 
-export default function VariantForm({
-  variants,
-  attributes,
-  onVariantsChange,
-  onAttributesChange,
-  baseSalePrice,
-}: VariantFormProps) {
+export default function VariantForm({}: VariantFormProps) {
   // Placeholder component - variações serão editadas em tela separada
   return (
     <div className="border rounded-lg p-4 bg-gray-50">

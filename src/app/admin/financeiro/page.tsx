@@ -89,6 +89,7 @@ export default function FinanceiroPage() {
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [page, setPage] = useState(1);
+  const [costCache, setCostCache] = useState<Record<string, { productCost: number | null; deliveryCost: number | null }>>({});
   const [notesModal, setNotesModal] = useState<{ isOpen: boolean; notes: string; billId: string; productCost?: number | null; deliveryCost?: number | null }>({
     isOpen: false,
     notes: '',
@@ -164,6 +165,67 @@ export default function FinanceiroPage() {
   useEffect(() => {
     fetchBills(page);
   }, [page]);
+
+  // Pré-popular cache com custos dos produtos
+  useEffect(() => {
+    if (bills.length === 0) return;
+
+    const loadCosts = async () => {
+      const cache: Record<string, { productCost: number | null; deliveryCost: number | null }> = {};
+
+      // Primeiro, usar produtos já relacionados
+      for (const bill of bills) {
+        if (bill.product) {
+          cache[bill.id] = {
+            productCost: bill.product.productCost,
+            deliveryCost: bill.product.deliveryCost
+          };
+        }
+      }
+
+      // Depois, buscar produtos para bills que não têm productId
+      const billsWithoutProduct = bills.filter(b => !b.product && b.notes && b.type === 'receivable');
+
+      if (billsWithoutProduct.length > 0) {
+        // Extrair todos os itemIds
+        const itemIds = billsWithoutProduct
+          .map(b => {
+            const match = b.notes?.match(/Produto\n(MLB)?(\d+)/);
+            return match ? match[2] : null;
+          })
+          .filter(Boolean) as string[];
+
+        // Buscar todos os produtos de uma vez
+        try {
+          const response = await fetch(`/api/products?limit=1000`);
+          const data = await response.json();
+
+          const productMap = new Map(
+            data.data?.map((p: any) => [p.mlListingId, p]) || []
+          );
+
+          for (const bill of billsWithoutProduct) {
+            const match = bill.notes?.match(/Produto\n(MLB)?(\d+)/);
+            const mlListingId = match ? `MLB${match[2]}` : null;
+
+            if (mlListingId && productMap.has(mlListingId)) {
+              const product = productMap.get(mlListingId);
+              cache[bill.id] = {
+                productCost: product.productCost,
+                deliveryCost: product.deliveryCost
+              };
+            }
+          }
+        } catch (error) {
+          console.error('Erro ao buscar produtos:', error);
+        }
+      }
+
+      setCostCache(cache);
+    };
+
+    loadCosts();
+  }, [bills]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -346,8 +408,49 @@ export default function FinanceiroPage() {
     }
   };
 
-  const openNotesModal = (bill: Bill) => {
-    setNotesModal({ isOpen: true, notes: bill.notes || '', billId: bill.id, productCost: bill.productCost, deliveryCost: bill.deliveryCost });
+  const openNotesModal = async (bill: Bill) => {
+    let productCost = bill.productCost;
+    let deliveryCost = bill.deliveryCost;
+
+    // Se não tiver custos salvos, buscar do produto
+    if ((!productCost || !deliveryCost) && bill.notes) {
+      // Extrair itemId das notas (linha "Produto") - pode ter MLB na frente
+      const produtoMatch = bill.notes.match(/Produto\n(MLB)?(\d+)/);
+      const itemId = produtoMatch ? produtoMatch[2] : null;
+
+      console.log('🔍 Buscando produto:', { itemId });
+
+      if (itemId) {
+        try {
+          // Buscar pelo itemId com MLB prefix (como está salvo no banco)
+          const mlListingId = `MLB${itemId}`;
+          const response = await fetch(`/api/products?search=${mlListingId}`);
+          const data = await response.json();
+
+          if (data.data && data.data.length > 0) {
+            const product = data.data[0];
+            productCost = productCost || product.productCost || null;
+            deliveryCost = deliveryCost || product.deliveryCost || null;
+          }
+        } catch (error) {
+          console.error('Erro ao buscar produto:', error);
+        }
+      }
+    }
+
+    // Armazenar no cache para usar na coluna LUCRO
+    setCostCache(prev => ({
+      ...prev,
+      [bill.id]: { productCost, deliveryCost }
+    }));
+
+    setNotesModal({
+      isOpen: true,
+      notes: bill.notes || '',
+      billId: bill.id,
+      productCost,
+      deliveryCost,
+    });
   };
 
   const closeNotesModal = () => {
@@ -642,7 +745,6 @@ export default function FinanceiroPage() {
               <TableRow>
                 <TableHead>Vencimento</TableHead>
                 <TableHead>Descrição</TableHead>
-                <TableHead>Categoria</TableHead>
                 <TableHead>Tipo</TableHead>
                 <TableHead>Valor</TableHead>
                 <TableHead>Lucro</TableHead>
@@ -673,19 +775,6 @@ export default function FinanceiroPage() {
                             onChange={handleEditInputChange}
                             className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
                           />
-                        </TableCell>
-                        <TableCell>
-                          <select
-                            name="category"
-                            value={editData?.category || bill.category}
-                            onChange={handleEditInputChange}
-                            className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
-                          >
-                            <option value="outro">Outro</option>
-                            <option value="fornecedor">Fornecedor</option>
-                            <option value="marketplace_fee">Taxa Marketplace</option>
-                            <option value="venda">Venda</option>
-                          </select>
                         </TableCell>
                         <TableCell className="text-sm font-medium">
                           {bill.type === 'payable' ? 'A Pagar' : 'A Receber'}
@@ -724,7 +813,7 @@ export default function FinanceiroPage() {
                                 type="number"
                                 name="productCost"
                                 placeholder="Prod"
-                                value={editData?.productCost || bill.productCost || ''}
+                                value={editData?.productCost ?? ''}
                                 onChange={handleEditInputChange}
                                 step="0.01"
                                 className="w-1/2 px-2 py-1 border border-gray-300 rounded text-xs"
@@ -733,7 +822,7 @@ export default function FinanceiroPage() {
                                 type="number"
                                 name="deliveryCost"
                                 placeholder="Entrega"
-                                value={editData?.deliveryCost || bill.deliveryCost || ''}
+                                value={editData?.deliveryCost ?? ''}
                                 onChange={handleEditInputChange}
                                 step="0.01"
                                 className="w-1/2 px-2 py-1 border border-gray-300 rounded text-xs"
@@ -777,9 +866,6 @@ export default function FinanceiroPage() {
                         <TableCell className="text-sm">
                           {bill.description}
                         </TableCell>
-                        <TableCell className="text-sm">
-                          {categoryLabel[bill.category]}
-                        </TableCell>
                         <TableCell className="text-sm font-medium">
                           {bill.type === 'payable' ? 'A Pagar' : 'A Receber'}
                         </TableCell>
@@ -802,7 +888,22 @@ export default function FinanceiroPage() {
                         <TableCell className="text-sm font-semibold">
                           {bill.type === 'receivable' ? (
                             (() => {
-                              const profit = bill.amount - (bill.productCost ?? 0) - (bill.deliveryCost ?? 0);
+                              // Extrair taxas das notas
+                              const vendaMatch = bill.notes?.match(/Taxa de venda:\s*R\$\s*([\d,\.]+)/);
+                              const taxaVenda = vendaMatch ? parseFloat(vendaMatch[1].replace(',', '.')) : 0;
+
+                              const envioMatch = bill.notes?.match(/Taxa de envio:\s*R\$\s*([\d,\.]+)/);
+                              const taxaEnvio = envioMatch ? parseFloat(envioMatch[1].replace(',', '.')) : 0;
+
+                              // Usar custos do cache (preenchido quando abre modal) ou do bill
+                              let prodCost = costCache[bill.id]?.productCost ?? bill.productCost ?? 0;
+                              let delivCost = costCache[bill.id]?.deliveryCost ?? bill.deliveryCost ?? 0;
+
+                              // Bruto = bill.amount (líquido após taxas ML) + taxas ML
+                              const bruto = bill.amount + taxaVenda + taxaEnvio;
+
+                              // Lucro = Bruto - Todas as taxas
+                              const profit = bruto - taxaVenda - taxaEnvio - prodCost - delivCost;
                               return (
                                 <span className={profit > 0 ? 'text-green-600' : 'text-red-600'}>
                                   {formatCurrency(profit)}
@@ -830,8 +931,8 @@ export default function FinanceiroPage() {
                                   dueDate: bill.dueDate,
                                   category: bill.category,
                                   productId: bill.productId || '',
-                                  productCost: bill.productCost ? bill.productCost.toString() : '',
-                                  deliveryCost: bill.deliveryCost ? bill.deliveryCost.toString() : '',
+                                  productCost: bill.productCost !== null && bill.productCost !== undefined ? bill.productCost.toString() : '',
+                                  deliveryCost: bill.deliveryCost !== null && bill.deliveryCost !== undefined ? bill.deliveryCost.toString() : '',
                                 });
                               }}
                               size="sm"
@@ -919,21 +1020,90 @@ export default function FinanceiroPage() {
               </button>
             </div>
 
-            <div className="bg-gray-50 rounded-lg p-4 max-h-64 overflow-y-auto space-y-4">
+            <div className="bg-gray-50 rounded-lg p-4 max-h-96 overflow-y-auto space-y-4">
               <p className="text-sm text-gray-700 whitespace-pre-wrap font-mono leading-relaxed">
-                {notesModal.notes}
+                {notesModal.notes
+                  .replace(/MLB(\d+)/g, '$1')
+                  .replace(/\nVENDAS\nBruto:.*$/s, '')}
               </p>
-              {notesModal.productCost !== undefined || notesModal.deliveryCost !== undefined ? (
-                <div className="border-t pt-4 space-y-2">
-                  <p className="text-sm font-semibold text-gray-900">Custos:</p>
-                  {notesModal.productCost && notesModal.productCost > 0 && (
-                    <p className="text-sm text-gray-700">💰 Custo Mercadoria: {formatCurrency(notesModal.productCost)}</p>
-                  )}
-                  {notesModal.deliveryCost && notesModal.deliveryCost > 0 && (
-                    <p className="text-sm text-gray-700">🛵 Custo Entrega: {formatCurrency(notesModal.deliveryCost)}</p>
-                  )}
-                </div>
-              ) : null}
+
+              {(() => {
+                // Extrair valores das notas
+                const brutoMatch = notesModal.notes.match(/Bruto: R\$ ([\d,\.]+)/);
+                const bruto = brutoMatch ? parseFloat(brutoMatch[1].replace(',', '.')) : 0;
+
+                // Extrair taxa de venda
+                const vendaMatch = notesModal.notes.match(/Taxa de venda: R\$ ([\d,\.]+)/);
+                const taxaVenda = vendaMatch ? parseFloat(vendaMatch[1].replace(',', '.')) : 0;
+
+                // Extrair taxa de envio
+                const envioMatch = notesModal.notes.match(/Taxa de envio: R\$ ([\d,\.]+)/);
+                const taxaEnvio = envioMatch ? parseFloat(envioMatch[1].replace(',', '.')) : 0;
+
+                const taxasTotal = taxaVenda + taxaEnvio;
+
+                const prodCost = notesModal.productCost ?? 0;
+                const delivCost = notesModal.deliveryCost ?? 0;
+                const allTaxes = taxasTotal + prodCost + delivCost;
+                const liquidoReal = bruto - allTaxes;
+
+                return (
+                  <div className="border-t pt-4 space-y-3">
+                    <div className="bg-white rounded p-3 space-y-2">
+                      <div className="flex justify-between text-sm">
+                        <span className="font-medium">💵 Bruto:</span>
+                        <span className="font-semibold">{formatCurrency(bruto)}</span>
+                      </div>
+
+                      <div className="text-xs text-gray-600 space-y-2 ml-2">
+                        {/* Taxas Mercado Livre */}
+                        <div className="space-y-1">
+                          <div className="font-medium text-gray-700">Taxa Mercado Livre:</div>
+                          <div className="flex justify-between ml-2">
+                            <span>  • Venda:</span>
+                            <span>{formatCurrency(taxaVenda)}</span>
+                          </div>
+                          <div className="flex justify-between ml-2">
+                            <span>  • Envio:</span>
+                            <span>{formatCurrency(taxaEnvio)}</span>
+                          </div>
+                        </div>
+
+                        {/* Custos */}
+                        {(prodCost > 0 || delivCost > 0) && (
+                          <div className="space-y-1">
+                            <div className="font-medium text-gray-700">Custos:</div>
+                            {prodCost > 0 && (
+                              <div className="flex justify-between ml-2">
+                                <span>  • 💰 Mercadoria:</span>
+                                <span>{formatCurrency(prodCost)}</span>
+                              </div>
+                            )}
+                            {delivCost > 0 && (
+                              <div className="flex justify-between ml-2">
+                                <span>  • 🛵 Entrega Local:</span>
+                                <span>{formatCurrency(delivCost)}</span>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="border-t pt-2 flex justify-between">
+                        <span className="font-medium">Total Taxas:</span>
+                        <span className="font-semibold text-red-600">{formatCurrency(allTaxes)}</span>
+                      </div>
+
+                      <div className="bg-blue-50 rounded p-2 flex justify-between border border-blue-200">
+                        <span className="font-bold text-blue-900">📈 Líquido Real:</span>
+                        <span className={`font-bold text-lg ${liquidoReal > 0 ? 'text-green-600' : 'text-red-600'}`}>
+                          {formatCurrency(liquidoReal)}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
             </div>
 
             <div className="flex gap-3 justify-end">

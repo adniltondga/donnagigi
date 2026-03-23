@@ -1,8 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
 import crypto from "crypto"
-import { PrismaClient } from "@prisma/client"
-
-const prisma = new PrismaClient()
 
 export const dynamic = "force-dynamic"
 
@@ -16,7 +13,7 @@ export const dynamic = "force-dynamic"
  * - Instruções passo a passo
  */
 
-export async function GET(request: NextRequest) {
+export async function GET(_request: NextRequest) {
   try {
     const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000"
     const clientId = process.env.ML_CLIENT_ID
