@@ -90,18 +90,6 @@ export function AdminSidebar() {
                 📦 Produtos
               </Link>
             </li>
-            <li>
-              <Link
-                href="/admin/suppliers"
-                className={`block px-4 py-2 rounded-lg transition ${
-                  isActive("/admin/suppliers")
-                    ? "bg-primary-500 text-white"
-                    : "text-admin-300 hover:bg-admin-700"
-                }`}
-              >
-                📦 Fornecedores
-              </Link>
-            </li>
           </ul>
         </div>
 
