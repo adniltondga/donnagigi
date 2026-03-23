@@ -92,6 +92,8 @@ export async function PUT(
         ...(body.mlListingId !== undefined && { mlListingId: body.mlListingId || null }),
         ...(body.baseSalePrice !== undefined && { baseSalePrice: body.baseSalePrice ? parseFloat(body.baseSalePrice) : null }),
         ...(body.minStock !== undefined && { minStock: body.minStock ? parseInt(body.minStock) : 0 }),
+        ...(body.productCost !== undefined && { productCost: body.productCost ? parseFloat(body.productCost) : null }),
+        ...(body.deliveryCost !== undefined && { deliveryCost: body.deliveryCost ? parseFloat(body.deliveryCost) : null }),
       },
       include: {
         variants: {
