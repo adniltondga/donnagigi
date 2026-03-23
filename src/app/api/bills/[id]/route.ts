@@ -2,7 +2,7 @@ import prisma from '@/lib/prisma';
 import { NextRequest, NextResponse } from 'next/server';
 
 export async function GET(
-  req: NextRequest,
+  _req: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
@@ -34,7 +34,25 @@ export async function PUT(
 ) {
   try {
     const body = await req.json();
-    const { description, amount, dueDate, category, supplierId, notes } = body;
+    const { description, amount, dueDate, category, supplierId, notes, productCost, deliveryCost, productId } = body;
+
+    // Se productId foi fornecido, buscar os custos do produto
+    let finalProductCost = productCost;
+    let finalDeliveryCost = deliveryCost;
+    if (productId && (!productCost || !deliveryCost)) {
+      const product = await prisma.product.findUnique({
+        where: { id: productId },
+        select: { productCost: true, deliveryCost: true },
+      });
+      if (product) {
+        if (!productCost && product.productCost) {
+          finalProductCost = product.productCost;
+        }
+        if (!deliveryCost && product.deliveryCost) {
+          finalDeliveryCost = product.deliveryCost;
+        }
+      }
+    }
 
     const bill = await prisma.bill.update({
       where: { id: params.id },
@@ -45,8 +63,11 @@ export async function PUT(
         ...(category && { category }),
         ...(supplierId !== undefined && { supplierId: supplierId || null }),
         ...(notes !== undefined && { notes: notes || null }),
+        ...(productId !== undefined && { productId: productId || null }),
+        ...(productCost !== undefined && { productCost: finalProductCost ? parseFloat(finalProductCost.toString()) : null }),
+        ...(deliveryCost !== undefined && { deliveryCost: finalDeliveryCost ? parseFloat(finalDeliveryCost.toString()) : null }),
       },
-      include: { supplier: true },
+      include: { supplier: true, product: true },
     });
 
     return NextResponse.json(bill);
@@ -60,7 +81,7 @@ export async function PUT(
 }
 
 export async function DELETE(
-  req: NextRequest,
+  _req: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {

@@ -3,10 +3,20 @@
 import { useState, useEffect } from 'react';
 import { formatCurrency } from '@/lib/calculations';
 import { Info } from 'lucide-react';
+import { Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from '@/components/ui/table';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 
 interface Supplier {
   id: string;
   name: string;
+}
+
+interface BillProduct {
+  id: string;
+  name: string;
+  productCost: number | null;
+  deliveryCost: number | null;
 }
 
 interface Bill {
@@ -20,7 +30,11 @@ interface Bill {
   category: string;
   supplierId: string | null;
   supplier: Supplier | null;
+  productId: string | null;
+  product: BillProduct | null;
   notes: string | null;
+  productCost: number | null;
+  deliveryCost: number | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -32,7 +46,10 @@ interface FormData {
   dueDate: string;
   category: string;
   supplierId: string;
+  productId: string;
   notes: string;
+  productCost: string;
+  deliveryCost: string;
 }
 
 interface Summary {
@@ -50,13 +67,6 @@ const statusLabel: { [key: string]: string } = {
   cancelled: 'Cancelado',
 };
 
-const statusClasses: { [key: string]: string } = {
-  pending: 'bg-yellow-100 text-yellow-800',
-  paid: 'bg-green-100 text-green-800',
-  overdue: 'bg-red-100 text-red-800',
-  cancelled: 'bg-gray-100 text-gray-800',
-};
-
 const categoryLabel: { [key: string]: string } = {
   fornecedor: 'Fornecedor',
   marketplace_fee: 'Taxa Marketplace',
@@ -71,6 +81,7 @@ function formatDate(date: string | Date): string {
 export default function FinanceiroPage() {
   const [bills, setBills] = useState<Bill[]>([]);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
+  const [products, setProducts] = useState<any[]>([]);
   const [summary, setSummary] = useState<Summary | null>(null);
   const [loading, setLoading] = useState(false);
   const [showNewForm, setShowNewForm] = useState(false);
@@ -78,7 +89,7 @@ export default function FinanceiroPage() {
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [page, setPage] = useState(1);
-  const [notesModal, setNotesModal] = useState<{ isOpen: boolean; notes: string; billId: string }>({
+  const [notesModal, setNotesModal] = useState<{ isOpen: boolean; notes: string; billId: string; productCost?: number | null; deliveryCost?: number | null }>({
     isOpen: false,
     notes: '',
     billId: '',
@@ -91,12 +102,15 @@ export default function FinanceiroPage() {
     dueDate: new Date().toISOString().split('T')[0],
     category: 'outro',
     supplierId: '',
+    productId: '',
     notes: '',
+    productCost: '',
+    deliveryCost: '',
   });
 
   const [editData, setEditData] = useState<Partial<FormData> | null>(null);
 
-  // Load suppliers on mount
+  // Load suppliers and variants on mount
   useEffect(() => {
     const fetchSuppliers = async () => {
       try {
@@ -110,7 +124,20 @@ export default function FinanceiroPage() {
       }
     };
 
+    const fetchProducts = async () => {
+      try {
+        const response = await fetch('/api/products/variants');
+        if (response.ok) {
+          const data = await response.json();
+          setProducts(data.data || []);
+        }
+      } catch (error) {
+        console.error('Error loading products:', error);
+      }
+    };
+
     fetchSuppliers();
+    fetchProducts();
   }, []);
 
   // Load bills
@@ -140,6 +167,21 @@ export default function FinanceiroPage() {
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
+
+    // Se é productId, puxar os custos automaticamente
+    if (name === 'productId' && value) {
+      const selectedProduct = products.find(p => p.id === value);
+      if (selectedProduct) {
+        setFormData((prev) => ({
+          ...prev,
+          [name]: value,
+          productCost: selectedProduct.productCost ? selectedProduct.productCost.toString() : '',
+          deliveryCost: selectedProduct.deliveryCost ? selectedProduct.deliveryCost.toString() : '',
+        }));
+        return;
+      }
+    }
+
     setFormData((prev) => ({
       ...prev,
       [name]: value,
@@ -150,6 +192,21 @@ export default function FinanceiroPage() {
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
   ) => {
     const { name, value } = e.target;
+
+    // Se é productId, puxar os custos automaticamente
+    if (name === 'productId' && value && editData) {
+      const selectedProduct = products.find(p => p.id === value);
+      if (selectedProduct) {
+        setEditData((prev) => ({
+          ...prev,
+          [name]: value,
+          productCost: selectedProduct.productCost ? selectedProduct.productCost.toString() : '',
+          deliveryCost: selectedProduct.deliveryCost ? selectedProduct.deliveryCost.toString() : '',
+        }));
+        return;
+      }
+    }
+
     setEditData((prev) => ({
       ...prev,
       [name]: value,
@@ -168,6 +225,9 @@ export default function FinanceiroPage() {
         body: JSON.stringify({
           ...formData,
           amount: parseFloat(formData.amount),
+          productId: formData.productId || null,
+          productCost: formData.productCost ? parseFloat(formData.productCost) : null,
+          deliveryCost: formData.deliveryCost ? parseFloat(formData.deliveryCost) : null,
         }),
       });
 
@@ -182,7 +242,10 @@ export default function FinanceiroPage() {
           dueDate: new Date().toISOString().split('T')[0],
           category: 'outro',
           supplierId: '',
+          productId: '',
           notes: '',
+          productCost: '',
+          deliveryCost: '',
         });
         setShowNewForm(false);
         fetchBills(1);
@@ -210,6 +273,9 @@ export default function FinanceiroPage() {
         body: JSON.stringify({
           ...editData,
           amount: editData.amount ? parseFloat(editData.amount) : undefined,
+          productId: editData.productId || undefined,
+          productCost: editData.productCost ? parseFloat(editData.productCost) : undefined,
+          deliveryCost: editData.deliveryCost ? parseFloat(editData.deliveryCost) : undefined,
         }),
       });
 
@@ -280,8 +346,8 @@ export default function FinanceiroPage() {
     }
   };
 
-  const openNotesModal = (notes: string, billId: string) => {
-    setNotesModal({ isOpen: true, notes, billId });
+  const openNotesModal = (bill: Bill) => {
+    setNotesModal({ isOpen: true, notes: bill.notes || '', billId: bill.id, productCost: bill.productCost, deliveryCost: bill.deliveryCost });
   };
 
   const closeNotesModal = () => {
@@ -419,6 +485,59 @@ export default function FinanceiroPage() {
               </select>
             </div>
 
+            {formData.type === 'receivable' && (
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Produto (opcional)
+                </label>
+                <select
+                  name="productId"
+                  value={formData.productId}
+                  onChange={handleInputChange}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                >
+                  <option value="">Selecionar produto...</option>
+                  {products.map((product) => (
+                    <option key={product.id} value={product.id}>
+                      {product.name} {product.productCost ? `- R$ ${product.productCost.toFixed(2)}` : ''}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            {formData.type === 'receivable' && (
+              <>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    Custo Mercadoria (R$)
+                  </label>
+                  <input
+                    type="number"
+                    name="productCost"
+                    value={formData.productCost}
+                    onChange={handleInputChange}
+                    step="0.01"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    Custo Entrega (R$)
+                  </label>
+                  <input
+                    type="number"
+                    name="deliveryCost"
+                    value={formData.deliveryCost}
+                    onChange={handleInputChange}
+                    step="0.01"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                  />
+                </div>
+              </>
+            )}
+
             <div className="col-span-2">
               <label className="block text-sm font-semibold text-gray-700 mb-2">
                 Notas
@@ -518,131 +637,158 @@ export default function FinanceiroPage() {
         ) : bills.length === 0 ? (
           <div className="p-6 text-center text-gray-600">Nenhuma conta encontrada</div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gray-50 border-b border-gray-200">
-                <tr>
-                  <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">
-                    Vencimento
-                  </th>
-                  <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">
-                    Descrição
-                  </th>
-                  <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">
-                    Categoria
-                  </th>
-                  <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">
-                    Tipo
-                  </th>
-                  <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">
-                    Valor
-                  </th>
-                  <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">
-                    Status
-                  </th>
-                  <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">
-                    Fornecedor
-                  </th>
-                  <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">
-                    Ações
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Vencimento</TableHead>
+                <TableHead>Descrição</TableHead>
+                <TableHead>Categoria</TableHead>
+                <TableHead>Tipo</TableHead>
+                <TableHead>Valor</TableHead>
+                <TableHead>Lucro</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Fornecedor</TableHead>
+                <TableHead>Ações</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
                 {bills.map((bill) => (
-                  <tr key={bill.id} className="border-b border-gray-200 hover:bg-gray-50">
+                  <TableRow key={bill.id}>
                     {editingId === bill.id ? (
                       <>
-                        <td className="px-6 py-3">
+                        <TableCell>
                           <input
                             type="date"
                             name="dueDate"
                             value={editData?.dueDate || formatDate(bill.dueDate).split('/').reverse().join('-')}
                             onChange={handleEditInputChange}
-                            className="w-full px-2 py-1 border border-gray-300 rounded"
+                            className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
                           />
-                        </td>
-                        <td className="px-6 py-3">
+                        </TableCell>
+                        <TableCell>
                           <input
                             type="text"
                             name="description"
                             value={editData?.description || bill.description}
                             onChange={handleEditInputChange}
-                            className="w-full px-2 py-1 border border-gray-300 rounded"
+                            className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
                           />
-                        </td>
-                        <td className="px-6 py-3">
+                        </TableCell>
+                        <TableCell>
                           <select
                             name="category"
                             value={editData?.category || bill.category}
                             onChange={handleEditInputChange}
-                            className="w-full px-2 py-1 border border-gray-300 rounded"
+                            className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
                           >
                             <option value="outro">Outro</option>
                             <option value="fornecedor">Fornecedor</option>
                             <option value="marketplace_fee">Taxa Marketplace</option>
                             <option value="venda">Venda</option>
                           </select>
-                        </td>
-                        <td className="px-6 py-3 text-sm font-medium text-gray-900">
+                        </TableCell>
+                        <TableCell className="text-sm font-medium">
                           {bill.type === 'payable' ? 'A Pagar' : 'A Receber'}
-                        </td>
-                        <td className="px-6 py-3">
+                        </TableCell>
+                        {bill.type === 'receivable' && (
+                          <TableCell>
+                            <select
+                              name="productId"
+                              value={editData?.productId || bill.productId || ''}
+                              onChange={handleEditInputChange}
+                              className="w-full px-2 py-1 border border-gray-300 rounded text-xs"
+                            >
+                              <option value="">Sem produto</option>
+                              {products.map((product) => (
+                                <option key={product.id} value={product.id}>
+                                  {product.name}
+                                </option>
+                              ))}
+                            </select>
+                          </TableCell>
+                        )}
+                        <TableCell>
                           <input
                             type="number"
                             name="amount"
                             value={editData?.amount || bill.amount}
                             onChange={handleEditInputChange}
                             step="0.01"
-                            className="w-full px-2 py-1 border border-gray-300 rounded"
+                            className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
                           />
-                        </td>
-                        <td className="px-6 py-3">
-                          <span className={`px-3 py-1 rounded-full text-xs font-semibold ${statusClasses[bill.status]}`}>
-                            {statusLabel[bill.status]}
-                          </span>
-                        </td>
-                        <td className="px-6 py-3 text-sm text-gray-600">
+                        </TableCell>
+                        <TableCell>
+                          {bill.type === 'receivable' ? (
+                            <div className="flex gap-2">
+                              <input
+                                type="number"
+                                name="productCost"
+                                placeholder="Prod"
+                                value={editData?.productCost || bill.productCost || ''}
+                                onChange={handleEditInputChange}
+                                step="0.01"
+                                className="w-1/2 px-2 py-1 border border-gray-300 rounded text-xs"
+                              />
+                              <input
+                                type="number"
+                                name="deliveryCost"
+                                placeholder="Entrega"
+                                value={editData?.deliveryCost || bill.deliveryCost || ''}
+                                onChange={handleEditInputChange}
+                                step="0.01"
+                                className="w-1/2 px-2 py-1 border border-gray-300 rounded text-xs"
+                              />
+                            </div>
+                          ) : (
+                            <span>-</span>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="default">{statusLabel[bill.status]}</Badge>
+                        </TableCell>
+                        <TableCell className="text-sm">
                           {bill.supplier?.name || '-'}
-                        </td>
-                        <td className="px-6 py-3">
+                        </TableCell>
+                        <TableCell>
                           <div className="flex gap-2">
-                            <button
+                            <Button
                               onClick={() => handleUpdate(bill.id)}
                               disabled={loading}
-                              className="text-blue-600 hover:text-blue-900 text-sm font-semibold disabled:opacity-50"
+                              size="sm"
+                              variant="ghost"
                             >
                               ✅
-                            </button>
-                            <button
+                            </Button>
+                            <Button
                               onClick={() => setEditingId(null)}
-                              className="text-gray-600 hover:text-gray-900 text-sm font-semibold"
+                              size="sm"
+                              variant="ghost"
                             >
                               ❌
-                            </button>
+                            </Button>
                           </div>
-                        </td>
+                        </TableCell>
                       </>
                     ) : (
                       <>
-                        <td className="px-6 py-3 text-sm text-gray-900">
+                        <TableCell className="text-sm">
                           {formatDate(bill.dueDate)}
-                        </td>
-                        <td className="px-6 py-3 text-sm text-gray-900">
+                        </TableCell>
+                        <TableCell className="text-sm">
                           {bill.description}
-                        </td>
-                        <td className="px-6 py-3 text-sm text-gray-600">
+                        </TableCell>
+                        <TableCell className="text-sm">
                           {categoryLabel[bill.category]}
-                        </td>
-                        <td className="px-6 py-3 text-sm font-medium text-gray-900">
+                        </TableCell>
+                        <TableCell className="text-sm font-medium">
                           {bill.type === 'payable' ? 'A Pagar' : 'A Receber'}
-                        </td>
-                        <td className="px-6 py-3 text-sm font-semibold text-gray-900">
+                        </TableCell>
+                        <TableCell className="text-sm font-semibold">
                           <div className="flex items-center gap-2">
                             <span>{formatCurrency(bill.amount)}</span>
                             {bill.notes && bill.type === 'receivable' && (
                               <button
-                                onClick={() => openNotesModal(bill.notes || '', bill.id)}
+                                onClick={() => openNotesModal(bill)}
                                 className="cursor-pointer p-1 hover:bg-blue-100 rounded transition"
                               >
                                 <Info
@@ -652,18 +798,30 @@ export default function FinanceiroPage() {
                               </button>
                             )}
                           </div>
-                        </td>
-                        <td className="px-6 py-3">
-                          <span className={`px-3 py-1 rounded-full text-xs font-semibold ${statusClasses[bill.status]}`}>
-                            {statusLabel[bill.status]}
-                          </span>
-                        </td>
-                        <td className="px-6 py-3 text-sm text-gray-600">
+                        </TableCell>
+                        <TableCell className="text-sm font-semibold">
+                          {bill.type === 'receivable' ? (
+                            (() => {
+                              const profit = bill.amount - (bill.productCost ?? 0) - (bill.deliveryCost ?? 0);
+                              return (
+                                <span className={profit > 0 ? 'text-green-600' : 'text-red-600'}>
+                                  {formatCurrency(profit)}
+                                </span>
+                              );
+                            })()
+                          ) : (
+                            <span>-</span>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="default">{statusLabel[bill.status]}</Badge>
+                        </TableCell>
+                        <TableCell className="text-sm">
                           {bill.supplier?.name || '-'}
-                        </td>
-                        <td className="px-6 py-3">
+                        </TableCell>
+                        <TableCell>
                           <div className="flex gap-2">
-                            <button
+                            <Button
                               onClick={() => {
                                 setEditingId(bill.id);
                                 setEditData({
@@ -671,54 +829,61 @@ export default function FinanceiroPage() {
                                   amount: bill.amount.toString(),
                                   dueDate: bill.dueDate,
                                   category: bill.category,
+                                  productId: bill.productId || '',
+                                  productCost: bill.productCost ? bill.productCost.toString() : '',
+                                  deliveryCost: bill.deliveryCost ? bill.deliveryCost.toString() : '',
                                 });
                               }}
-                              className="text-blue-600 hover:text-blue-900 text-sm font-semibold"
+                              size="sm"
+                              variant="ghost"
                             >
                               ✏️
-                            </button>
+                            </Button>
                             {bill.status !== 'paid' && bill.status !== 'cancelled' && (
-                              <button
+                              <Button
                                 onClick={() => handleMarkAsPaid(bill.id)}
                                 disabled={loading}
-                                className="text-green-600 hover:text-green-900 text-sm font-semibold disabled:opacity-50"
+                                size="sm"
+                                variant="ghost"
                               >
                                 ✓
-                              </button>
+                              </Button>
                             )}
                             {deleteConfirm === bill.id ? (
                               <>
-                                <button
+                                <Button
                                   onClick={() => handleDelete(bill.id)}
                                   disabled={loading}
-                                  className="text-red-600 hover:text-red-900 text-sm font-semibold disabled:opacity-50"
+                                  size="sm"
+                                  variant="ghost"
                                 >
                                   Confirmar
-                                </button>
-                                <button
+                                </Button>
+                                <Button
                                   onClick={() => setDeleteConfirm(null)}
-                                  className="text-gray-600 hover:text-gray-900 text-sm font-semibold"
+                                  size="sm"
+                                  variant="ghost"
                                 >
                                   Cancelar
-                                </button>
+                                </Button>
                               </>
                             ) : (
-                              <button
+                              <Button
                                 onClick={() => setDeleteConfirm(bill.id)}
-                                className="text-red-600 hover:text-red-900 text-sm font-semibold"
+                                size="sm"
+                                variant="ghost"
                               >
                                 🗑️
-                              </button>
+                              </Button>
                             )}
                           </div>
-                        </td>
+                        </TableCell>
                       </>
                     )}
-                  </tr>
+                  </TableRow>
                 ))}
-              </tbody>
-            </table>
-          </div>
+            </TableBody>
+          </Table>
         )}
       </div>
 
@@ -754,10 +919,21 @@ export default function FinanceiroPage() {
               </button>
             </div>
 
-            <div className="bg-gray-50 rounded-lg p-4 max-h-64 overflow-y-auto">
+            <div className="bg-gray-50 rounded-lg p-4 max-h-64 overflow-y-auto space-y-4">
               <p className="text-sm text-gray-700 whitespace-pre-wrap font-mono leading-relaxed">
                 {notesModal.notes}
               </p>
+              {notesModal.productCost !== undefined || notesModal.deliveryCost !== undefined ? (
+                <div className="border-t pt-4 space-y-2">
+                  <p className="text-sm font-semibold text-gray-900">Custos:</p>
+                  {notesModal.productCost && notesModal.productCost > 0 && (
+                    <p className="text-sm text-gray-700">💰 Custo Mercadoria: {formatCurrency(notesModal.productCost)}</p>
+                  )}
+                  {notesModal.deliveryCost && notesModal.deliveryCost > 0 && (
+                    <p className="text-sm text-gray-700">🛵 Custo Entrega: {formatCurrency(notesModal.deliveryCost)}</p>
+                  )}
+                </div>
+              ) : null}
             </div>
 
             <div className="flex gap-3 justify-end">

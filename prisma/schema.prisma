@@ -15,49 +15,54 @@ model Product {
   id          String   @id @default(cuid())
   name        String   // Título do produto
   description String?  @db.Text
-  
+
   // Preço base e estoque
   baseSalePrice Float?
   minStock      Int     @default(0)
-  
+
+  // Custos de venda
+  productCost   Float?  // custo da mercadoria/produção
+  deliveryCost  Float?  // custo de entrega local (motoboy)
+
   // Mercado Livre
   mlListingId   String? @unique
-  
+
   // Status
   active        Boolean @default(true)
-  
+
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
-  
+
   // Relações
   variants      ProductVariant[]
+  bills         Bill[]
 }
 
 // Variação do produto (cor, tamanho, etc)
 model ProductVariant {
   id        String   @id @default(cuid())
-  
+
   // Relação com produto
   productId String
   product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
-  
+
   // Informações
   title     String?  // Título específico da variante (ex: "Capinha iPhone 15 - Preto")
   cod       String   @unique
-  
+
   // Preço e estoque
   salePrice Float
   stock     Int      @default(0)
-  
+
   // Mercado Livre
   mlListingId String?
-  
+
   // Status
   active    Boolean  @default(true)
-  
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-  
+
   // Relações
   mlProducts MLProduct[]
 }
@@ -108,18 +113,22 @@ model Supplier {
 
 // Conta (contas a pagar/receber)
 model Bill {
-  id          String   @id @default(cuid())
-  type        String   // "payable" | "receivable"
-  description String
-  amount      Float
-  dueDate     DateTime
-  paidDate    DateTime?
-  status      String   @default("pending") // pending | paid | overdue | cancelled
-  category    String   @default("outro") // fornecedor | marketplace_fee | venda | outro
-  supplierId  String?
-  supplier    Supplier? @relation(fields: [supplierId], references: [id], onDelete: SetNull)
-  notes       String?  @db.Text
-  mlOrderId   String?  @unique  // evita duplicatas de pedidos ML
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id              String   @id @default(cuid())
+  type            String   // "payable" | "receivable"
+  description     String
+  amount          Float
+  dueDate         DateTime
+  paidDate        DateTime?
+  status          String   @default("pending") // pending | paid | overdue | cancelled
+  category        String   @default("outro") // fornecedor | marketplace_fee | venda | outro
+  supplierId      String?
+  supplier        Supplier? @relation(fields: [supplierId], references: [id], onDelete: SetNull)
+  productId       String?   // relaciona com o produto vendido
+  product         Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
+  notes           String?  @db.Text
+  productCost     Float?   // custo da mercadoria (pode vir do produto ou ser manual)
+  deliveryCost    Float?   // custo de entrega local (motoboy)
+  mlOrderId       String?  @unique  // evita duplicatas de pedidos ML
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 }

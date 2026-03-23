@@ -10,7 +10,7 @@ export async function GET(req: NextRequest) {
 
     const [bills, total, summary] = await Promise.all([
       prisma.bill.findMany({
-        include: { supplier: true },
+        include: { supplier: true, product: true },
         orderBy: { dueDate: 'desc' },
         skip,
         take: limit,
@@ -59,7 +59,7 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { type, description, amount, dueDate, category, supplierId, notes, mlOrderId } = body;
+    const { type, description, amount, dueDate, category, supplierId, notes, mlOrderId, productId, productCost, deliveryCost } = body;
 
     // Validação básica
     if (!type || !description || !amount || !dueDate) {
@@ -82,6 +82,24 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    // Se productId foi fornecido, puxar o custo automaticamente se não for fornecido
+    let finalProductCost = productCost;
+    let finalDeliveryCost = deliveryCost;
+    if (productId && (!productCost || !deliveryCost)) {
+      const product = await prisma.product.findUnique({
+        where: { id: productId },
+        select: { productCost: true, deliveryCost: true },
+      });
+      if (product) {
+        if (!productCost && product.productCost) {
+          finalProductCost = product.productCost;
+        }
+        if (!deliveryCost && product.deliveryCost) {
+          finalDeliveryCost = product.deliveryCost;
+        }
+      }
+    }
+
     const bill = await prisma.bill.create({
       data: {
         type,
@@ -90,10 +108,13 @@ export async function POST(req: NextRequest) {
         dueDate: new Date(dueDate),
         category,
         supplierId: supplierId || null,
+        productId: productId || null,
         notes: notes || null,
+        productCost: finalProductCost ? parseFloat(finalProductCost) : null,
+        deliveryCost: finalDeliveryCost ? parseFloat(finalDeliveryCost) : null,
         mlOrderId: mlOrderId || null,
       },
-      include: { supplier: true },
+      include: { supplier: true, product: true },
     });
 
     return NextResponse.json(bill, { status: 201 });
