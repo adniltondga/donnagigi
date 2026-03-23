@@ -67,13 +67,6 @@ const statusLabel: { [key: string]: string } = {
   cancelled: 'Cancelado',
 };
 
-const categoryLabel: { [key: string]: string } = {
-  fornecedor: 'Fornecedor',
-  marketplace_fee: 'Taxa Marketplace',
-  venda: 'Venda',
-  outro: 'Outro',
-};
-
 function formatDate(date: string | Date): string {
   return new Date(date).toLocaleDateString('pt-BR');
 }
@@ -187,14 +180,6 @@ export default function FinanceiroPage() {
       const billsWithoutProduct = bills.filter(b => !b.product && b.notes && b.type === 'receivable');
 
       if (billsWithoutProduct.length > 0) {
-        // Extrair todos os itemIds
-        const itemIds = billsWithoutProduct
-          .map(b => {
-            const match = b.notes?.match(/Produto\n(MLB)?(\d+)/);
-            return match ? match[2] : null;
-          })
-          .filter(Boolean) as string[];
-
         // Buscar todos os produtos de uma vez
         try {
           const response = await fetch(`/api/products?limit=1000`);
@@ -209,7 +194,7 @@ export default function FinanceiroPage() {
             const mlListingId = match ? `MLB${match[2]}` : null;
 
             if (mlListingId && productMap.has(mlListingId)) {
-              const product = productMap.get(mlListingId);
+              const product = productMap.get(mlListingId) as any;
               cache[bill.id] = {
                 productCost: product.productCost,
                 deliveryCost: product.deliveryCost
