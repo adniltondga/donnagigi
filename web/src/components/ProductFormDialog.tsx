@@ -9,9 +9,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
-import VariantForm from '@/components/VariantForm'
+import CurrencyInput from '@/components/CurrencyInput'
 
 interface Product {
   id: string
@@ -43,102 +42,29 @@ interface ProductFormDialogProps {
 export default function ProductFormDialog({ product, onClose }: ProductFormDialogProps) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [categories, setCategories] = useState<any[]>([])
-  const [suppliers, setSuppliers] = useState<any[]>([])
 
   // Formulário básico do produto
   const [formData, setFormData] = useState({
     name: product?.name || '',
     description: product?.description || '',
-    categoryId: product?.categoryId || '',
-    supplierId: product?.supplier || '',
-    mlListingId: product?.mlListingId || '',
-    shopeeListingId: product?.shopeeListingId || '',
-    baseSalePrice: product?.baseSalePrice || 0,
     productCost: product?.productCost || 0,
     deliveryCost: product?.deliveryCost || 0,
   })
 
+  // Sincronizar formData quando o product mudar
   useEffect(() => {
-    fetchCategories()
-    fetchSuppliers()
-  }, [])
-
-  async function fetchCategories() {
-    try {
-      const response = await fetch('/api/categories')
-      const data = await response.json()
-      if (data.success) {
-        setCategories(data.data)
-      }
-    } catch (error) {
-      console.error('Erro ao carregar categorias:', error)
-    }
-  }
-
-  async function fetchSuppliers() {
-    try {
-      const response = await fetch('/api/suppliers')
-      if (response.ok) {
-        const data = await response.json()
-        if (data.success) {
-          setSuppliers(data.data || [])
-        }
-      }
-    } catch (error) {
-      console.error('Erro ao carregar fornecedores:', error)
-    }
-  }
-
-  // Variações
-  const [variants, setVariants] = useState<Variant[]>(
-    product?.variants?.map((v: any) => ({
-      id: v.id,
-      cod: v.cod,
-      modelId: v.modelId || v.model?.id,
-      colorId: v.colorId || v.color?.id,
-      stock: v.stock,
-      salePrice: v.salePrice || 0,
-      attributes: v.attributes || {},
-      productId: product?.id,
-    })) || [
-      {
-        cod: '',
-        stock: 0,
-        salePrice: 0,
-        attributes: {},
-      },
-    ]
-  )
-
-  // Atributos (Cor, Modelo, etc)
-  const [attributes, setAttributes] = useState<Attribute[]>(
-    product?.variants?.[0]?.attributes
-      ? Object.entries(product.variants[0].attributes as Record<string, any>).map(
-          ([name, value]) => ({
-            name,
-            type: 'text',
-            values: [value],
-          })
-        )
-      : []
-  )
+    setFormData({
+      name: product?.name || '',
+      description: product?.description || '',
+      productCost: product?.productCost || 0,
+      deliveryCost: product?.deliveryCost || 0,
+    })
+  }, [product])
 
   function validateForm() {
     const errors: string[] = []
 
     if (!formData.name.trim()) errors.push('Nome do produto é obrigatório')
-    if (variants.length === 0) errors.push('Mínimo 1 variação é obrigatória')
-
-    variants.forEach((v, idx) => {
-      if (!v.cod || v.cod.trim() === '') {
-        errors.push(`Variação ${idx + 1}: COD é obrigatório`)
-      }
-      const salePrice = parseFloat(String(v.salePrice))
-      if (isNaN(salePrice) || salePrice <= 0) {
-        errors.push(`Variação ${idx + 1}: Preço Venda é obrigatório e deve ser maior que 0`)
-      }
-    })
 
     if (errors.length > 0) {
       setError(errors.join('\n'))
@@ -159,31 +85,15 @@ export default function ProductFormDialog({ product, onClose }: ProductFormDialo
 
       // Para novo produto, usar POST
       if (!product) {
-        console.log('📦 Criando novo produto com variações:', {
-          variants: variants.map(v => ({
-            cod: v.cod,
-            salePrice: v.salePrice,
-            stock: v.stock,
-            modelId: v.modelId,
-            colorId: v.colorId,
-          }))
-        })
-        
         const response = await fetch('/api/products', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             name: formData.name,
             description: formData.description,
-            categoryId: formData.categoryId || null,
-            supplier: formData.supplierId || null,
-            mlListingId: formData.mlListingId || null,
-            shopeeListingId: formData.shopeeListingId || null,
-            baseSalePrice: formData.baseSalePrice,
             productCost: formData.productCost,
             deliveryCost: formData.deliveryCost,
-            attributes,
-            variants,
+            variants: [],
           }),
         })
 
@@ -202,11 +112,6 @@ export default function ProductFormDialog({ product, onClose }: ProductFormDialo
           body: JSON.stringify({
             name: formData.name,
             description: formData.description,
-            categoryId: formData.categoryId || null,
-            supplier: formData.supplierId || null,
-            mlListingId: formData.mlListingId || null,
-            shopeeListingId: formData.shopeeListingId || null,
-            baseSalePrice: formData.baseSalePrice,
             productCost: formData.productCost,
             deliveryCost: formData.deliveryCost,
           }),
@@ -214,85 +119,11 @@ export default function ProductFormDialog({ product, onClose }: ProductFormDialo
 
         if (!response.ok) {
           const data = await response.json()
-          setError(data.error || 'Erro ao atualizar produto')
+          setError(data.error || 'Erro ao atualizar custos')
           return
         }
 
-        // Atualizar variações existentes (com ID)
-        const existingVariants = variants.filter(v => v.id)
-        if (existingVariants.length > 0) {
-          for (const variant of existingVariants) {
-            const salePriceNum = typeof variant.salePrice === 'string' 
-              ? parseFloat(variant.salePrice) 
-              : variant.salePrice
-            
-            console.log('📝 Atualizando variação existente:', {
-              variantId: variant.id,
-              cod: variant.cod,
-              salePrice: salePriceNum,
-              stock: variant.stock,
-              modelId: variant.modelId,
-              colorId: variant.colorId,
-            })
-
-            const variantResponse = await fetch(`/api/products/${product.id}/variants/${variant.id}`, {
-              method: 'PATCH',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                cod: variant.cod,
-                modelId: variant.modelId || null,
-                colorId: variant.colorId || null,
-                stock: variant.stock || 0,
-                salePrice: salePriceNum,
-              }),
-            })
-
-            if (!variantResponse.ok) {
-              const data = await variantResponse.json()
-              setError(data.error || 'Erro ao atualizar variação')
-              return
-            }
-          }
-        }
-
-        // Adicionar novas variações (sem ID)
-        const newVariants = variants.filter(v => !v.id)
-        if (newVariants.length > 0) {
-          for (const variant of newVariants) {
-            const salePriceNum = typeof variant.salePrice === 'string' 
-              ? parseFloat(variant.salePrice) 
-              : variant.salePrice
-            
-            console.log('📝 Criando variação:', {
-              cod: variant.cod,
-              salePrice: salePriceNum,
-              stock: variant.stock,
-              modelId: variant.modelId,
-              colorId: variant.colorId,
-            })
-
-            const variantResponse = await fetch(`/api/products/${product.id}/variants`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                cod: variant.cod,
-                modelId: variant.modelId || null,
-                colorId: variant.colorId || null,
-                stock: variant.stock || 0,
-                salePrice: salePriceNum,
-                attributes: variant.attributes || {},
-              }),
-            })
-
-            if (!variantResponse.ok) {
-              const data = await variantResponse.json()
-              setError(data.error || 'Erro ao adicionar variação')
-              return
-            }
-          }
-        }
-
-        alert('Produto atualizado com sucesso!')
+        alert('Custos atualizado com sucesso!')
         onClose()
       }
     } catch (error) {
@@ -308,12 +139,12 @@ export default function ProductFormDialog({ product, onClose }: ProductFormDialo
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
-            {product ? 'Editar Produto' : 'Novo Produto com Variações'}
+            {product ? 'Ajustar Custo da Mercadoria' : 'Novo Produto'}
           </DialogTitle>
           <DialogDescription>
             {product
-              ? 'Ajuste os dados do produto. Variações podem ser editadas separadamente.'
-              : 'Crie um produto com múltiplas variações (cores, modelos, tamanhos, etc)'}
+              ? 'Ajuste o custo da mercadoria e da entrega local.'
+              : 'Crie um novo produto com seus dados básicos e custos.'}
           </DialogDescription>
         </DialogHeader>
 
@@ -324,146 +155,35 @@ export default function ProductFormDialog({ product, onClose }: ProductFormDialo
         )}
 
         <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Seção 1: Informações Básicas */}
-          <div className="border rounded-lg p-4 bg-gray-50">
-            <h3 className="text-lg font-semibold mb-4">Informações Básicas</h3>
-            <div className="space-y-3">
+          {/* Seção: Custos */}
+          <div className="border rounded-lg p-4 bg-blue-50">
+            <h3 className="text-lg font-semibold mb-4">Custos</h3>
+            <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-sm font-medium mb-1">Nome do Produto *</label>
-                <Input
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  placeholder="Ex: Capinha Magnética Colorida Fosca"
-                  required
+                <label className="block text-sm font-medium mb-1">💰 Custo Mercadoria</label>
+                <CurrencyInput
+                  value={formData.productCost || 0}
+                  onChange={(value) => setFormData({ ...formData, productCost: value })}
+                  placeholder="R$ 0,00"
                 />
               </div>
-
               <div>
-                <label className="block text-sm font-medium mb-1">Descrição</label>
-                <textarea
-                  value={formData.description}
-                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  placeholder="Descrição detalhada do produto..."
-                  className="w-full border rounded px-3 py-2 min-h-[80px]"
+                <label className="block text-sm font-medium mb-1">🛵 Custo Entrega Local</label>
+                <CurrencyInput
+                  value={formData.deliveryCost || 0}
+                  onChange={(value) => setFormData({ ...formData, deliveryCost: value })}
+                  placeholder="R$ 0,00"
                 />
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-sm font-medium mb-1">Categoria</label>
-                  <select
-                    value={formData.categoryId}
-                    onChange={(e) => setFormData({ ...formData, categoryId: e.target.value })}
-                    className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  >
-                    <option value="">Selecionar categoria...</option>
-                    {categories.map((cat) => (
-                      <option key={cat.id} value={cat.id}>
-                        {cat.icon ? `${cat.icon} ` : ''}{cat.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1">Fornecedor</label>
-                  <select
-                    value={formData.supplierId}
-                    onChange={(e) => setFormData({ ...formData, supplierId: e.target.value })}
-                    className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  >
-                    <option value="">Selecionar fornecedor...</option>
-                    {suppliers.map((sup) => (
-                      <option key={sup.id} value={sup.id}>
-                        {sup.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-sm font-medium mb-1">Código Mercado Livre</label>
-                  <Input
-                    value={formData.mlListingId}
-                    onChange={(e) => setFormData({ ...formData, mlListingId: e.target.value })}
-                    placeholder="Ex: MCO123456789"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1">Código Shopee</label>
-                  <Input
-                    value={formData.shopeeListingId}
-                    onChange={(e) => setFormData({ ...formData, shopeeListingId: e.target.value })}
-                    placeholder="Ex: 123456789"
-                  />
-                </div>
               </div>
             </div>
           </div>
-
-          {/* Seção 1.5: Informações de Preço */}
-          <div className="border rounded-lg p-4 bg-green-50">
-            <h3 className="text-lg font-semibold mb-4">Informações de Preço (Padrão)</h3>
-            <p className="text-sm text-gray-600 mb-4">Estes valores serão usados como padrão para todas as variações</p>
-            <div className="space-y-3">
-              {/* Linha 1: Preços principales */}
-              <div className="grid grid-cols-1 gap-3">
-                <div>
-                  <label className="block text-sm font-medium mb-1">Preço Venda (R$)</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    value={formData.baseSalePrice || ''}
-                    onChange={(e) => setFormData({ ...formData, baseSalePrice: parseFloat(e.target.value) || 0 })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-                  />
-                </div>
-              </div>
-
-              {/* Linha 1.5: Custos de Venda */}
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-sm font-medium mb-1">💰 Custo Mercadoria (R$)</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    value={formData.productCost || ''}
-                    onChange={(e) => setFormData({ ...formData, productCost: parseFloat(e.target.value) || 0 })}
-                    placeholder="Ex: 10,00"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1">🛵 Custo Entrega Local (R$)</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    value={formData.deliveryCost || ''}
-                    onChange={(e) => setFormData({ ...formData, deliveryCost: parseFloat(e.target.value) || 0 })}
-                    placeholder="Ex: 5,00"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Seção 2: Variações e Atributos */}
-          <VariantForm
-            variants={variants}
-            attributes={attributes}
-            onVariantsChange={setVariants}
-            onAttributesChange={setAttributes}
-            baseSalePrice={formData.baseSalePrice}
-          />
 
           <DialogFooter>
             <Button type="button" variant="outline" onClick={onClose}>
               Cancelar
             </Button>
             <Button type="submit" disabled={loading}>
-              {loading ? 'Salvando...' : product ? 'Atualizar Produto' : 'Criar Produto'}
+              {loading ? 'Salvando...' : product ? 'Atualizar Custos' : 'Criar Produto'}
             </Button>
           </DialogFooter>
         </form>

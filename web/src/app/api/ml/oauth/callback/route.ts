@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
 import { PrismaClient } from "@prisma/client"
-import crypto from "crypto"
 
 const prisma = new PrismaClient()
 
@@ -18,7 +17,6 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
     const code = searchParams.get("code")
-    const state = searchParams.get("state")
     const error = searchParams.get("error")
 
     // Verificar se houve erro de autorização
@@ -112,7 +110,7 @@ export async function GET(request: NextRequest) {
     // Deletar integração anterior se existir
     await prisma.mLIntegration.deleteMany({})
 
-    const mlIntegration = await prisma.mLIntegration.create({
+    await prisma.mLIntegration.create({
       data: {
         sellerID: sellerID.toString(),
         accessToken: tokenData.access_token,

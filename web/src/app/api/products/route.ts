@@ -7,9 +7,15 @@ export async function GET(req: NextRequest) {
     const page = parseInt(searchParams.get('page') || '1')
     const limit = parseInt(searchParams.get('limit') || '10')
     const skip = (page - 1) * limit
+    const search = searchParams.get('search')
+
+    const whereClause = search
+      ? { OR: [{ mlListingId: search }, { name: { contains: search, mode: 'insensitive' as const } }] }
+      : {}
 
     const [products, total] = await Promise.all([
       prisma.product.findMany({
+        where: whereClause,
         skip,
         take: limit,
         orderBy: { createdAt: 'desc' },
@@ -21,6 +27,8 @@ export async function GET(req: NextRequest) {
           baseSalePrice: true,
           minStock: true,
           active: true,
+          productCost: true,
+          deliveryCost: true,
           createdAt: true,
           updatedAt: true,
           variants: {
@@ -39,7 +47,7 @@ export async function GET(req: NextRequest) {
           }
         }
       }),
-      prisma.product.count(),
+      prisma.product.count({ where: whereClause }),
     ])
 
     return NextResponse.json({

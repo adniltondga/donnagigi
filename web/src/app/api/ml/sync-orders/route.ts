@@ -73,6 +73,7 @@ interface MLOrder {
   date_closed: string;
   total_amount: number;
   shipping: {
+    id?: string;
     cost: number;
   };
   buyer: {
@@ -86,11 +87,15 @@ interface MLOrder {
     };
     quantity: number;
     unit_price: number;
+    sale_fee?: number;
   }>;
   // Taxas cobradas pelo ML
   charges?: Array<{
     type: string;
     amount: number;
+  }>;
+  payments?: Array<{
+    marketplace_fee?: number;
   }>;
 }
 
@@ -103,7 +108,7 @@ interface MLOrdersResponse {
   };
 }
 
-export async function GET(req: NextRequest) {
+export async function GET(_req: NextRequest) {
   try {
     // Obter integração e renovar token se necessário
     const integration = await refreshTokenIfNeeded();
@@ -177,6 +182,7 @@ export async function GET(req: NextRequest) {
       // Extrair informações do pedido
       const itemTitle =
         order.order_items?.[0]?.item?.title || 'Venda Mercado Livre';
+      const itemId = order.order_items?.[0]?.item?.id || '';
       const orderDate = new Date(order.date_closed || order.date_created);
       const closedDate = new Date(order.date_closed || order.date_created);
 
@@ -252,6 +258,36 @@ export async function GET(req: NextRequest) {
         .filter(Boolean)
         .join(' + ');
 
+      const notesContent = `PEDIDO
+#${order.id}
+
+Comprador
+${order.buyer.nickname}
+
+Produto
+${itemId}
+
+VENDAS
+Bruto: R$ ${order.total_amount.toFixed(2)} | Taxas: ${taxBreakdown} (Total: R$ ${totalTaxes.toFixed(2)}) | Líquido: R$ ${netAmount.toFixed(2)}`;
+
+      // Buscar produto pelo itemId (mlListingId) para pegar custos
+      let productCost: number | null = null;
+      let deliveryCost: number | null = null;
+      let productId: string | null = null;
+
+      if (itemId) {
+        const product = await prisma.product.findFirst({
+          where: { mlListingId: itemId },
+          select: { id: true, productCost: true, deliveryCost: true },
+        });
+
+        if (product) {
+          productId = product.id;
+          productCost = product.productCost;
+          deliveryCost = product.deliveryCost;
+        }
+      }
+
       const saleBill = await prisma.bill.create({
         data: {
           type: 'receivable',
@@ -262,7 +298,10 @@ export async function GET(req: NextRequest) {
           paidDate: closedDate,
           status: 'paid',
           mlOrderId: `order_${order.id}`,
-          notes: `Pedido #${order.id} | Bruto: R$ ${order.total_amount.toFixed(2)} | Taxas: ${taxBreakdown} (Total: R$ ${totalTaxes.toFixed(2)}) | Líquido: R$ ${netAmount.toFixed(2)} | Comprador: ${order.buyer.nickname}`,
+          notes: notesContent,
+          productId,
+          productCost,
+          deliveryCost,
         },
         include: { supplier: true },
       });

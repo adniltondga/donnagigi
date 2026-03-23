@@ -9,7 +9,7 @@ export const dynamic = "force-dynamic"
  * Mostra passo a passo como fazer o login e sincronizar
  */
 
-export async function GET(request: NextRequest) {
+export async function GET(_request: NextRequest) {
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000"
 
   // Buscar status de autenticação
