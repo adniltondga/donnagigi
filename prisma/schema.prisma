@@ -33,7 +33,6 @@ model Product {
 
   // Custos de venda
   productCost   Float?  // custo da mercadoria/produção
-  deliveryCost  Float?  // custo de entrega local (motoboy)
 
   // Mercado Livre
   mlListingId   String? @unique
@@ -138,7 +137,6 @@ model Bill {
   product         Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
   notes           String?  @db.Text
   productCost     Float?   // custo da mercadoria (pode vir do produto ou ser manual)
-  deliveryCost    Float?   // custo de entrega local (motoboy)
   mlOrderId       String?  @unique  // evita duplicatas de pedidos ML
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt

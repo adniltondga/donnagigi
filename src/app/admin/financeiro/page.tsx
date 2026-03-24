@@ -16,7 +16,6 @@ interface BillProduct {
   id: string;
   name: string;
   productCost: number | null;
-  deliveryCost: number | null;
 }
 
 interface Bill {
@@ -34,7 +33,6 @@ interface Bill {
   product: BillProduct | null;
   notes: string | null;
   productCost: number | null;
-  deliveryCost: number | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -49,7 +47,6 @@ interface FormData {
   productId: string;
   notes: string;
   productCost: string;
-  deliveryCost: string;
   status?: string;
 }
 
@@ -85,8 +82,8 @@ export default function FinanceiroPage() {
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [page, setPage] = useState(1);
-  const [costCache, setCostCache] = useState<Record<string, { productCost: number | null; deliveryCost: number | null }>>({});
-  const [notesModal, setNotesModal] = useState<{ isOpen: boolean; notes: string; billId: string; productCost?: number | null; deliveryCost?: number | null }>({
+  const [costCache, setCostCache] = useState<Record<string, { productCost: number | null }>>({});
+  const [notesModal, setNotesModal] = useState<{ isOpen: boolean; notes: string; billId: string; productCost?: number | null }>({
     isOpen: false,
     notes: '',
     billId: '',
@@ -102,7 +99,6 @@ export default function FinanceiroPage() {
     productId: '',
     notes: '',
     productCost: '',
-    deliveryCost: '',
   });
 
   const [editData, setEditData] = useState<Partial<FormData> | null>(null);
@@ -167,14 +163,13 @@ export default function FinanceiroPage() {
     if (bills.length === 0) return;
 
     const loadCosts = async () => {
-      const cache: Record<string, { productCost: number | null; deliveryCost: number | null }> = {};
+      const cache: Record<string, { productCost: number | null }> = {};
 
       // Primeiro, usar produtos já relacionados
       for (const bill of bills) {
         if (bill.product) {
           cache[bill.id] = {
             productCost: bill.product.productCost,
-            deliveryCost: bill.product.deliveryCost
           };
         }
       }
@@ -200,7 +195,6 @@ export default function FinanceiroPage() {
               const product = productMap.get(mlListingId) as any;
               cache[bill.id] = {
                 productCost: product.productCost,
-                deliveryCost: product.deliveryCost
               };
             }
           }
@@ -226,7 +220,6 @@ export default function FinanceiroPage() {
           ...prev,
           [name]: value,
           productCost: selectedProduct.productCost ? selectedProduct.productCost.toString() : '',
-          deliveryCost: selectedProduct.deliveryCost ? selectedProduct.deliveryCost.toString() : '',
         }));
         return;
       }
@@ -251,7 +244,6 @@ export default function FinanceiroPage() {
           ...prev,
           [name]: value,
           productCost: selectedProduct.productCost ? selectedProduct.productCost.toString() : '',
-          deliveryCost: selectedProduct.deliveryCost ? selectedProduct.deliveryCost.toString() : '',
         }));
         return;
       }
@@ -277,7 +269,6 @@ export default function FinanceiroPage() {
           amount: parseFloat(formData.amount),
           productId: formData.productId || null,
           productCost: formData.productCost ? parseFloat(formData.productCost) : null,
-          deliveryCost: formData.deliveryCost ? parseFloat(formData.deliveryCost) : null,
         }),
       });
 
@@ -295,7 +286,6 @@ export default function FinanceiroPage() {
           productId: '',
           notes: '',
           productCost: '',
-          deliveryCost: '',
         });
         setShowNewForm(false);
         fetchBills(1);
@@ -325,7 +315,6 @@ export default function FinanceiroPage() {
           amount: editData.amount ? parseFloat(editData.amount) : undefined,
           productId: editData.productId || undefined,
           productCost: editData.productCost ? parseFloat(editData.productCost) : undefined,
-          deliveryCost: editData.deliveryCost ? parseFloat(editData.deliveryCost) : undefined,
         }),
       });
 
@@ -405,7 +394,6 @@ export default function FinanceiroPage() {
       productId: bill.productId || '',
       notes: bill.notes || '',
       productCost: bill.productCost?.toString() || '',
-      deliveryCost: bill.deliveryCost?.toString() || '',
     });
     setEditModal({ isOpen: true, bill });
   };
@@ -417,10 +405,9 @@ export default function FinanceiroPage() {
 
   const openNotesModal = async (bill: Bill) => {
     let productCost = bill.productCost;
-    let deliveryCost = bill.deliveryCost;
 
     // Se não tiver custos salvos, buscar do produto
-    if ((!productCost || !deliveryCost) && bill.notes) {
+    if (!productCost && bill.notes) {
       // Extrair itemId das notas (linha "Produto") - pode ter MLB na frente
       const produtoMatch = bill.notes.match(/Produto\n(MLB)?(\d+)/);
       const itemId = produtoMatch ? produtoMatch[2] : null;
@@ -437,7 +424,6 @@ export default function FinanceiroPage() {
           if (data.data && data.data.length > 0) {
             const product = data.data[0];
             productCost = productCost || product.productCost || null;
-            deliveryCost = deliveryCost || product.deliveryCost || null;
           }
         } catch (error) {
           console.error('Erro ao buscar produto:', error);
@@ -448,7 +434,7 @@ export default function FinanceiroPage() {
     // Armazenar no cache para usar na coluna LUCRO
     setCostCache(prev => ({
       ...prev,
-      [bill.id]: { productCost, deliveryCost }
+      [bill.id]: { productCost }
     }));
 
     setNotesModal({
@@ -456,7 +442,6 @@ export default function FinanceiroPage() {
       notes: bill.notes || '',
       billId: bill.id,
       productCost,
-      deliveryCost,
     });
   };
 
@@ -631,20 +616,6 @@ export default function FinanceiroPage() {
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                   />
                 </div>
-
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    Custo Entrega (R$)
-                  </label>
-                  <input
-                    type="number"
-                    name="deliveryCost"
-                    value={formData.deliveryCost}
-                    onChange={handleInputChange}
-                    step="0.01"
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                  />
-                </div>
               </>
             )}
 
@@ -814,7 +785,20 @@ export default function FinanceiroPage() {
                     </TableCell>
                     <TableCell className="text-sm font-semibold">
                       <div className="flex items-center gap-2">
-                        <span>{formatCurrency(bill.amount)}</span>
+                        <span>
+                          {bill.type === 'receivable' ? (
+                            (() => {
+                              const vendaMatch = bill.notes?.match(/Taxa de venda:\s*R\$\s*([\d,\.]+)/);
+                              const taxaVenda = vendaMatch ? parseFloat(vendaMatch[1].replace(',', '.')) : 0;
+                              const envioMatch = bill.notes?.match(/Taxa de envio:\s*R\$\s*([\d,\.]+)/);
+                              const taxaEnvio = envioMatch ? parseFloat(envioMatch[1].replace(',', '.')) : 0;
+                              const bruto = bill.amount + taxaVenda + taxaEnvio;
+                              return formatCurrency(bruto);
+                            })()
+                          ) : (
+                            formatCurrency(bill.amount)
+                          )}
+                        </span>
                         {bill.notes && bill.type === 'receivable' && (
                           <button
                             onClick={() => openNotesModal(bill)}
@@ -840,13 +824,12 @@ export default function FinanceiroPage() {
 
                           // Usar custos do cache (preenchido quando abre modal) ou do bill
                           let prodCost = costCache[bill.id]?.productCost ?? bill.productCost ?? 0;
-                          let delivCost = costCache[bill.id]?.deliveryCost ?? bill.deliveryCost ?? 0;
 
                           // Bruto = bill.amount (líquido após taxas ML) + taxas ML
                           const bruto = bill.amount + taxaVenda + taxaEnvio;
 
                           // Lucro = Bruto - Todas as taxas
-                          const profit = bruto - taxaVenda - taxaEnvio - prodCost - delivCost;
+                          const profit = bruto - taxaVenda - taxaEnvio - prodCost;
                           return (
                             <span className={profit > 0 ? 'text-green-600' : 'text-red-600'}>
                               {formatCurrency(profit)}
@@ -973,8 +956,7 @@ export default function FinanceiroPage() {
                 const taxasTotal = taxaVenda + taxaEnvio;
 
                 const prodCost = notesModal.productCost ?? 0;
-                const delivCost = notesModal.deliveryCost ?? 0;
-                const allTaxes = taxasTotal + prodCost + delivCost;
+                const allTaxes = taxasTotal + prodCost;
                 const liquidoReal = bruto - allTaxes;
 
                 return (
@@ -1000,21 +982,13 @@ export default function FinanceiroPage() {
                         </div>
 
                         {/* Custos */}
-                        {(prodCost > 0 || delivCost > 0) && (
+                        {prodCost > 0 && (
                           <div className="space-y-1">
                             <div className="font-medium text-gray-700">Custos:</div>
-                            {prodCost > 0 && (
-                              <div className="flex justify-between ml-2">
-                                <span>  • 💰 Mercadoria:</span>
-                                <span>{formatCurrency(prodCost)}</span>
-                              </div>
-                            )}
-                            {delivCost > 0 && (
-                              <div className="flex justify-between ml-2">
-                                <span>  • 🛵 Entrega Local:</span>
-                                <span>{formatCurrency(delivCost)}</span>
-                              </div>
-                            )}
+                            <div className="flex justify-between ml-2">
+                              <span>  • 💰 Mercadoria:</span>
+                              <span>{formatCurrency(prodCost)}</span>
+                            </div>
                           </div>
                         )}
                       </div>
@@ -1155,20 +1129,6 @@ export default function FinanceiroPage() {
                       type="number"
                       name="productCost"
                       value={editData?.productCost || ''}
-                      onChange={handleEditInputChange}
-                      step="0.01"
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">
-                      Custo Entrega (R$)
-                    </label>
-                    <input
-                      type="number"
-                      name="deliveryCost"
-                      value={editData?.deliveryCost || ''}
                       onChange={handleEditInputChange}
                       step="0.01"
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"

@@ -10,7 +10,6 @@ export async function GET() {
         name: true,
         baseSalePrice: true,
         productCost: true,
-        deliveryCost: true,
         variants: {
           where: { active: true },
           select: { cod: true, title: true },

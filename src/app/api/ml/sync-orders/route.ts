@@ -272,19 +272,17 @@ Bruto: R$ ${order.total_amount.toFixed(2)} | Taxas: ${taxBreakdown} (Total: R$ $
 
       // Buscar produto pelo itemId (mlListingId) para pegar custos
       let productCost: number | null = null;
-      let deliveryCost: number | null = null;
       let productId: string | null = null;
 
       if (itemId) {
         const product = await prisma.product.findFirst({
           where: { mlListingId: itemId },
-          select: { id: true, productCost: true, deliveryCost: true },
+          select: { id: true, productCost: true },
         });
 
         if (product) {
           productId = product.id;
           productCost = product.productCost;
-          deliveryCost = product.deliveryCost;
         }
       }
 
@@ -301,7 +299,6 @@ Bruto: R$ ${order.total_amount.toFixed(2)} | Taxas: ${taxBreakdown} (Total: R$ $
           notes: notesContent,
           productId,
           productCost,
-          deliveryCost,
         },
         include: { supplier: true },
       });
