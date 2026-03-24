@@ -17,11 +17,12 @@ export async function GET(req: NextRequest) {
       }),
       prisma.bill.count(),
       prisma.$queryRaw<
-        { total_payable: number; total_receivable: number; total_overdue: number; count_overdue: number }[]
+        { total_payable: number; total_receivable_bruto: number; total_receivable_liquid: number; total_overdue: number; count_overdue: number }[]
       >`
         SELECT
           COALESCE(SUM(CASE WHEN type = 'payable' THEN amount ELSE 0 END), 0) as total_payable,
-          COALESCE(SUM(CASE WHEN type = 'receivable' THEN amount ELSE 0 END), 0) as total_receivable,
+          COALESCE(SUM(CASE WHEN type = 'receivable' THEN amount ELSE 0 END), 0) as total_receivable_bruto,
+          COALESCE(SUM(CASE WHEN type = 'receivable' THEN amount - COALESCE("productCost", 0) - COALESCE("deliveryCost", 0) ELSE 0 END), 0) as total_receivable_liquid,
           COALESCE(SUM(CASE WHEN status = 'overdue' THEN amount ELSE 0 END), 0) as total_overdue,
           COALESCE(COUNT(CASE WHEN status = 'overdue' THEN 1 END), 0) as count_overdue
         FROM "Bill"
@@ -30,7 +31,8 @@ export async function GET(req: NextRequest) {
 
     const summaryData = summary[0] || {
       total_payable: 0,
-      total_receivable: 0,
+      total_receivable_bruto: 0,
+      total_receivable_liquid: 0,
       total_overdue: 0,
       count_overdue: 0,
     };
@@ -41,8 +43,10 @@ export async function GET(req: NextRequest) {
       pages: Math.ceil(total / limit),
       summary: {
         totalPayable: Number(summaryData.total_payable),
-        totalReceivable: Number(summaryData.total_receivable),
-        balance: Number(summaryData.total_receivable) - Number(summaryData.total_payable),
+        totalReceivableBruto: Number(summaryData.total_receivable_bruto),
+        totalReceivableLiquid: Number(summaryData.total_receivable_liquid),
+        balanceBruto: Number(summaryData.total_receivable_bruto) - Number(summaryData.total_payable),
+        balanceLucroReal: Number(summaryData.total_receivable_liquid) - Number(summaryData.total_payable),
         totalOverdue: Number(summaryData.total_overdue),
         countOverdue: Number(summaryData.count_overdue),
       },

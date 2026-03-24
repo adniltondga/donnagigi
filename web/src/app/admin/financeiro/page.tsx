@@ -54,8 +54,10 @@ interface FormData {
 
 interface Summary {
   totalPayable: number;
-  totalReceivable: number;
-  balance: number;
+  totalReceivableBruto: number;
+  totalReceivableLiquid: number;
+  balanceBruto: number;
+  balanceLucroReal: number;
   totalOverdue: number;
   countOverdue: number;
 }
@@ -661,61 +663,101 @@ export default function FinanceiroPage() {
 
       {/* Summary Cards */}
       {summary && (
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-          <div className="bg-orange-50 rounded-lg shadow p-6">
-            <div className="text-orange-600 text-sm font-semibold mb-2">
-              🔴 Total a Pagar
+        <>
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+            <div className="bg-orange-50 rounded-lg shadow p-6">
+              <div className="text-orange-600 text-sm font-semibold mb-2">
+                🔴 Total a Pagar
+              </div>
+              <div className="text-2xl font-bold text-orange-900">
+                {formatCurrency(summary.totalPayable)}
+              </div>
             </div>
-            <div className="text-2xl font-bold text-orange-900">
-              {formatCurrency(summary.totalPayable)}
+
+            <div className="bg-blue-50 rounded-lg shadow p-6">
+              <div className="text-blue-600 text-sm font-semibold mb-2">
+                💙 Total a Receber (Bruto)
+              </div>
+              <div className="text-2xl font-bold text-blue-900">
+                {formatCurrency(summary.totalReceivableBruto)}
+              </div>
+            </div>
+
+            <div className="bg-blue-100 rounded-lg shadow p-6">
+              <div className="text-blue-700 text-sm font-semibold mb-2">
+                💎 Total a Receber (Lucro Real)
+              </div>
+              <div className="text-2xl font-bold text-blue-900">
+                {formatCurrency(summary.totalReceivableLiquid)}
+              </div>
+            </div>
+
+            <div className="bg-red-50 rounded-lg shadow p-6">
+              <div className="text-red-600 text-sm font-semibold mb-2">
+                ⚠️ Vencidas
+              </div>
+              <div className="text-2xl font-bold text-red-900">
+                {summary.countOverdue} ({formatCurrency(summary.totalOverdue)})
+              </div>
             </div>
           </div>
 
-          <div className="bg-blue-50 rounded-lg shadow p-6">
-            <div className="text-blue-600 text-sm font-semibold mb-2">
-              💙 Total a Receber
-            </div>
-            <div className="text-2xl font-bold text-blue-900">
-              {formatCurrency(summary.totalReceivable)}
-            </div>
-          </div>
-
-          <div
-            className={`rounded-lg shadow p-6 ${
-              summary.balance >= 0
-                ? 'bg-green-50'
-                : 'bg-red-50'
-            }`}
-          >
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
             <div
-              className={`text-sm font-semibold mb-2 ${
-                summary.balance >= 0
-                  ? 'text-green-600'
-                  : 'text-red-600'
+              className={`rounded-lg shadow p-6 ${
+                summary.balanceBruto >= 0
+                  ? 'bg-green-50'
+                  : 'bg-red-50'
               }`}
             >
-              Saldo
+              <div
+                className={`text-sm font-semibold mb-2 ${
+                  summary.balanceBruto >= 0
+                    ? 'text-green-600'
+                    : 'text-red-600'
+                }`}
+              >
+                Saldo (Bruto)
+              </div>
+              <div
+                className={`text-2xl font-bold ${
+                  summary.balanceBruto >= 0
+                    ? 'text-green-900'
+                    : 'text-red-900'
+                }`}
+              >
+                {formatCurrency(summary.balanceBruto)}
+              </div>
             </div>
+
             <div
-              className={`text-2xl font-bold ${
-                summary.balance >= 0
-                  ? 'text-green-900'
-                  : 'text-red-900'
+              className={`rounded-lg shadow p-6 ${
+                summary.balanceLucroReal >= 0
+                  ? 'bg-green-100'
+                  : 'bg-red-100'
               }`}
             >
-              {formatCurrency(summary.balance)}
+              <div
+                className={`text-sm font-semibold mb-2 ${
+                  summary.balanceLucroReal >= 0
+                    ? 'text-green-700'
+                    : 'text-red-700'
+                }`}
+              >
+                Saldo (Lucro Real)
+              </div>
+              <div
+                className={`text-2xl font-bold ${
+                  summary.balanceLucroReal >= 0
+                    ? 'text-green-900'
+                    : 'text-red-900'
+                }`}
+              >
+                {formatCurrency(summary.balanceLucroReal)}
+              </div>
             </div>
           </div>
-
-          <div className="bg-red-50 rounded-lg shadow p-6">
-            <div className="text-red-600 text-sm font-semibold mb-2">
-              ⚠️ Vencidas
-            </div>
-            <div className="text-2xl font-bold text-red-900">
-              {summary.countOverdue} ({formatCurrency(summary.totalOverdue)})
-            </div>
-          </div>
-        </div>
+        </>
       )}
 
       {/* Bills Table */}
