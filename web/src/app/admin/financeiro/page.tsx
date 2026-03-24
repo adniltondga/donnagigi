@@ -50,6 +50,7 @@ interface FormData {
   notes: string;
   productCost: string;
   deliveryCost: string;
+  status?: string;
 }
 
 interface Summary {
@@ -80,7 +81,7 @@ export default function FinanceiroPage() {
   const [summary, setSummary] = useState<Summary | null>(null);
   const [loading, setLoading] = useState(false);
   const [showNewForm, setShowNewForm] = useState(false);
-  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editModal, setEditModal] = useState<{ isOpen: boolean; bill: Bill | null }>({ isOpen: false, bill: null });
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [page, setPage] = useState(1);
@@ -309,14 +310,14 @@ export default function FinanceiroPage() {
     }
   };
 
-  const handleUpdate = async (id: string) => {
-    if (!editData) return;
+  const handleUpdate = async () => {
+    if (!editData || !editModal.bill) return;
 
     setLoading(true);
     setMessage(null);
 
     try {
-      const response = await fetch(`/api/bills/${id}`, {
+      const response = await fetch(`/api/bills/${editModal.bill.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -332,8 +333,7 @@ export default function FinanceiroPage() {
 
       if (response.ok) {
         setMessage({ type: 'success', text: 'Conta atualizada com sucesso!' });
-        setEditingId(null);
-        setEditData(null);
+        closeEditModal();
         fetchBills(page);
       } else {
         setMessage({ type: 'error', text: data.error || 'Erro ao atualizar conta' });
@@ -393,6 +393,26 @@ export default function FinanceiroPage() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const openEditModal = (bill: Bill) => {
+    setEditData({
+      description: bill.description,
+      amount: bill.amount.toString(),
+      dueDate: bill.dueDate.split('T')[0],
+      category: bill.category,
+      supplierId: bill.supplierId || '',
+      productId: bill.productId || '',
+      notes: bill.notes || '',
+      productCost: bill.productCost?.toString() || '',
+      deliveryCost: bill.deliveryCost?.toString() || '',
+    });
+    setEditModal({ isOpen: true, bill });
+  };
+
+  const closeEditModal = () => {
+    setEditModal({ isOpen: false, bill: null });
+    setEditData(null);
   };
 
   const openNotesModal = async (bill: Bill) => {
@@ -783,231 +803,114 @@ export default function FinanceiroPage() {
             <TableBody>
                 {bills.map((bill) => (
                   <TableRow key={bill.id}>
-                    {editingId === bill.id ? (
-                      <>
-                        <TableCell>
-                          <input
-                            type="date"
-                            name="dueDate"
-                            value={editData?.dueDate || formatDate(bill.dueDate).split('/').reverse().join('-')}
-                            onChange={handleEditInputChange}
-                            className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
-                          />
-                        </TableCell>
-                        <TableCell>
-                          <input
-                            type="text"
-                            name="description"
-                            value={editData?.description || bill.description}
-                            onChange={handleEditInputChange}
-                            className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
-                          />
-                        </TableCell>
-                        <TableCell className="text-sm font-medium">
-                          {bill.type === 'payable' ? 'A Pagar' : 'A Receber'}
-                        </TableCell>
-                        {bill.type === 'receivable' && (
-                          <TableCell>
-                            <select
-                              name="productId"
-                              value={editData?.productId || bill.productId || ''}
-                              onChange={handleEditInputChange}
-                              className="w-full px-2 py-1 border border-gray-300 rounded text-xs"
-                            >
-                              <option value="">Sem produto</option>
-                              {products.map((product) => (
-                                <option key={product.id} value={product.id}>
-                                  {product.name}
-                                </option>
-                              ))}
-                            </select>
-                          </TableCell>
+                    <TableCell className="text-sm">
+                      {formatDate(bill.dueDate)}
+                    </TableCell>
+                    <TableCell className="text-sm">
+                      {bill.description}
+                    </TableCell>
+                    <TableCell className="text-sm font-medium">
+                      {bill.type === 'payable' ? 'A Pagar' : 'A Receber'}
+                    </TableCell>
+                    <TableCell className="text-sm font-semibold">
+                      <div className="flex items-center gap-2">
+                        <span>{formatCurrency(bill.amount)}</span>
+                        {bill.notes && bill.type === 'receivable' && (
+                          <button
+                            onClick={() => openNotesModal(bill)}
+                            className="cursor-pointer p-1 hover:bg-blue-100 rounded transition"
+                          >
+                            <Info
+                              size={16}
+                              className="text-blue-500 hover:text-blue-700 flex-shrink-0"
+                            />
+                          </button>
                         )}
-                        <TableCell>
-                          <input
-                            type="number"
-                            name="amount"
-                            value={editData?.amount || bill.amount}
-                            onChange={handleEditInputChange}
-                            step="0.01"
-                            className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
-                          />
-                        </TableCell>
-                        <TableCell>
-                          {bill.type === 'receivable' ? (
-                            <div className="flex gap-2">
-                              <input
-                                type="number"
-                                name="productCost"
-                                placeholder="Prod"
-                                value={editData?.productCost ?? ''}
-                                onChange={handleEditInputChange}
-                                step="0.01"
-                                className="w-1/2 px-2 py-1 border border-gray-300 rounded text-xs"
-                              />
-                              <input
-                                type="number"
-                                name="deliveryCost"
-                                placeholder="Entrega"
-                                value={editData?.deliveryCost ?? ''}
-                                onChange={handleEditInputChange}
-                                step="0.01"
-                                className="w-1/2 px-2 py-1 border border-gray-300 rounded text-xs"
-                              />
-                            </div>
-                          ) : (
-                            <span>-</span>
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant="default">{statusLabel[bill.status]}</Badge>
-                        </TableCell>
-                        <TableCell className="text-sm">
-                          {bill.supplier?.name || '-'}
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex gap-2">
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-sm font-semibold">
+                      {bill.type === 'receivable' ? (
+                        (() => {
+                          // Extrair taxas das notas
+                          const vendaMatch = bill.notes?.match(/Taxa de venda:\s*R\$\s*([\d,\.]+)/);
+                          const taxaVenda = vendaMatch ? parseFloat(vendaMatch[1].replace(',', '.')) : 0;
+
+                          const envioMatch = bill.notes?.match(/Taxa de envio:\s*R\$\s*([\d,\.]+)/);
+                          const taxaEnvio = envioMatch ? parseFloat(envioMatch[1].replace(',', '.')) : 0;
+
+                          // Usar custos do cache (preenchido quando abre modal) ou do bill
+                          let prodCost = costCache[bill.id]?.productCost ?? bill.productCost ?? 0;
+                          let delivCost = costCache[bill.id]?.deliveryCost ?? bill.deliveryCost ?? 0;
+
+                          // Bruto = bill.amount (líquido após taxas ML) + taxas ML
+                          const bruto = bill.amount + taxaVenda + taxaEnvio;
+
+                          // Lucro = Bruto - Todas as taxas
+                          const profit = bruto - taxaVenda - taxaEnvio - prodCost - delivCost;
+                          return (
+                            <span className={profit > 0 ? 'text-green-600' : 'text-red-600'}>
+                              {formatCurrency(profit)}
+                            </span>
+                          );
+                        })()
+                      ) : (
+                        <span>-</span>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="default">{statusLabel[bill.status]}</Badge>
+                    </TableCell>
+                    <TableCell className="text-sm">
+                      {bill.supplier?.name || '-'}
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex gap-2">
+                        <Button
+                          onClick={() => openEditModal(bill)}
+                          size="sm"
+                          variant="ghost"
+                        >
+                          ✏️
+                        </Button>
+                        {bill.status !== 'paid' && bill.status !== 'cancelled' && (
+                          <Button
+                            onClick={() => handleMarkAsPaid(bill.id)}
+                            disabled={loading}
+                            size="sm"
+                            variant="ghost"
+                          >
+                            ✓
+                          </Button>
+                        )}
+                        {deleteConfirm === bill.id ? (
+                          <>
                             <Button
-                              onClick={() => handleUpdate(bill.id)}
+                              onClick={() => handleDelete(bill.id)}
                               disabled={loading}
                               size="sm"
                               variant="ghost"
                             >
-                              ✅
+                              Confirmar
                             </Button>
                             <Button
-                              onClick={() => setEditingId(null)}
+                              onClick={() => setDeleteConfirm(null)}
                               size="sm"
                               variant="ghost"
                             >
-                              ❌
+                              Cancelar
                             </Button>
-                          </div>
-                        </TableCell>
-                      </>
-                    ) : (
-                      <>
-                        <TableCell className="text-sm">
-                          {formatDate(bill.dueDate)}
-                        </TableCell>
-                        <TableCell className="text-sm">
-                          {bill.description}
-                        </TableCell>
-                        <TableCell className="text-sm font-medium">
-                          {bill.type === 'payable' ? 'A Pagar' : 'A Receber'}
-                        </TableCell>
-                        <TableCell className="text-sm font-semibold">
-                          <div className="flex items-center gap-2">
-                            <span>{formatCurrency(bill.amount)}</span>
-                            {bill.notes && bill.type === 'receivable' && (
-                              <button
-                                onClick={() => openNotesModal(bill)}
-                                className="cursor-pointer p-1 hover:bg-blue-100 rounded transition"
-                              >
-                                <Info
-                                  size={16}
-                                  className="text-blue-500 hover:text-blue-700 flex-shrink-0"
-                                />
-                              </button>
-                            )}
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-sm font-semibold">
-                          {bill.type === 'receivable' ? (
-                            (() => {
-                              // Extrair taxas das notas
-                              const vendaMatch = bill.notes?.match(/Taxa de venda:\s*R\$\s*([\d,\.]+)/);
-                              const taxaVenda = vendaMatch ? parseFloat(vendaMatch[1].replace(',', '.')) : 0;
-
-                              const envioMatch = bill.notes?.match(/Taxa de envio:\s*R\$\s*([\d,\.]+)/);
-                              const taxaEnvio = envioMatch ? parseFloat(envioMatch[1].replace(',', '.')) : 0;
-
-                              // Usar custos do cache (preenchido quando abre modal) ou do bill
-                              let prodCost = costCache[bill.id]?.productCost ?? bill.productCost ?? 0;
-                              let delivCost = costCache[bill.id]?.deliveryCost ?? bill.deliveryCost ?? 0;
-
-                              // Bruto = bill.amount (líquido após taxas ML) + taxas ML
-                              const bruto = bill.amount + taxaVenda + taxaEnvio;
-
-                              // Lucro = Bruto - Todas as taxas
-                              const profit = bruto - taxaVenda - taxaEnvio - prodCost - delivCost;
-                              return (
-                                <span className={profit > 0 ? 'text-green-600' : 'text-red-600'}>
-                                  {formatCurrency(profit)}
-                                </span>
-                              );
-                            })()
-                          ) : (
-                            <span>-</span>
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant="default">{statusLabel[bill.status]}</Badge>
-                        </TableCell>
-                        <TableCell className="text-sm">
-                          {bill.supplier?.name || '-'}
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex gap-2">
-                            <Button
-                              onClick={() => {
-                                setEditingId(bill.id);
-                                setEditData({
-                                  description: bill.description,
-                                  amount: bill.amount.toString(),
-                                  dueDate: bill.dueDate,
-                                  category: bill.category,
-                                  productId: bill.productId || '',
-                                  productCost: bill.productCost !== null && bill.productCost !== undefined ? bill.productCost.toString() : '',
-                                  deliveryCost: bill.deliveryCost !== null && bill.deliveryCost !== undefined ? bill.deliveryCost.toString() : '',
-                                });
-                              }}
-                              size="sm"
-                              variant="ghost"
-                            >
-                              ✏️
-                            </Button>
-                            {bill.status !== 'paid' && bill.status !== 'cancelled' && (
-                              <Button
-                                onClick={() => handleMarkAsPaid(bill.id)}
-                                disabled={loading}
-                                size="sm"
-                                variant="ghost"
-                              >
-                                ✓
-                              </Button>
-                            )}
-                            {deleteConfirm === bill.id ? (
-                              <>
-                                <Button
-                                  onClick={() => handleDelete(bill.id)}
-                                  disabled={loading}
-                                  size="sm"
-                                  variant="ghost"
-                                >
-                                  Confirmar
-                                </Button>
-                                <Button
-                                  onClick={() => setDeleteConfirm(null)}
-                                  size="sm"
-                                  variant="ghost"
-                                >
-                                  Cancelar
-                                </Button>
-                              </>
-                            ) : (
-                              <Button
-                                onClick={() => setDeleteConfirm(bill.id)}
-                                size="sm"
-                                variant="ghost"
-                              >
-                                🗑️
-                              </Button>
-                            )}
-                          </div>
-                        </TableCell>
-                      </>
-                    )}
+                          </>
+                        ) : (
+                          <Button
+                            onClick={() => setDeleteConfirm(bill.id)}
+                            size="sm"
+                            variant="ghost"
+                          >
+                            🗑️
+                          </Button>
+                        )}
+                      </div>
+                    </TableCell>
                   </TableRow>
                 ))}
             </TableBody>
@@ -1145,6 +1048,162 @@ export default function FinanceiroPage() {
                 className="bg-gray-300 hover:bg-gray-400 text-gray-800 font-semibold py-2 px-4 rounded-lg transition"
               >
                 Fechar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Modal */}
+      {editModal.isOpen && editModal.bill && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full p-6 space-y-4">
+            <div className="flex justify-between items-center">
+              <h2 className="text-xl font-bold text-gray-900">✏️ Editar Conta</h2>
+              <button
+                onClick={closeEditModal}
+                className="text-gray-500 hover:text-gray-700 text-2xl"
+              >
+                ×
+              </button>
+            </div>
+
+            <form className="grid grid-cols-2 gap-4">
+              <div className="col-span-2">
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Descrição
+                </label>
+                <input
+                  type="text"
+                  name="description"
+                  value={editData?.description || ''}
+                  onChange={handleEditInputChange}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Valor (R$)
+                </label>
+                <input
+                  type="number"
+                  name="amount"
+                  value={editData?.amount || ''}
+                  onChange={handleEditInputChange}
+                  step="0.01"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Vencimento
+                </label>
+                <input
+                  type="date"
+                  name="dueDate"
+                  value={editData?.dueDate || ''}
+                  onChange={handleEditInputChange}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Status
+                </label>
+                <select
+                  name="status"
+                  value={editData?.status || editModal.bill.status}
+                  onChange={handleEditInputChange}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                >
+                  <option value="pending">Pendente</option>
+                  <option value="paid">Pago</option>
+                  <option value="overdue">Vencido</option>
+                  <option value="cancelled">Cancelado</option>
+                </select>
+              </div>
+
+              {editModal.bill.type === 'receivable' && (
+                <>
+                  <div className="col-span-2">
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                      Produto
+                    </label>
+                    <select
+                      name="productId"
+                      value={editData?.productId || ''}
+                      onChange={handleEditInputChange}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                    >
+                      <option value="">Selecionar produto...</option>
+                      {products.map((product) => (
+                        <option key={product.id} value={product.id}>
+                          {product.name} {product.productCost ? `- R$ ${product.productCost.toFixed(2)}` : ''}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                      Custo Mercadoria (R$)
+                    </label>
+                    <input
+                      type="number"
+                      name="productCost"
+                      value={editData?.productCost || ''}
+                      onChange={handleEditInputChange}
+                      step="0.01"
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                      Custo Entrega (R$)
+                    </label>
+                    <input
+                      type="number"
+                      name="deliveryCost"
+                      value={editData?.deliveryCost || ''}
+                      onChange={handleEditInputChange}
+                      step="0.01"
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                    />
+                  </div>
+                </>
+              )}
+
+              <div className="col-span-2">
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Notas
+                </label>
+                <textarea
+                  name="notes"
+                  value={editData?.notes || ''}
+                  onChange={handleEditInputChange}
+                  rows={4}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                />
+              </div>
+            </form>
+
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={handleUpdate}
+                disabled={loading}
+                className="bg-gradient-to-r from-primary-500 to-primary-600 hover:from-primary-600 hover:to-primary-700 disabled:opacity-50 text-white font-semibold py-2 px-4 rounded-lg transition"
+              >
+                {loading ? 'Salvando...' : '✅ Salvar'}
+              </button>
+              <button
+                onClick={closeEditModal}
+                className="bg-gray-300 hover:bg-gray-400 text-gray-800 font-semibold py-2 px-4 rounded-lg transition"
+              >
+                ❌ Cancelar
               </button>
             </div>
           </div>
