@@ -30,7 +30,6 @@ interface Product {
   baseShoppeeTariff?: number | null
   baseShopeeDeliveryTariff?: number | null
   productCost?: number | null
-  deliveryCost?: number | null
   variants?: any[]
 }
 
@@ -48,7 +47,6 @@ export default function ProductFormDialog({ product, onClose }: ProductFormDialo
     name: product?.name || '',
     description: product?.description || '',
     productCost: product?.productCost || 0,
-    deliveryCost: product?.deliveryCost || 0,
   })
 
   // Sincronizar formData quando o product mudar
@@ -57,7 +55,6 @@ export default function ProductFormDialog({ product, onClose }: ProductFormDialo
       name: product?.name || '',
       description: product?.description || '',
       productCost: product?.productCost || 0,
-      deliveryCost: product?.deliveryCost || 0,
     })
   }, [product])
 
@@ -92,7 +89,6 @@ export default function ProductFormDialog({ product, onClose }: ProductFormDialo
             name: formData.name,
             description: formData.description,
             productCost: formData.productCost,
-            deliveryCost: formData.deliveryCost,
             variants: [],
           }),
         })
@@ -113,7 +109,6 @@ export default function ProductFormDialog({ product, onClose }: ProductFormDialo
             name: formData.name,
             description: formData.description,
             productCost: formData.productCost,
-            deliveryCost: formData.deliveryCost,
           }),
         })
 
@@ -143,7 +138,7 @@ export default function ProductFormDialog({ product, onClose }: ProductFormDialo
           </DialogTitle>
           <DialogDescription>
             {product
-              ? 'Ajuste o custo da mercadoria e da entrega local.'
+              ? 'Ajuste o custo da mercadoria.'
               : 'Crie um novo produto com seus dados básicos e custos.'}
           </DialogDescription>
         </DialogHeader>
@@ -164,14 +159,6 @@ export default function ProductFormDialog({ product, onClose }: ProductFormDialo
                 <CurrencyInput
                   value={formData.productCost || 0}
                   onChange={(value) => setFormData({ ...formData, productCost: value })}
-                  placeholder="R$ 0,00"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">🛵 Custo Entrega Local</label>
-                <CurrencyInput
-                  value={formData.deliveryCost || 0}
-                  onChange={(value) => setFormData({ ...formData, deliveryCost: value })}
                   placeholder="R$ 0,00"
                 />
               </div>

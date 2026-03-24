@@ -22,7 +22,7 @@ export async function GET(req: NextRequest) {
         SELECT
           COALESCE(SUM(CASE WHEN type = 'payable' THEN amount ELSE 0 END), 0) as total_payable,
           COALESCE(SUM(CASE WHEN type = 'receivable' THEN amount ELSE 0 END), 0) as total_receivable_bruto,
-          COALESCE(SUM(CASE WHEN type = 'receivable' THEN amount - COALESCE("productCost", 0) - COALESCE("deliveryCost", 0) ELSE 0 END), 0) as total_receivable_liquid,
+          COALESCE(SUM(CASE WHEN type = 'receivable' THEN amount - COALESCE("productCost", 0) ELSE 0 END), 0) as total_receivable_liquid,
           COALESCE(SUM(CASE WHEN status = 'overdue' THEN amount ELSE 0 END), 0) as total_overdue,
           COALESCE(COUNT(CASE WHEN status = 'overdue' THEN 1 END), 0) as count_overdue
         FROM "Bill"
@@ -63,7 +63,7 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { type, description, amount, dueDate, category, supplierId, notes, mlOrderId, productId, productCost, deliveryCost } = body;
+    const { type, description, amount, dueDate, category, supplierId, notes, mlOrderId, productId, productCost } = body;
 
     // Validação básica
     if (!type || !description || !amount || !dueDate) {
@@ -88,18 +88,14 @@ export async function POST(req: NextRequest) {
 
     // Se productId foi fornecido, puxar o custo automaticamente se não for fornecido
     let finalProductCost = productCost;
-    let finalDeliveryCost = deliveryCost;
-    if (productId && (!productCost || !deliveryCost)) {
+    if (productId && !productCost) {
       const product = await prisma.product.findUnique({
         where: { id: productId },
-        select: { productCost: true, deliveryCost: true },
+        select: { productCost: true },
       });
       if (product) {
         if (!productCost && product.productCost) {
           finalProductCost = product.productCost;
-        }
-        if (!deliveryCost && product.deliveryCost) {
-          finalDeliveryCost = product.deliveryCost;
         }
       }
     }
@@ -115,7 +111,6 @@ export async function POST(req: NextRequest) {
         productId: productId || null,
         notes: notes || null,
         productCost: finalProductCost ? parseFloat(finalProductCost) : null,
-        deliveryCost: finalDeliveryCost ? parseFloat(finalDeliveryCost) : null,
         mlOrderId: mlOrderId || null,
       },
       include: { supplier: true, product: true },

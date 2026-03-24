@@ -34,22 +34,18 @@ export async function PUT(
 ) {
   try {
     const body = await req.json();
-    const { description, amount, dueDate, category, supplierId, notes, productCost, deliveryCost, productId } = body;
+    const { description, amount, dueDate, category, supplierId, notes, productCost, productId } = body;
 
     // Se productId foi fornecido, buscar os custos do produto
     let finalProductCost = productCost;
-    let finalDeliveryCost = deliveryCost;
-    if (productId && (!productCost || !deliveryCost)) {
+    if (productId && !productCost) {
       const product = await prisma.product.findUnique({
         where: { id: productId },
-        select: { productCost: true, deliveryCost: true },
+        select: { productCost: true },
       });
       if (product) {
         if (!productCost && product.productCost) {
           finalProductCost = product.productCost;
-        }
-        if (!deliveryCost && product.deliveryCost) {
-          finalDeliveryCost = product.deliveryCost;
         }
       }
     }
@@ -63,7 +59,6 @@ export async function PUT(
       ...(notes !== undefined && { notes: notes || null }),
       ...(productId !== undefined && { productId: productId || null }),
       ...(productCost !== undefined && { productCost: finalProductCost !== null && finalProductCost !== undefined ? parseFloat(finalProductCost.toString()) : null }),
-      ...(deliveryCost !== undefined && { deliveryCost: finalDeliveryCost !== null && finalDeliveryCost !== undefined ? parseFloat(finalDeliveryCost.toString()) : null }),
     };
 
     const bill = await prisma.bill.update({

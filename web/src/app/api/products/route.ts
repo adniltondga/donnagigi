@@ -28,7 +28,6 @@ export async function GET(req: NextRequest) {
           minStock: true,
           active: true,
           productCost: true,
-          deliveryCost: true,
           createdAt: true,
           updatedAt: true,
           variants: {
