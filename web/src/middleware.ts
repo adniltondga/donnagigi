@@ -10,8 +10,12 @@ export async function middleware(request: NextRequest) {
   if (protectedRoutes.some(route => path.startsWith(route))) {
     const token = request.cookies.get('token')?.value
 
+    console.log(`[Middleware] Verificando acesso para ${path}`)
+    console.log(`[Middleware] Token presente:`, !!token)
+    console.log(`[Middleware] Cookies disponíveis:`, request.cookies.getAll().map(c => c.name))
+
     if (!token) {
-      console.log(`[Middleware] No token found for ${path}`)
+      console.log(`[Middleware] ❌ No token found for ${path}`)
       return NextResponse.redirect(new URL('/admin/login', request.url))
     }
 
@@ -20,9 +24,9 @@ export async function middleware(request: NextRequest) {
         process.env.JWT_SECRET || 'seu_jwt_secret_super_seguro'
       )
       await jwtVerify(token, secret)
-      console.log(`[Middleware] Token valid for ${path}`)
+      console.log(`[Middleware] ✅ Token válido para ${path}`)
     } catch (error) {
-      console.log(`[Middleware] Token invalid for ${path}:`, error)
+      console.error(`[Middleware] ❌ Token inválido para ${path}:`, error)
       return NextResponse.redirect(new URL('/admin/login', request.url))
     }
   }
