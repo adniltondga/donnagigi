@@ -15,8 +15,8 @@ export const dynamic = "force-dynamic"
 
 export async function GET(_request: NextRequest) {
   try {
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000"
     const clientId = process.env.ML_CLIENT_ID
+    const redirectUri = process.env.ML_REDIRECT_URI || "https://www.donnagigi.com.br/api/ml/oauth/callback"
 
     if (!clientId) {
       return NextResponse.json(
@@ -44,12 +44,12 @@ export async function GET(_request: NextRequest) {
     // 3️⃣ Salvar code_verifier no banco para recuperar no callback
     // (em produção, usar Redis ou sessão segura)
     // Por enquanto, retornamos no response com instrução de salvar
-    
+
     // 4️⃣ Preparar parâmetros de OAuth2
     const params = new URLSearchParams({
       response_type: "code",
       client_id: clientId,
-      redirect_uri: `${baseUrl}/api/ml/oauth/callback`,
+      redirect_uri: redirectUri,
       code_challenge: codeChallenge,
       code_challenge_method: "S256",
       state: state
@@ -69,12 +69,11 @@ export async function GET(_request: NextRequest) {
       ],
       links: {
         fazer_login: authUrl,
-        verificar_status: `${baseUrl}/api/mercadolivre/integration`,
-        listar_reais: `${baseUrl}/api/ml/lista-reais`
+        listar_reais: "/api/ml/lista-reais"
       },
       debug_info: {
         client_id: clientId,
-        redirect_uri: `${baseUrl}/api/ml/oauth/callback`,
+        redirect_uri: redirectUri,
         code_challenge_method: "S256"
       }
     })

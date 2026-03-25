@@ -37,9 +37,9 @@ export async function GET(request: NextRequest) {
     console.log("📡 Recebido código do ML:", code.substring(0, 20) + "...")
 
     // 1️⃣ Trocar código por token
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000"
     const clientId = process.env.ML_CLIENT_ID
     const clientSecret = process.env.ML_CLIENT_SECRET
+    const redirectUri = process.env.ML_REDIRECT_URI || "https://www.donnagigi.com.br/api/ml/oauth/callback"
 
     if (!clientId || !clientSecret) {
       return NextResponse.json({
@@ -49,12 +49,16 @@ export async function GET(request: NextRequest) {
 
     const tokenUrl = "https://api.mercadolibre.com/oauth/token"
 
+    console.log("📡 Parâmetros do token:")
+    console.log("   redirectUri:", redirectUri)
+    console.log("   clientId:", clientId)
+
     const tokenParams = new URLSearchParams({
       grant_type: "authorization_code",
       client_id: clientId,
       client_secret: clientSecret,
       code: code,
-      redirect_uri: `${baseUrl}/api/ml/oauth/callback`
+      redirect_uri: redirectUri
     })
 
     console.log("📡 Trocando código por token...")
