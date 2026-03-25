@@ -1,10 +1,9 @@
 import { NextRequest, NextResponse } from "next/server"
 import { PrismaClient } from "@prisma/client"
 import bcrypt from "bcryptjs"
-import jwt from "jsonwebtoken"
+import { SignJWT } from "jose"
 
 const prisma = new PrismaClient()
-const JWT_SECRET = process.env.JWT_SECRET || "your-secret-key-change-in-production"
 
 export async function POST(request: NextRequest) {
   try {
@@ -39,12 +38,18 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Gerar token
-    const token = jwt.sign(
-      { id: user.id, email: user.email },
-      JWT_SECRET,
-      { expiresIn: "7d" }
+    // Gerar token com jose (compatível com middleware)
+    const secret = new TextEncoder().encode(
+      process.env.JWT_SECRET || "seu_jwt_secret_super_seguro"
     )
+
+    const token = await new SignJWT({
+      id: user.id,
+      email: user.email
+    })
+      .setProtectedHeader({ alg: "HS256" })
+      .setExpirationTime("7d")
+      .sign(secret)
 
     return NextResponse.json({
       token,

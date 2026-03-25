@@ -36,12 +36,30 @@ export default function LoginPage() {
         return
       }
 
-      // Salvar token em localStorage para verificação no layout
+      // Salvar token em cookie (para o middleware validar)
       if (data.token) {
-        localStorage.setItem("adminToken", data.token)
+        try {
+          const tokenRes = await fetch("/api/auth/set-token", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ token: data.token })
+          })
+
+          if (!tokenRes.ok) {
+            setError("Erro ao salvar autenticação")
+            return
+          }
+        } catch (err) {
+          setError("Erro ao salvar autenticação")
+          console.error(err)
+          return
+        }
       }
-      // Redirecionar para dashboard
-      router.push("/admin/dashboard")
+
+      // Aguardar um pouco para o cookie ser definido, depois redirecionar
+      setTimeout(() => {
+        router.push("/admin/dashboard")
+      }, 100)
     } catch (err) {
       setError("Erro ao conectar ao servidor")
       console.error(err)
