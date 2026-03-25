@@ -59,7 +59,7 @@ export async function GET(_request: NextRequest) {
       state: state
     })
 
-    const authUrl = `https://auth.mercadolibre.com.br/authorization?${params.toString()}`
+    const authUrl = `https://auth.mercadolivre.com.br/authorization?${params.toString()}`
 
     // 4️⃣ Redirecionar para ML e salvar code_verifier em cookie
     const response = NextResponse.redirect(authUrl)
