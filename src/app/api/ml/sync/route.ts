@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import { PrismaClient } from "@prisma/client"
+import { put } from "@vercel/blob"
 
 const prisma = new PrismaClient()
 
@@ -252,6 +253,60 @@ export async function GET() {
             })
           }
           variantsCount = 1
+        }
+
+        // Importar imagens do ML para o Blob
+        if (mlProduct.pictures && Array.isArray(mlProduct.pictures) && mlProduct.pictures.length > 0) {
+          try {
+            const existingImages = await prisma.productImage.findMany({
+              where: { productId: product.id }
+            })
+
+            // Importar apenas imagens que ainda não existem
+            await Promise.all(
+              mlProduct.pictures.map(async (picture, index) => {
+                try {
+                  const pictureUrl = picture.url
+                  const alreadyExists = existingImages.some(img => img.mlUrl === pictureUrl)
+
+                  if (alreadyExists) {
+                    return // Skip
+                  }
+
+                  // Baixar imagem
+                  const imageResponse = await fetch(pictureUrl)
+                  if (!imageResponse.ok) {
+                    console.warn(`[ML/SYNC] Erro ao baixar imagem: ${pictureUrl}`)
+                    return
+                  }
+
+                  const imageBuffer = await imageResponse.arrayBuffer()
+                  const filename = `products/${product.id}/ml-${Date.now()}-${index}.jpg`
+
+                  // Upload no Blob
+                  const blob = await put(filename, imageBuffer, {
+                    access: "public",
+                    contentType: "image/jpeg"
+                  })
+
+                  // Salvar no banco
+                  await prisma.productImage.create({
+                    data: {
+                      productId: product.id,
+                      url: blob.url,
+                      mlUrl: pictureUrl,
+                      order: index
+                    }
+                  })
+                } catch (imageError) {
+                  console.warn(`[ML/SYNC] Erro ao importar imagem individual:`, imageError)
+                }
+              })
+            )
+          } catch (imagesError) {
+            console.warn(`[ML/SYNC] Erro ao processar imagens do produto ${product.id}:`, imagesError)
+            // Continua mesmo se falhar nas imagens
+          }
         }
 
         results.push({
