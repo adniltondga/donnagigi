@@ -4,14 +4,23 @@ import crypto from "crypto"
 export const dynamic = "force-dynamic"
 
 /**
- * PARTE 4: Login OAuth2 PKCE com Mercado Livre
+ * PKCE Flow - Step 1: Login
  * GET /api/ml/oauth/login
- * 
- * Inicia o fluxo de autenticação com ML usando PKCE
- * Retorna:
- * - URL para o usuário acessar
- * - Instruções passo a passo
+ *
+ * Gera code_verifier e code_challenge (PKCE)
+ * Salva code_verifier em cookie httpOnly
+ * Redireciona para autenticação do ML
  */
+
+function generateCodeChallenge(codeVerifier: string): string {
+  return crypto
+    .createHash("sha256")
+    .update(codeVerifier)
+    .digest("base64")
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/=/g, "")
+}
 
 export async function GET(_request: NextRequest) {
   try {
@@ -28,57 +37,53 @@ export async function GET(_request: NextRequest) {
       )
     }
 
-    // 1️⃣ Gerar PKCE code_verifier e code_challenge
-    const codeVerifier = crypto.randomBytes(32).toString("hex")
-    const codeChallenge = crypto
-      .createHash("sha256")
-      .update(codeVerifier)
-      .digest("base64")
-      .replace(/\+/g, "-")
-      .replace(/\//g, "_")
-      .replace(/=/g, "")
+    // 1️⃣ Gerar PKCE code_verifier (43-128 caracteres)
+    const codeVerifier = crypto.randomBytes(32).toString("base64url")
+    const codeChallenge = generateCodeChallenge(codeVerifier)
 
     // 2️⃣ Gerar state para CSRF protection
     const state = crypto.randomBytes(16).toString("hex")
 
-    // 3️⃣ Salvar code_verifier no banco para recuperar no callback
-    // (em produção, usar Redis ou sessão segura)
-    // Por enquanto, retornamos no response com instrução de salvar
+    console.log("[PKCE/LOGIN] Gerando fluxo PKCE")
+    console.log("[PKCE/LOGIN] code_verifier:", codeVerifier.substring(0, 20) + "...")
+    console.log("[PKCE/LOGIN] code_challenge:", codeChallenge)
 
-    // 4️⃣ Preparar parâmetros de OAuth2
+    // 3️⃣ Preparar parâmetros OAuth2 com PKCE
     const params = new URLSearchParams({
       response_type: "code",
       client_id: clientId,
       redirect_uri: redirectUri,
       code_challenge: codeChallenge,
       code_challenge_method: "S256",
+      scope: "offline_access read",
       state: state
     })
 
     const authUrl = `https://auth.mercadolibre.com.br/authorization?${params.toString()}`
 
-    return NextResponse.json({
-      sucesso: true,
-      passo: "1️⃣ FAZER LOGIN NO MERCADO LIVRE",
-      instrucoes: [
-        "1. Clique no link 'fazer_login' abaixo",
-        "2. Você será redirecionado para o ML",
-        "3. Autorize o acesso a seus produtos",
-        "4. Serão redirecionados automaticamente",
-        "5. Seu token será salvo"
-      ],
-      links: {
-        fazer_login: authUrl,
-        listar_reais: "/api/ml/lista-reais"
-      },
-      debug_info: {
-        client_id: clientId,
-        redirect_uri: redirectUri,
-        code_challenge_method: "S256"
-      }
+    // 4️⃣ Redirecionar para ML e salvar code_verifier em cookie
+    const response = NextResponse.redirect(authUrl)
+
+    response.cookies.set("ml_code_verifier", codeVerifier, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      maxAge: 600, // 10 minutos
+      path: "/"
     })
+
+    response.cookies.set("ml_state", state, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      maxAge: 600,
+      path: "/"
+    })
+
+    console.log("[PKCE/LOGIN] ✅ Redirecionando para ML com PKCE")
+    return response
   } catch (error) {
-    console.error("Erro ao iniciar login:", error)
+    console.error("❌ Erro ao iniciar login:", error)
     return NextResponse.json(
       {
         erro: "Erro ao preparar login",
