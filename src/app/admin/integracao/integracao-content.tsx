@@ -53,9 +53,9 @@ export default function IntegracaoContent() {
   // Iniciar login com Mercado Livre
   const handleLoginML = () => {
     setStatus("loading")
-    // Redirecionar direto para o endpoint de autenticação
-    // O navegador vai seguir o redirect 307 para Mercado Livre
-    window.location.href = "/api/mercadolivre/auth"
+    // Redirecionar para o endpoint OAuth (PKCE flow)
+    // O navegador vai seguir o redirect para Mercado Livre
+    window.location.href = "/api/ml/oauth/login"
   }
 
   // Desconectar do Mercado Livre

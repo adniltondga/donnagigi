@@ -37,7 +37,7 @@ export async function DELETE() {
     return NextResponse.json({
       success: true,
       message: "Integração resetada. Faça login novamente para obter as permissões corretas.",
-      nextStep: "/api/mercadolivre/auth",
+      nextStep: "/api/ml/oauth/login",
     })
   } catch (error) {
     console.error("[ML/RESET] Erro ao resetar:", error)
