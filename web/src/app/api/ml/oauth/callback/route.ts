@@ -126,6 +126,7 @@ export async function GET(request: NextRequest) {
     console.log("✅ Integração salva no banco")
 
     // 4️⃣ Redirecionar para página de sucesso
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "https://www.donnagigi.com.br"
     const redirectUrl = `${baseUrl}/api/ml/oauth/sucesso?seller=${sellerID}`
 
     return NextResponse.redirect(redirectUrl)
