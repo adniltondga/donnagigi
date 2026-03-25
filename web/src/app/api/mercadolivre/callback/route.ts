@@ -39,7 +39,7 @@ export async function GET(request: NextRequest) {
     // Trocar código por token de acesso (com PKCE)
     const clientId = process.env.ML_CLIENT_ID
     const clientSecret = process.env.ML_CLIENT_SECRET
-    const redirectUri = process.env.ML_REDIRECT_URI || "http://localhost:3000/api/mercadolivre/callback"
+    const redirectUri = process.env.ML_REDIRECT_URI || "https://www.donnagigi.com.br/api/mercadolivre/callback"
     const codeVerifier = request.cookies.get("ml_code_verifier")?.value
 
     console.log("[CALLBACK] clientId:", clientId ? "✓" : "✗")
