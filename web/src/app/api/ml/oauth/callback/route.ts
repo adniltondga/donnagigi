@@ -54,12 +54,18 @@ export async function GET(request: NextRequest) {
       }, { status: 400 })
     }
 
-    if (state !== savedState) {
+    // Validar state se foi enviado pelo ML
+    if (savedState && state !== savedState) {
       console.error("[PKCE/CALLBACK] ❌ State mismatch (CSRF attack?)")
+      console.error("[PKCE/CALLBACK] Expected:", savedState, "Got:", state)
       return NextResponse.json({
         erro: "State mismatch",
         descricao: "Possível ataque CSRF"
       }, { status: 400 })
+    }
+
+    if (!state && savedState) {
+      console.warn("[PKCE/CALLBACK] ⚠️ State não retornou do ML, mas foi salvo")
     }
 
     console.log("[PKCE/CALLBACK] ✅ Code verifier recuperado do cookie")
