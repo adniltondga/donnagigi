@@ -167,9 +167,9 @@ export async function GET(request: NextRequest) {
 
     console.log("[PKCE/CALLBACK] ✅ Integração salva no banco")
 
-    // 6️⃣ Redirecionar para tela de sucesso
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "https://www.donnagigi.com.br"
-    const redirectUrl = `${baseUrl}/api/ml/oauth/sucesso?seller=${sellerID}`
+    // 6️⃣ Redirecionar para a tela de integração com mensagem de sucesso
+    const successMsg = encodeURIComponent(`Conectado ao Mercado Livre (seller ${sellerID})`)
+    const redirectUrl = new URL(`/admin/integracao?success=${successMsg}`, request.nextUrl.origin)
 
     console.log("[PKCE/CALLBACK] ✅ PKCE flow completo com sucesso!")
     return NextResponse.redirect(redirectUrl)
