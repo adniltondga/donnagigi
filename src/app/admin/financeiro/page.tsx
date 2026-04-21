@@ -794,11 +794,9 @@ export default function FinanceiroPage() {
                         <span>
                           {bill.type === 'receivable' ? (
                             (() => {
-                              const vendaMatch = bill.notes?.match(/Taxa de venda:\s*R\$\s*([\d,\.]+)/);
-                              const taxaVenda = vendaMatch ? parseFloat(vendaMatch[1].replace(',', '.')) : 0;
                               const envioMatch = bill.notes?.match(/Taxa de envio:\s*R\$\s*([\d,\.]+)/);
                               const taxaEnvio = envioMatch ? parseFloat(envioMatch[1].replace(',', '.')) : 0;
-                              const bruto = bill.amount + taxaVenda + taxaEnvio;
+                              const bruto = bill.amount + taxaEnvio;
                               return formatCurrency(bruto);
                             })()
                           ) : (
@@ -821,21 +819,17 @@ export default function FinanceiroPage() {
                     <TableCell className="text-sm font-semibold">
                       {bill.type === 'receivable' ? (
                         (() => {
-                          // Extrair taxas das notas
-                          const vendaMatch = bill.notes?.match(/Taxa de venda:\s*R\$\s*([\d,\.]+)/);
-                          const taxaVenda = vendaMatch ? parseFloat(vendaMatch[1].replace(',', '.')) : 0;
-
                           const envioMatch = bill.notes?.match(/Taxa de envio:\s*R\$\s*([\d,\.]+)/);
                           const taxaEnvio = envioMatch ? parseFloat(envioMatch[1].replace(',', '.')) : 0;
 
                           // Usar custos do cache (preenchido quando abre modal) ou do bill
                           let prodCost = costCache[bill.id]?.productCost ?? bill.productCost ?? 0;
 
-                          // Bruto = bill.amount (líquido após taxas ML) + taxas ML
-                          const bruto = bill.amount + taxaVenda + taxaEnvio;
+                          // Bruto = bill.amount (líquido após taxas ML) + taxa de envio
+                          const bruto = bill.amount + taxaEnvio;
 
-                          // Lucro = Bruto - Todas as taxas
-                          const profit = bruto - taxaVenda - taxaEnvio - prodCost;
+                          // Lucro = Bruto - Taxa de envio - Custo da mercadoria
+                          const profit = bruto - taxaEnvio - prodCost;
                           return (
                             <span className={profit > 0 ? 'text-green-600' : 'text-red-600'}>
                               {formatCurrency(profit)}
@@ -947,22 +941,14 @@ export default function FinanceiroPage() {
               </p>
 
               {(() => {
-                // Extrair valores das notas
                 const brutoMatch = notesModal.notes.match(/Bruto: R\$ ([\d,\.]+)/);
                 const bruto = brutoMatch ? parseFloat(brutoMatch[1].replace(',', '.')) : 0;
 
-                // Extrair taxa de venda
-                const vendaMatch = notesModal.notes.match(/Taxa de venda: R\$ ([\d,\.]+)/);
-                const taxaVenda = vendaMatch ? parseFloat(vendaMatch[1].replace(',', '.')) : 0;
-
-                // Extrair taxa de envio
                 const envioMatch = notesModal.notes.match(/Taxa de envio: R\$ ([\d,\.]+)/);
                 const taxaEnvio = envioMatch ? parseFloat(envioMatch[1].replace(',', '.')) : 0;
 
-                const taxasTotal = taxaVenda + taxaEnvio;
-
                 const prodCost = notesModal.productCost ?? 0;
-                const allTaxes = taxasTotal + prodCost;
+                const allTaxes = taxaEnvio + prodCost;
                 const liquidoReal = bruto - allTaxes;
 
                 return (
@@ -974,13 +960,9 @@ export default function FinanceiroPage() {
                       </div>
 
                       <div className="text-xs text-gray-600 space-y-2 ml-2">
-                        {/* Taxas Mercado Livre */}
+                        {/* Taxa Mercado Livre */}
                         <div className="space-y-1">
                           <div className="font-medium text-gray-700">Taxa Mercado Livre:</div>
-                          <div className="flex justify-between ml-2">
-                            <span>  • Venda:</span>
-                            <span>{formatCurrency(taxaVenda)}</span>
-                          </div>
                           <div className="flex justify-between ml-2">
                             <span>  • Envio:</span>
                             <span>{formatCurrency(taxaEnvio)}</span>
