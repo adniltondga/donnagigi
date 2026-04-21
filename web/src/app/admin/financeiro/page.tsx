@@ -321,7 +321,13 @@ export default function FinanceiroPage() {
       const data = await response.json();
 
       if (response.ok) {
-        setMessage({ type: 'success', text: 'Conta atualizada com sucesso!' });
+        const extra =
+          data?.mlListingId && data?.propagadas > 0
+            ? ` Custo aplicado em +${data.propagadas} venda(s) do mesmo anúncio.`
+            : data?.mlListingId
+            ? ' Custo salvo para próximas vendas deste anúncio.'
+            : '';
+        setMessage({ type: 'success', text: `Conta atualizada com sucesso!${extra}` });
         closeEditModal();
         fetchBills(page);
       } else {
