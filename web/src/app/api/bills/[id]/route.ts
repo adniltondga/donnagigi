@@ -79,13 +79,18 @@ export async function PUT(
       finalProductCost !== null &&
       finalProductCost !== undefined
     ) {
-      const match = /\[Produto ML:\s*([^\]]+)\]/.exec(bill.description);
-      const listingId = match?.[1]?.trim();
+      // Casa description (formato novo ou antigo) e também notes
+      const re = /MLB\d{6,}/i;
+      const listingId =
+        bill.description.match(re)?.[0]?.toUpperCase() ||
+        bill.notes?.match(re)?.[0]?.toUpperCase() ||
+        null;
 
-      if (listingId && listingId !== 'sem-id') {
+      if (listingId) {
         mlListingId = listingId;
-        const titleMatch = /Venda ML - (.+?)\s*\[Produto ML:/.exec(bill.description);
-        const title = titleMatch?.[1]?.trim() || null;
+        const tMatchNew = /Venda ML - (.+?)\s*\[Produto ML:/.exec(bill.description);
+        const tMatchOld = /Venda ML - (.+)$/.exec(bill.description);
+        const title = (tMatchNew?.[1] || tMatchOld?.[1] || '').trim() || null;
         const costNum = Number(finalProductCost);
 
         await prisma.mLProductCost.upsert({
@@ -99,8 +104,11 @@ export async function PUT(
             id: { not: bill.id },
             type: 'receivable',
             category: 'venda',
-            description: { contains: `[Produto ML: ${listingId}]` },
             productCost: null,
+            OR: [
+              { description: { contains: listingId } },
+              { notes: { contains: listingId } },
+            ],
           },
           data: { productCost: costNum },
         });
