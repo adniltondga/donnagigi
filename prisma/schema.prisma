@@ -103,6 +103,16 @@ model ProductVariant {
   images     VariantImage[]
 }
 
+// Custo cadastrado por listing do Mercado Livre.
+// Usado pelo sync-orders para abater automaticamente em vendas recorrentes.
+model MLProductCost {
+  mlListingId String   @id
+  title       String?
+  productCost Float
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
 // Estado temporário do fluxo OAuth PKCE do Mercado Livre
 // Armazena o code_verifier gerado no /login, indexado pelo state,
 // para ser recuperado no /callback sem depender de cookies.

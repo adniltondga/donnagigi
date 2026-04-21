@@ -80,14 +80,14 @@ export function AdminSidebar() {
             </li>
             <li>
               <Link
-                href="/admin/products"
+                href="/admin/custos-ml"
                 className={`block px-4 py-2 rounded-lg transition ${
-                  isActive("/admin/products")
+                  isActive("/admin/custos-ml")
                     ? "bg-primary-500 text-white"
                     : "text-admin-300 hover:bg-admin-700"
                 }`}
               >
-                📦 Produtos
+                💰 Custos ML
               </Link>
             </li>
             <li>
