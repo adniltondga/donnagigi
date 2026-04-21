@@ -108,7 +108,7 @@ interface MLOrdersResponse {
   };
 }
 
-export async function GET(_req: NextRequest) {
+export async function GET(req: NextRequest) {
   try {
     // Obter integração e renovar token se necessário
     const integration = await refreshTokenIfNeeded();
@@ -116,27 +116,56 @@ export async function GET(_req: NextRequest) {
     const sellerId = integration.sellerID;
     const accessToken = integration.accessToken;
 
-    // Buscar pedidos pagos do Mercado Livre
-    const mlResponse = await fetch(
-      `https://api.mercadolibre.com/orders/search?seller=${sellerId}&order.status=paid&limit=50`,
-      {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-        },
-      }
-    );
+    // Janela de datas: padrão = último mês. Override com ?months=N
+    const monthsParam = req.nextUrl.searchParams.get('months');
+    const months = Math.max(1, Number(monthsParam) || 1);
 
-    if (!mlResponse.ok) {
-      const error = await mlResponse.json();
-      console.error('ML API error:', error);
-      return NextResponse.json(
-        { error: 'Failed to fetch orders from Mercado Livre' },
-        { status: 500 }
-      );
+    const now = new Date();
+    const from = new Date(now);
+    from.setMonth(from.getMonth() - months);
+
+    const fromIso = from.toISOString();
+    const toIso = now.toISOString();
+
+    // Buscar pedidos pagos do ML com paginação completa
+    const PAGE_SIZE = 50;
+    let offset = 0;
+    let orders: MLOrder[] = [];
+    let total = 0;
+
+    while (true) {
+      const url = new URL('https://api.mercadolibre.com/orders/search');
+      url.searchParams.set('seller', String(sellerId));
+      url.searchParams.set('order.status', 'paid');
+      url.searchParams.set('order.date_created.from', fromIso);
+      url.searchParams.set('order.date_created.to', toIso);
+      url.searchParams.set('sort', 'date_desc');
+      url.searchParams.set('limit', String(PAGE_SIZE));
+      url.searchParams.set('offset', String(offset));
+
+      const mlResponse = await fetch(url.toString(), {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+
+      if (!mlResponse.ok) {
+        const error = await mlResponse.json();
+        console.error('ML API error:', error);
+        return NextResponse.json(
+          { error: 'Failed to fetch orders from Mercado Livre', detalhes: error },
+          { status: 500 }
+        );
+      }
+
+      const data: MLOrdersResponse = await mlResponse.json();
+      const page = data.results || [];
+      total = data.paging?.total ?? orders.length + page.length;
+      orders = orders.concat(page);
+
+      if (page.length < PAGE_SIZE || orders.length >= total) break;
+      offset += PAGE_SIZE;
     }
 
-    const data: MLOrdersResponse = await mlResponse.json();
-    let orders = data.results || [];
+    console.log(`📦 Janela: ${fromIso} → ${toIso} | total ML: ${total} | baixados: ${orders.length}`);
 
     // Buscar detalhes completos de cada pedido (para pegar as taxas reais)
     console.log(`📦 Buscando detalhes de ${orders.length} pedidos...`);
@@ -290,13 +319,13 @@ Bruto: R$ ${order.total_amount.toFixed(2)} | Taxas: ${taxBreakdown} (Total: R$ $
         data: {
           type: 'receivable',
           category: 'venda',
-          description: `Venda ML - ${itemTitle}`,
+          description: `Venda ML - ${itemTitle} [Produto ML: ${itemId || 'sem-id'}]`,
           amount: netAmount,
           dueDate: orderDate,
           paidDate: closedDate,
           status: 'paid',
           mlOrderId: `order_${order.id}`,
-          notes: notesContent,
+          notes: `PRODUTO ML ID: ${itemId || 'SEM ID'}\n\n${notesContent}`,
           productId,
           productCost,
         },
@@ -314,6 +343,7 @@ Bruto: R$ ${order.total_amount.toFixed(2)} | Taxas: ${taxBreakdown} (Total: R$ $
         total: orders.length,
         created,
         skipped,
+        janela: { from: fromIso, to: toIso, months },
       },
       bills: createdBills.slice(0, 10), // Retornar apenas os 10 primeiros
     });
