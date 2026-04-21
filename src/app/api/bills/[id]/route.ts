@@ -67,7 +67,48 @@ export async function PUT(
       include: { supplier: true, product: true },
     });
 
-    return NextResponse.json(bill);
+    // Se a bill é uma venda ML e o usuário informou productCost,
+    // salva em MLProductCost e propaga para outras vendas do mesmo
+    // anúncio que ainda estão sem custo.
+    let propagadas = 0;
+    let mlListingId: string | null = null;
+
+    if (
+      bill.category === 'venda' &&
+      bill.type === 'receivable' &&
+      finalProductCost !== null &&
+      finalProductCost !== undefined
+    ) {
+      const match = /\[Produto ML:\s*([^\]]+)\]/.exec(bill.description);
+      const listingId = match?.[1]?.trim();
+
+      if (listingId && listingId !== 'sem-id') {
+        mlListingId = listingId;
+        const titleMatch = /Venda ML - (.+?)\s*\[Produto ML:/.exec(bill.description);
+        const title = titleMatch?.[1]?.trim() || null;
+        const costNum = Number(finalProductCost);
+
+        await prisma.mLProductCost.upsert({
+          where: { mlListingId: listingId },
+          create: { mlListingId: listingId, productCost: costNum, title },
+          update: { productCost: costNum, ...(title ? { title } : {}) },
+        });
+
+        const res = await prisma.bill.updateMany({
+          where: {
+            id: { not: bill.id },
+            type: 'receivable',
+            category: 'venda',
+            description: { contains: `[Produto ML: ${listingId}]` },
+            productCost: null,
+          },
+          data: { productCost: costNum },
+        });
+        propagadas = res.count;
+      }
+    }
+
+    return NextResponse.json({ ...bill, mlListingId, propagadas });
   } catch (error) {
     console.error('Error updating bill:', error);
     return NextResponse.json(
