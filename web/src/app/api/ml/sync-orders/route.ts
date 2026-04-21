@@ -215,41 +215,6 @@ export async function GET(req: NextRequest) {
       const orderDate = new Date(order.date_closed || order.date_created);
       const closedDate = new Date(order.date_closed || order.date_created);
 
-      // Extrair taxas reais do ML
-      // As taxas vêm em order_items[].sale_fee
-      let totalFee = 0;
-      let feeDetails = '';
-
-      if (order.order_items && order.order_items.length > 0) {
-        // Somar sale_fee de todos os itens
-        totalFee = order.order_items.reduce((sum: number, item: any) => {
-          return sum + (item.sale_fee || 0);
-        }, 0);
-
-        if (totalFee > 0) {
-          feeDetails = `Taxa de venda: R$ ${totalFee.toFixed(2)}`;
-        }
-      }
-
-      // Fallback: se não tem sale_fee, tentar outros campos
-      if (totalFee === 0) {
-        // Tentar marketplace_fee do payment
-        if (order.payments && order.payments.length > 0) {
-          totalFee = order.payments.reduce((sum: number, payment: any) => {
-            return sum + (payment.marketplace_fee || 0);
-          }, 0);
-          if (totalFee > 0) {
-            feeDetails = 'Marketplace Fee (payment)';
-          }
-        }
-
-        // Se ainda não tem, usar cálculo aproximado
-        if (totalFee === 0 && order.total_amount) {
-          totalFee = order.total_amount * 0.13;
-          feeDetails = 'Cálculo aproximado (13%)';
-        }
-      }
-
       // Extrair taxa de envio
       // Fórmula: list_cost - cost = taxa final que o vendedor paga
       let shippingFee = 0;
@@ -276,16 +241,11 @@ export async function GET(req: NextRequest) {
       }
 
       // Calcular valor líquido (o que realmente vai receber)
-      const totalTaxes = totalFee + shippingFee;
+      const totalTaxes = shippingFee;
       const netAmount = order.total_amount - totalTaxes;
 
       // Criar única conta a receber com valor líquido
-      const taxBreakdown = [
-        feeDetails,
-        shippingFee > 0 ? `Taxa de envio: R$ ${shippingFee.toFixed(2)}` : '',
-      ]
-        .filter(Boolean)
-        .join(' + ');
+      const taxBreakdown = shippingFee > 0 ? `Taxa de envio: R$ ${shippingFee.toFixed(2)}` : '';
 
       const notesContent = `PEDIDO
 #${order.id}
