@@ -61,6 +61,18 @@ model ProductImage {
   updatedAt DateTime @updatedAt
 }
 
+// Imagens da variação (específica para cada variação do produto)
+model VariantImage {
+  id        String         @id @default(cuid())
+  variantId String
+  variant   ProductVariant @relation(fields: [variantId], references: [id], onDelete: Cascade)
+  url       String         // URL final no Vercel Blob
+  mlUrl     String?        // URL original do ML (referência)
+  order     Int            @default(0)
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+}
+
 // Variação do produto (cor, tamanho, etc)
 model ProductVariant {
   id        String   @id @default(cuid())
@@ -88,6 +100,19 @@ model ProductVariant {
 
   // Relações
   mlProducts MLProduct[]
+  images     VariantImage[]
+}
+
+// Estado temporário do fluxo OAuth PKCE do Mercado Livre
+// Armazena o code_verifier gerado no /login, indexado pelo state,
+// para ser recuperado no /callback sem depender de cookies.
+model MLOAuthState {
+  state        String   @id
+  codeVerifier String
+  expiresAt    DateTime
+  createdAt    DateTime @default(now())
+
+  @@index([expiresAt])
 }
 
 // Integração com Mercado Livre

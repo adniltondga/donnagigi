@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from "next/server"
 import crypto from "crypto"
+import { PrismaClient } from "@prisma/client"
+
+const prisma = new PrismaClient()
 
 export const dynamic = "force-dynamic"
 
@@ -8,7 +11,7 @@ export const dynamic = "force-dynamic"
  * GET /api/ml/oauth/login
  *
  * Gera code_verifier e code_challenge (PKCE)
- * Salva code_verifier em cookie httpOnly
+ * Persiste code_verifier no banco, indexado por state
  * Redireciona para autenticação do ML
  */
 
@@ -41,14 +44,29 @@ export async function GET(_request: NextRequest) {
     const codeVerifier = crypto.randomBytes(32).toString("base64url")
     const codeChallenge = generateCodeChallenge(codeVerifier)
 
-    // 2️⃣ Gerar state para CSRF protection
+    // 2️⃣ Gerar state para CSRF protection e como chave do code_verifier
     const state = crypto.randomBytes(16).toString("hex")
 
     console.log("[PKCE/LOGIN] Gerando fluxo PKCE")
     console.log("[PKCE/LOGIN] code_verifier:", codeVerifier.substring(0, 20) + "...")
     console.log("[PKCE/LOGIN] code_challenge:", codeChallenge)
+    console.log("[PKCE/LOGIN] state:", state.substring(0, 10) + "...")
 
-    // 3️⃣ Preparar parâmetros OAuth2 com PKCE
+    // 3️⃣ Persistir code_verifier no banco (expira em 10 min)
+    //    e limpar estados expirados
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000)
+
+    await prisma.mLOAuthState.deleteMany({
+      where: { expiresAt: { lt: new Date() } }
+    })
+
+    await prisma.mLOAuthState.create({
+      data: { state, codeVerifier, expiresAt }
+    })
+
+    console.log("[PKCE/LOGIN] 💾 code_verifier salvo no banco")
+
+    // 4️⃣ Preparar parâmetros OAuth2 com PKCE
     const params = new URLSearchParams({
       response_type: "code",
       client_id: clientId,
@@ -61,27 +79,8 @@ export async function GET(_request: NextRequest) {
 
     const authUrl = `https://auth.mercadolivre.com.br/authorization?${params.toString()}`
 
-    // 4️⃣ Redirecionar para ML e salvar code_verifier em cookie
-    const response = NextResponse.redirect(authUrl)
-
-    response.cookies.set("ml_code_verifier", codeVerifier, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-      maxAge: 600, // 10 minutos
-      path: "/"
-    })
-
-    response.cookies.set("ml_state", state, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-      maxAge: 600,
-      path: "/"
-    })
-
     console.log("[PKCE/LOGIN] ✅ Redirecionando para ML com PKCE")
-    return response
+    return NextResponse.redirect(authUrl)
   } catch (error) {
     console.error("❌ Erro ao iniciar login:", error)
     return NextResponse.json(
