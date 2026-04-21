@@ -9,9 +9,9 @@ export const dynamic = "force-dynamic"
  * PKCE Flow - Step 2: Callback
  * GET /api/ml/oauth/callback?code=...&state=...
  *
- * O ML redireciona aqui após o usuário autorizar
- * Recupera code_verifier do cookie
- * Troca code + code_verifier por token (PKCE)
+ * O ML redireciona aqui após o usuário autorizar.
+ * Recupera code_verifier do banco usando o state.
+ * Troca code + code_verifier por token (PKCE).
  */
 
 export async function GET(request: NextRequest) {
@@ -38,37 +38,43 @@ export async function GET(request: NextRequest) {
       }, { status: 400 })
     }
 
+    if (!state) {
+      console.error("[PKCE/CALLBACK] Nenhum state recebido")
+      return NextResponse.json({
+        erro: "State não fornecido pelo ML",
+        descricao: "Não foi possível validar o fluxo PKCE"
+      }, { status: 400 })
+    }
+
     console.log("[PKCE/CALLBACK] 📡 Recebido código do ML:", code.substring(0, 20) + "...")
-    console.log("[PKCE/CALLBACK] state:", state?.substring(0, 10) + "...")
+    console.log("[PKCE/CALLBACK] state:", state.substring(0, 10) + "...")
 
-    // 1️⃣ Recuperar code_verifier do cookie
-    const codeVerifier = request.cookies.get("ml_code_verifier")?.value
-    const savedState = request.cookies.get("ml_state")?.value
+    // 1️⃣ Recuperar code_verifier do banco usando state
+    const oauthState = await prisma.mLOAuthState.findUnique({
+      where: { state }
+    })
 
-    if (!codeVerifier) {
-      console.error("[PKCE/CALLBACK] ❌ Code verifier não encontrado no cookie")
-      console.error("[PKCE/CALLBACK] Cookies disponíveis:", request.cookies.getAll().map(c => c.name))
+    if (!oauthState) {
+      console.error("[PKCE/CALLBACK] ❌ State não encontrado no banco")
       return NextResponse.json({
-        erro: "Code verifier não encontrado",
-        descricao: "PKCE validation falhou"
+        erro: "State inválido",
+        descricao: "Fluxo PKCE não iniciado ou expirado"
       }, { status: 400 })
     }
 
-    // Validar state se foi enviado pelo ML
-    if (savedState && state !== savedState) {
-      console.error("[PKCE/CALLBACK] ❌ State mismatch (CSRF attack?)")
-      console.error("[PKCE/CALLBACK] Expected:", savedState, "Got:", state)
+    // Consumir o state imediatamente (one-shot, previne replay)
+    await prisma.mLOAuthState.delete({ where: { state } })
+
+    if (oauthState.expiresAt < new Date()) {
+      console.error("[PKCE/CALLBACK] ❌ State expirado")
       return NextResponse.json({
-        erro: "State mismatch",
-        descricao: "Possível ataque CSRF"
+        erro: "State expirado",
+        descricao: "O fluxo de login demorou demais. Inicie novamente."
       }, { status: 400 })
     }
 
-    if (!state && savedState) {
-      console.warn("[PKCE/CALLBACK] ⚠️ State não retornou do ML, mas foi salvo")
-    }
-
-    console.log("[PKCE/CALLBACK] ✅ Code verifier recuperado do cookie")
+    const codeVerifier = oauthState.codeVerifier
+    console.log("[PKCE/CALLBACK] ✅ code_verifier recuperado do banco")
 
     // 2️⃣ Obter credenciais
     const clientId = process.env.ML_CLIENT_ID
@@ -161,18 +167,12 @@ export async function GET(request: NextRequest) {
 
     console.log("[PKCE/CALLBACK] ✅ Integração salva no banco")
 
-    // 6️⃣ Preparar resposta e limpar cookies
+    // 6️⃣ Redirecionar para tela de sucesso
     const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "https://www.donnagigi.com.br"
     const redirectUrl = `${baseUrl}/api/ml/oauth/sucesso?seller=${sellerID}`
 
-    const response = NextResponse.redirect(redirectUrl)
-
-    // Limpar cookies
-    response.cookies.set("ml_code_verifier", "", { maxAge: 0 })
-    response.cookies.set("ml_state", "", { maxAge: 0 })
-
     console.log("[PKCE/CALLBACK] ✅ PKCE flow completo com sucesso!")
-    return response
+    return NextResponse.redirect(redirectUrl)
   } catch (error) {
     console.error("❌ Erro no callback:", error)
     return NextResponse.json({
