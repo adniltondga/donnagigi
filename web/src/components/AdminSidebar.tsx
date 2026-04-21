@@ -90,6 +90,18 @@ export function AdminSidebar() {
                 📦 Produtos
               </Link>
             </li>
+            <li>
+              <Link
+                href="/admin/relatorios"
+                className={`block px-4 py-2 rounded-lg transition ${
+                  pathname.startsWith("/admin/relatorios")
+                    ? "bg-primary-500 text-white"
+                    : "text-admin-300 hover:bg-admin-700"
+                }`}
+              >
+                📈 Relatórios
+              </Link>
+            </li>
           </ul>
         </div>
 
