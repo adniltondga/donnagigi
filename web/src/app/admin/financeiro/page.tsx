@@ -794,10 +794,13 @@ export default function FinanceiroPage() {
                         <span>
                           {bill.type === 'receivable' ? (
                             (() => {
+                              const brutoMatch = bill.notes?.match(/Bruto:\s*R\$\s*([\d,\.]+)/);
+                              if (brutoMatch) {
+                                return formatCurrency(parseFloat(brutoMatch[1].replace(',', '.')));
+                              }
                               const envioMatch = bill.notes?.match(/Taxa de envio:\s*R\$\s*([\d,\.]+)/);
                               const taxaEnvio = envioMatch ? parseFloat(envioMatch[1].replace(',', '.')) : 0;
-                              const bruto = bill.amount + taxaEnvio;
-                              return formatCurrency(bruto);
+                              return formatCurrency(bill.amount + taxaEnvio);
                             })()
                           ) : (
                             formatCurrency(bill.amount)
@@ -825,8 +828,12 @@ export default function FinanceiroPage() {
                           // Usar custos do cache (preenchido quando abre modal) ou do bill
                           let prodCost = costCache[bill.id]?.productCost ?? bill.productCost ?? 0;
 
-                          // Bruto = bill.amount (líquido após taxas ML) + taxa de envio
-                          const bruto = bill.amount + taxaEnvio;
+                          // Bruto: prefere o valor gravado nas notes (consistente com modal
+                          // e correto para bills antigas, onde amount era líquido após saleFee)
+                          const brutoMatch = bill.notes?.match(/Bruto:\s*R\$\s*([\d,\.]+)/);
+                          const bruto = brutoMatch
+                            ? parseFloat(brutoMatch[1].replace(',', '.'))
+                            : bill.amount + taxaEnvio;
 
                           // Lucro = Bruto - Taxa de envio - Custo da mercadoria
                           const profit = bruto - taxaEnvio - prodCost;
