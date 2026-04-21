@@ -299,19 +299,17 @@ ${itemId}
 VENDAS
 Bruto: R$ ${order.total_amount.toFixed(2)} | Taxas: ${taxBreakdown} (Total: R$ ${totalTaxes.toFixed(2)}) | Líquido: R$ ${netAmount.toFixed(2)}`;
 
-      // Buscar produto pelo itemId (mlListingId) para pegar custos
+      // Buscar custo cadastrado para o listing (MLProductCost)
       let productCost: number | null = null;
-      let productId: string | null = null;
+      const productId: string | null = null;
 
       if (itemId) {
-        const product = await prisma.product.findFirst({
+        const cost = await prisma.mLProductCost.findUnique({
           where: { mlListingId: itemId },
-          select: { id: true, productCost: true },
+          select: { productCost: true },
         });
-
-        if (product) {
-          productId = product.id;
-          productCost = product.productCost;
+        if (cost) {
+          productCost = cost.productCost;
         }
       }
 
