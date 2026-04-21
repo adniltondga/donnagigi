@@ -7,13 +7,18 @@ interface DiaRow {
   dia: number;
   vendas: number;
   total: number;
+  custo: number;
+  liquido: number;
 }
 
 interface Relatorio {
   periodo: { from: string; to: string };
   totalVendas: number;
   totalGeral: number;
+  totalCusto: number;
+  totalLiquido: number;
   melhorDia: DiaRow;
+  melhorDiaLucro: DiaRow;
   dias: DiaRow[];
 }
 
@@ -88,29 +93,50 @@ export default function RelatoriosPage() {
 
       {data && (
         <>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
             <div className="bg-white rounded-lg shadow p-4">
-              <p className="text-xs uppercase text-gray-500">Total no período</p>
-              <p className="text-2xl font-bold text-gray-800">{formatCurrency(data.totalGeral)}</p>
+              <p className="text-xs uppercase text-gray-500">💵 Bruto</p>
+              <p className="text-xl font-bold text-gray-800">{formatCurrency(data.totalGeral)}</p>
+            </div>
+            <div className="bg-white rounded-lg shadow p-4">
+              <p className="text-xs uppercase text-gray-500">💰 Custo</p>
+              <p className="text-xl font-bold text-rose-600">{formatCurrency(data.totalCusto)}</p>
+            </div>
+            <div className="bg-white rounded-lg shadow p-4">
+              <p className="text-xs uppercase text-gray-500">📈 Lucro</p>
+              <p className="text-xl font-bold text-emerald-600">{formatCurrency(data.totalLiquido)}</p>
             </div>
             <div className="bg-white rounded-lg shadow p-4">
               <p className="text-xs uppercase text-gray-500">Qtd. vendas</p>
-              <p className="text-2xl font-bold text-gray-800">{data.totalVendas}</p>
+              <p className="text-xl font-bold text-gray-800">{data.totalVendas}</p>
             </div>
             <div className="bg-gradient-to-br from-primary-500 to-pink-600 rounded-lg shadow p-4 text-white">
               <p className="text-xs uppercase opacity-90">🏆 Melhor dia</p>
-              <p className="text-2xl font-bold">
+              <p className="text-xl font-bold">
                 {data.melhorDia.dia > 0 ? `Dia ${data.melhorDia.dia}` : '—'}
               </p>
-              <p className="text-sm opacity-90">
+              <p className="text-xs opacity-90">
                 {formatCurrency(data.melhorDia.total)} · {data.melhorDia.vendas} venda(s)
               </p>
+              {data.melhorDiaLucro.dia > 0 && (
+                <p className="text-xs opacity-90 mt-1 border-t border-white/30 pt-1">
+                  Lucro: dia {data.melhorDiaLucro.dia} · {formatCurrency(data.melhorDiaLucro.liquido)}
+                </p>
+              )}
             </div>
           </div>
 
           <div className="bg-white rounded-lg shadow overflow-hidden">
             <div className="p-4 border-b font-semibold">Faturamento por dia do mês</div>
             <div className="p-4 space-y-2">
+              <div className="flex items-center gap-3 text-xs text-gray-500 font-semibold uppercase pb-1 border-b">
+                <div className="w-10 text-right">Dia</div>
+                <div className="flex-1" />
+                <div className="w-28 text-right">Bruto</div>
+                <div className="w-28 text-right">Custo</div>
+                <div className="w-28 text-right">Lucro</div>
+                <div className="w-16 text-right">Qtd</div>
+              </div>
               {data.dias.map((d) => {
                 const isBest = data.melhorDia.dia === d.dia && d.total > 0;
                 const pct = (d.total / maxTotal) * 100;
@@ -125,11 +151,17 @@ export default function RelatoriosPage() {
                         style={{ width: `${pct}%` }}
                       />
                     </div>
-                    <div className="w-32 text-right text-sm font-semibold">
+                    <div className="w-28 text-right text-sm font-semibold">
                       {formatCurrency(d.total)}
                     </div>
-                    <div className="w-20 text-right text-xs text-gray-500">
-                      {d.vendas} vd
+                    <div className="w-28 text-right text-sm text-rose-600">
+                      {d.custo > 0 ? formatCurrency(d.custo) : '—'}
+                    </div>
+                    <div className="w-28 text-right text-sm font-semibold text-emerald-600">
+                      {d.liquido !== 0 ? formatCurrency(d.liquido) : '—'}
+                    </div>
+                    <div className="w-16 text-right text-xs text-gray-500">
+                      {d.vendas > 0 ? `${d.vendas} vd` : ''}
                     </div>
                   </div>
                 );
