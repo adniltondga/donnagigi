@@ -48,27 +48,28 @@ export async function GET() {
       agg.set(listingId, current);
     }
 
-    const listingIds = Array.from(agg.keys());
-    const custos = await prisma.mLProductCost.findMany({
-      where: { mlListingId: { in: listingIds } },
-    });
+    // Todos os custos cadastrados (inclusive sem venda ainda)
+    const custos = await prisma.mLProductCost.findMany();
     const custoMap = new Map(custos.map((c) => [c.mlListingId, c]));
 
-    const items = listingIds
+    // União: listings de vendas + listings cadastrados manualmente
+    const allIds = new Set<string>([...agg.keys(), ...custoMap.keys()]);
+
+    const items = Array.from(allIds)
       .map((id) => {
-        const a = agg.get(id)!;
+        const a = agg.get(id);
         const c = custoMap.get(id);
         return {
           mlListingId: id,
-          title: c?.title || a.title || '',
-          vendas: a.vendas,
-          totalBruto: a.totalBruto,
-          ultimaVenda: a.ultimaVenda,
+          title: c?.title || a?.title || '',
+          vendas: a?.vendas ?? 0,
+          totalBruto: a?.totalBruto ?? 0,
+          ultimaVenda: a?.ultimaVenda ?? null,
           productCost: c?.productCost ?? null,
           updatedAt: c?.updatedAt ?? null,
         };
       })
-      .sort((x, y) => y.vendas - x.vendas);
+      .sort((x, y) => y.vendas - x.vendas || x.mlListingId.localeCompare(y.mlListingId));
 
     return NextResponse.json({ items });
   } catch (error) {

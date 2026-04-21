@@ -20,6 +20,12 @@ export default function CustosMLPage() {
   const [saving, setSaving] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
 
+  // Form manual
+  const [novoId, setNovoId] = useState('');
+  const [novoTitulo, setNovoTitulo] = useState('');
+  const [novoCusto, setNovoCusto] = useState('');
+  const [addingNovo, setAddingNovo] = useState(false);
+
   const load = async () => {
     setLoading(true);
     try {
@@ -77,6 +83,49 @@ export default function CustosMLPage() {
     }
   };
 
+  const adicionarManual = async () => {
+    const id = novoId.trim().toUpperCase();
+    const val = Number(String(novoCusto).replace(',', '.'));
+    if (!id.startsWith('MLB')) {
+      setToast('ID inválido. Ex.: MLB1234567890');
+      setTimeout(() => setToast(null), 2500);
+      return;
+    }
+    if (!Number.isFinite(val) || val < 0) {
+      setToast('Custo inválido');
+      setTimeout(() => setToast(null), 2500);
+      return;
+    }
+    setAddingNovo(true);
+    try {
+      const res = await fetch('/api/ml/custos', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          mlListingId: id,
+          productCost: val,
+          title: novoTitulo.trim() || null,
+          aplicarRetroativo: true,
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json?.erro || 'erro');
+      setToast(
+        `✅ Custo cadastrado. ${json.atualizados > 0 ? `${json.atualizados} venda(s) retroativa(s).` : ''}`
+      );
+      setTimeout(() => setToast(null), 3000);
+      setNovoId('');
+      setNovoTitulo('');
+      setNovoCusto('');
+      await load();
+    } catch (err) {
+      setToast('Erro ao adicionar');
+      setTimeout(() => setToast(null), 2500);
+    } finally {
+      setAddingNovo(false);
+    }
+  };
+
   return (
     <div className="max-w-6xl mx-auto">
       <h1 className="text-3xl font-bold mb-2">💰 Custos ML</h1>
@@ -90,6 +139,54 @@ export default function CustosMLPage() {
           {toast}
         </div>
       )}
+
+      <div className="bg-white rounded-lg shadow p-4 mb-6">
+        <p className="font-semibold mb-3">➕ Adicionar anúncio manualmente</p>
+        <div className="flex flex-wrap gap-3 items-end">
+          <div className="flex-1 min-w-[200px]">
+            <label className="block text-xs text-gray-600 mb-1">ID do anúncio (MLB...)</label>
+            <input
+              type="text"
+              value={novoId}
+              onChange={(e) => setNovoId(e.target.value)}
+              placeholder="MLB1234567890"
+              className="w-full border rounded px-3 py-2 font-mono text-sm"
+            />
+          </div>
+          <div className="flex-1 min-w-[240px]">
+            <label className="block text-xs text-gray-600 mb-1">Título (opcional)</label>
+            <input
+              type="text"
+              value={novoTitulo}
+              onChange={(e) => setNovoTitulo(e.target.value)}
+              placeholder="Ex.: Capa iPhone 15"
+              className="w-full border rounded px-3 py-2 text-sm"
+            />
+          </div>
+          <div>
+            <label className="block text-xs text-gray-600 mb-1">Custo (R$)</label>
+            <input
+              type="number"
+              step="0.01"
+              min="0"
+              value={novoCusto}
+              onChange={(e) => setNovoCusto(e.target.value)}
+              placeholder="0,00"
+              className="w-32 border rounded px-3 py-2 text-right text-sm"
+            />
+          </div>
+          <button
+            onClick={adicionarManual}
+            disabled={addingNovo}
+            className="bg-primary-500 hover:bg-primary-600 text-white px-5 py-2 rounded-lg font-semibold disabled:opacity-60"
+          >
+            {addingNovo ? 'Salvando...' : 'Adicionar'}
+          </button>
+        </div>
+        <p className="text-xs text-gray-500 mt-2">
+          Dica: o ID do anúncio está na URL do Mercado Livre (ex.: <code>MLB1234567890</code>) ou no painel de vendedor.
+        </p>
+      </div>
 
       <div className="bg-white rounded-lg shadow overflow-hidden">
         <div className="p-4 border-b flex items-center justify-between">
