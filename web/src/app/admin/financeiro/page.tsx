@@ -675,7 +675,6 @@ export default function FinanceiroPage() {
                 <TableHead>Valor</TableHead>
                 <TableHead>Lucro</TableHead>
                 <TableHead>Status</TableHead>
-                <TableHead>Fornecedor</TableHead>
                 <TableHead>Ações</TableHead>
               </TableRow>
             </TableHeader>
@@ -751,10 +750,19 @@ export default function FinanceiroPage() {
                       )}
                     </TableCell>
                     <TableCell>
-                      <Badge variant="default">{statusLabel[bill.status]}</Badge>
-                    </TableCell>
-                    <TableCell className="text-sm">
-                      {bill.supplier?.name || '-'}
+                      <span
+                        className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold ${
+                          bill.status === 'paid'
+                            ? 'bg-green-100 text-green-800'
+                            : bill.status === 'cancelled'
+                            ? 'bg-red-100 text-red-700 line-through'
+                            : bill.status === 'overdue'
+                            ? 'bg-orange-100 text-orange-800'
+                            : 'bg-blue-100 text-blue-800'
+                        }`}
+                      >
+                        {statusLabel[bill.status]}
+                      </span>
                     </TableCell>
                     <TableCell>
                       <div className="flex gap-2">
