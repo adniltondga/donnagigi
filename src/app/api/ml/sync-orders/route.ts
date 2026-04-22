@@ -127,45 +127,48 @@ export async function GET(req: NextRequest) {
     const fromIso = from.toISOString();
     const toIso = now.toISOString();
 
-    // Buscar pedidos pagos do ML com paginação completa
+    // Buscar pedidos do ML (paid + cancelled) com paginação completa
     const PAGE_SIZE = 50;
-    let offset = 0;
+    const STATUSES = ['paid', 'cancelled'];
     let orders: MLOrder[] = [];
-    let total = 0;
 
-    while (true) {
-      const url = new URL('https://api.mercadolibre.com/orders/search');
-      url.searchParams.set('seller', String(sellerId));
-      url.searchParams.set('order.status', 'paid');
-      url.searchParams.set('order.date_created.from', fromIso);
-      url.searchParams.set('order.date_created.to', toIso);
-      url.searchParams.set('sort', 'date_desc');
-      url.searchParams.set('limit', String(PAGE_SIZE));
-      url.searchParams.set('offset', String(offset));
+    for (const status of STATUSES) {
+      let offset = 0;
+      let total = 0;
+      while (true) {
+        const url = new URL('https://api.mercadolibre.com/orders/search');
+        url.searchParams.set('seller', String(sellerId));
+        url.searchParams.set('order.status', status);
+        url.searchParams.set('order.date_created.from', fromIso);
+        url.searchParams.set('order.date_created.to', toIso);
+        url.searchParams.set('sort', 'date_desc');
+        url.searchParams.set('limit', String(PAGE_SIZE));
+        url.searchParams.set('offset', String(offset));
 
-      const mlResponse = await fetch(url.toString(), {
-        headers: { Authorization: `Bearer ${accessToken}` },
-      });
+        const mlResponse = await fetch(url.toString(), {
+          headers: { Authorization: `Bearer ${accessToken}` },
+        });
 
-      if (!mlResponse.ok) {
-        const error = await mlResponse.json();
-        console.error('ML API error:', error);
-        return NextResponse.json(
-          { error: 'Failed to fetch orders from Mercado Livre', detalhes: error },
-          { status: 500 }
-        );
+        if (!mlResponse.ok) {
+          const error = await mlResponse.json();
+          console.error('ML API error:', error);
+          return NextResponse.json(
+            { error: 'Failed to fetch orders from Mercado Livre', detalhes: error },
+            { status: 500 }
+          );
+        }
+
+        const data: MLOrdersResponse = await mlResponse.json();
+        const page = data.results || [];
+        total = data.paging?.total ?? offset + page.length;
+        orders = orders.concat(page);
+
+        if (page.length < PAGE_SIZE || offset + page.length >= total) break;
+        offset += PAGE_SIZE;
       }
-
-      const data: MLOrdersResponse = await mlResponse.json();
-      const page = data.results || [];
-      total = data.paging?.total ?? orders.length + page.length;
-      orders = orders.concat(page);
-
-      if (page.length < PAGE_SIZE || orders.length >= total) break;
-      offset += PAGE_SIZE;
     }
 
-    console.log(`📦 Janela: ${fromIso} → ${toIso} | total ML: ${total} | baixados: ${orders.length}`);
+    console.log(`📦 Janela: ${fromIso} → ${toIso} | baixados: ${orders.length}`);
 
     // Buscar detalhes completos de cada pedido (para pegar as taxas reais)
     console.log(`📦 Buscando detalhes de ${orders.length} pedidos...`);
@@ -194,17 +197,39 @@ export async function GET(req: NextRequest) {
 
     let created = 0;
     let skipped = 0;
+    let cancelledUpdated = 0;
     const createdBills = [];
 
     // Processar cada pedido
     for (const order of orders) {
+      const isCancelled = order.status === 'cancelled';
+
       // Verificar se já foi importado
       const existing = await prisma.bill.findUnique({
         where: { mlOrderId: `order_${order.id}` },
       });
 
       if (existing) {
-        skipped++;
+        // Se virou cancelled no ML e ainda não está marcado aqui, atualiza
+        if (isCancelled && existing.status !== 'cancelled') {
+          const refundNote = `\n\nDevolução detectada em ${new Date().toLocaleDateString('pt-BR')} (order cancelled)`;
+          await prisma.bill.update({
+            where: { id: existing.id },
+            data: {
+              status: 'cancelled',
+              notes: (existing.notes || '') + refundNote,
+            },
+          });
+          cancelledUpdated++;
+        } else {
+          skipped++;
+        }
+        continue;
+      }
+
+      // Pedido cancelado que nunca foi importado: só cria se tiver informações
+      // úteis (bruto > 0). Caso contrário ignora (compras iniciadas e abandonadas).
+      if (isCancelled && !order.total_amount) {
         continue;
       }
 
@@ -302,6 +327,10 @@ Bruto: R$ ${order.total_amount.toFixed(2)} | Taxas: ${taxBreakdown} (Total: R$ $
       const estimatedReleaseDate = new Date(closedDate);
       estimatedReleaseDate.setDate(estimatedReleaseDate.getDate() + 30);
 
+      const cancelledSuffix = isCancelled
+        ? `\n\nDevolução detectada em ${new Date().toLocaleDateString('pt-BR')} (order cancelled no ML)`
+        : '';
+
       const saleBill = await prisma.bill.create({
         data: {
           type: 'receivable',
@@ -309,10 +338,10 @@ Bruto: R$ ${order.total_amount.toFixed(2)} | Taxas: ${taxBreakdown} (Total: R$ $
           description: `Venda ML - ${itemTitle} [Produto ML: ${itemId || 'sem-id'}]`,
           amount: netAmount,
           dueDate: estimatedReleaseDate,
-          paidDate: closedDate, // quando o ML recebeu o pagamento do comprador
-          status: 'pending', // vira "paid" quando o ML libera (cron ou MP)
+          paidDate: closedDate,
+          status: isCancelled ? 'cancelled' : 'pending',
           mlOrderId: `order_${order.id}`,
-          notes: `PRODUTO ML ID: ${itemId || 'SEM ID'}\n\n${notesContent}`,
+          notes: `PRODUTO ML ID: ${itemId || 'SEM ID'}\n\n${notesContent}${cancelledSuffix}`,
           productId,
           productCost,
         },
@@ -325,14 +354,15 @@ Bruto: R$ ${order.total_amount.toFixed(2)} | Taxas: ${taxBreakdown} (Total: R$ $
 
     return NextResponse.json({
       success: true,
-      message: `Sincronização concluída: ${created} pedidos importados, ${skipped} já existiam`,
+      message: `${created} importados, ${cancelledUpdated} cancelados atualizados, ${skipped} já existiam`,
       stats: {
         total: orders.length,
         created,
+        cancelledUpdated,
         skipped,
         janela: { from: fromIso, to: toIso, months },
       },
-      bills: createdBills.slice(0, 10), // Retornar apenas os 10 primeiros
+      bills: createdBills.slice(0, 10),
     });
   } catch (error) {
     console.error('Error syncing orders:', error);
