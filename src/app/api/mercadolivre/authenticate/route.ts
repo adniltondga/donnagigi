@@ -64,12 +64,15 @@ export async function POST(request: NextRequest) {
     // Criar nova integração
     const expiresAt = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000) // 1 ano (token não expira normalmente)
 
+    const { getDefaultTenantId } = await import("@/lib/tenant")
+    const tenantId = await getDefaultTenantId()
     const integration = await prisma.mLIntegration.create({
       data: {
         accessToken,
         refreshToken: null,
         sellerID: sellerId,
         expiresAt,
+        tenantId,
       },
     })
 

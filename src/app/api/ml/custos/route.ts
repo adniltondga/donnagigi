@@ -1,4 +1,5 @@
 import prisma from '@/lib/prisma';
+import { getDefaultTenantId } from '@/lib/tenant';
 import { NextRequest, NextResponse } from 'next/server';
 
 export const dynamic = 'force-dynamic';
@@ -93,11 +94,12 @@ export async function GET() {
     }
 
     if (paraBackfill.length > 0) {
+      const backfillTenantId = await getDefaultTenantId();
       await Promise.all(
         paraBackfill.map((p) =>
           prisma.mLProductCost.upsert({
             where: { mlListingId: p.mlListingId },
-            create: p,
+            create: { ...p, tenantId: backfillTenantId },
             update: { productCost: p.productCost, ...(p.title ? { title: p.title } : {}) },
           })
         )
@@ -159,9 +161,10 @@ export async function PUT(req: NextRequest) {
       return NextResponse.json({ erro: 'productCost inválido' }, { status: 400 });
     }
 
+    const tenantId = await getDefaultTenantId();
     const saved = await prisma.mLProductCost.upsert({
       where: { mlListingId },
-      create: { mlListingId, productCost, title },
+      create: { mlListingId, productCost, title, tenantId },
       update: { productCost, ...(title ? { title } : {}) },
     });
 

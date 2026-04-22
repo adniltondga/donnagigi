@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { PrismaClient } from "@prisma/client"
 import { put } from "@vercel/blob"
+import { getDefaultTenantId } from "@/lib/tenant"
 
 const prisma = new PrismaClient()
 
@@ -23,6 +24,7 @@ interface MLProduct {
     price?: number
     available_quantity?: number
     sold_quantity?: number
+    picture_ids?: string[]
   }>
   pictures?: Array<{
     url: string
@@ -153,6 +155,7 @@ export async function GET() {
 
         // Se não existe, criar
         if (!product) {
+          const tenantId = await getDefaultTenantId()
           product = await prisma.product.create({
             data: {
               name: productTitle,
@@ -160,6 +163,7 @@ export async function GET() {
               baseSalePrice: productPrice,
               minStock: 0,
               mlListingId: mlProduct.id,
+              tenantId,
             },
           })
         }
@@ -211,6 +215,85 @@ export async function GET() {
                 },
               })
             }
+
+            // Importar imagens da variação a partir dos picture_ids
+            if (variation.picture_ids && Array.isArray(variation.picture_ids) && variation.picture_ids.length > 0) {
+              try {
+                const existingVariantImages = await prisma.variantImage.findMany({
+                  where: { variantId: variant.id }
+                })
+
+                // Processar imagens em paralelo
+                await Promise.all(
+                  variation.picture_ids.map(async (pictureId: string, imageIndex: number) => {
+                    try {
+                      // Buscar detalhes da imagem do ML
+                      const pictureResponse = await fetch(
+                        `https://api.mercadolibre.com/pictures/${pictureId}`,
+                        {
+                          headers: {
+                            Authorization: `Bearer ${integration.accessToken}`
+                          }
+                        }
+                      )
+
+                      if (!pictureResponse.ok) {
+                        console.warn(`[ML/SYNC] Erro ao buscar imagem ${pictureId}`)
+                        return
+                      }
+
+                      const pictureData = await pictureResponse.json()
+                      const imageUrl = pictureData.secure_url || pictureData.url
+
+                      if (!imageUrl) {
+                        console.warn(`[ML/SYNC] URL não encontrada para imagem ${pictureId}`)
+                        return
+                      }
+
+                      // Verificar se já existe
+                      const alreadyExists = existingVariantImages.some(img => img.mlUrl === imageUrl)
+                      if (alreadyExists) {
+                        return // Skip
+                      }
+
+                      // Baixar imagem
+                      const imageResponse = await fetch(imageUrl)
+                      if (!imageResponse.ok) {
+                        console.warn(`[ML/SYNC] Erro ao baixar imagem ${imageUrl}`)
+                        return
+                      }
+
+                      const imageBuffer = await imageResponse.arrayBuffer()
+                      const filename = `variants/${variant.id}/ml-${pictureId}.jpg`
+
+                      // Upload no Vercel Blob
+                      const blob = await put(filename, imageBuffer, {
+                        access: "public",
+                        contentType: "image/jpeg"
+                      })
+
+                      // Salvar no banco
+                      await prisma.variantImage.create({
+                        data: {
+                          variantId: variant.id,
+                          url: blob.url,
+                          mlUrl: imageUrl,
+                          order: imageIndex
+                        }
+                      })
+
+                      console.log(`[ML/SYNC] Imagem ${pictureId} importada para variação ${variant.id}`)
+                    } catch (imageError) {
+                      console.warn(`[ML/SYNC] Erro ao importar imagem ${pictureId} da variação:`, imageError)
+                    }
+                  })
+                )
+              } catch (variantImagesError) {
+                console.warn(`[ML/SYNC] Erro ao processar imagens da variação ${variant.id}:`, variantImagesError)
+                // Continua mesmo se falhar nas imagens
+              }
+            }
+
             variantsCount++
           }
         } else {
@@ -252,6 +335,63 @@ export async function GET() {
               },
             })
           }
+
+          // Importar imagens do produto padrão (quando não há variações)
+          if (mlProduct.pictures && Array.isArray(mlProduct.pictures) && mlProduct.pictures.length > 0) {
+            try {
+              const existingVariantImages = await prisma.variantImage.findMany({
+                where: { variantId: defaultVariant.id }
+              })
+
+              // Importar apenas imagens que ainda não existem
+              await Promise.all(
+                mlProduct.pictures.map(async (picture, imageIndex) => {
+                  try {
+                    const pictureUrl = picture.url
+                    const alreadyExists = existingVariantImages.some(img => img.mlUrl === pictureUrl)
+
+                    if (alreadyExists) {
+                      return // Skip
+                    }
+
+                    // Baixar imagem
+                    const imageResponse = await fetch(pictureUrl)
+                    if (!imageResponse.ok) {
+                      console.warn(`[ML/SYNC] Erro ao baixar imagem padrão: ${pictureUrl}`)
+                      return
+                    }
+
+                    const imageBuffer = await imageResponse.arrayBuffer()
+                    const filename = `variants/${defaultVariant.id}/ml-${Date.now()}-${imageIndex}.jpg`
+
+                    // Upload no Blob
+                    const blob = await put(filename, imageBuffer, {
+                      access: "public",
+                      contentType: "image/jpeg"
+                    })
+
+                    // Salvar no banco
+                    await prisma.variantImage.create({
+                      data: {
+                        variantId: defaultVariant.id,
+                        url: blob.url,
+                        mlUrl: pictureUrl,
+                        order: imageIndex
+                      }
+                    })
+
+                    console.log(`[ML/SYNC] Imagem padrão importada para variação ${defaultVariant.id}`)
+                  } catch (imageError) {
+                    console.warn(`[ML/SYNC] Erro ao importar imagem padrão:`, imageError)
+                  }
+                })
+              )
+            } catch (defaultImagesError) {
+              console.warn(`[ML/SYNC] Erro ao processar imagens da variação padrão ${defaultVariant.id}:`, defaultImagesError)
+              // Continua mesmo se falhar nas imagens
+            }
+          }
+
           variantsCount = 1
         }
 

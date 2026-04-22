@@ -1,4 +1,5 @@
 import prisma from '@/lib/prisma';
+import { getDefaultTenantId } from '@/lib/tenant';
 import { NextRequest, NextResponse } from 'next/server';
 
 export async function GET(_req: NextRequest) {
@@ -31,8 +32,9 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    const tenantId = await getDefaultTenantId();
     const supplier = await prisma.supplier.create({
-      data: { name },
+      data: { name, tenantId },
     });
 
     return NextResponse.json(supplier, { status: 201 });

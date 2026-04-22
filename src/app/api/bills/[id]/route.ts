@@ -95,9 +95,11 @@ export async function PUT(
         const title = (tMatchNew?.[1] || tMatchOld?.[1] || '').trim() || null;
         const costNum = Number(finalProductCost);
 
+        const { getDefaultTenantId } = await import('@/lib/tenant');
+        const tenantIdForCost = await getDefaultTenantId();
         await prisma.mLProductCost.upsert({
           where: { mlListingId: listingId },
-          create: { mlListingId: listingId, productCost: costNum, title },
+          create: { mlListingId: listingId, productCost: costNum, title, tenantId: tenantIdForCost },
           update: { productCost: costNum, ...(title ? { title } : {}) },
         });
 

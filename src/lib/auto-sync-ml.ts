@@ -4,6 +4,7 @@
  */
 
 import { PrismaClient } from '@prisma/client'
+import { getDefaultTenantId } from './tenant'
 
 const prisma = new PrismaClient()
 
@@ -54,8 +55,9 @@ export async function syncMLProductToDB(
       })
     } else {
       // Criar novo
+      const tenantId = await getDefaultTenantId()
       product = await prisma.product.create({
-        data: productData,
+        data: { ...productData, tenantId },
       })
     }
 

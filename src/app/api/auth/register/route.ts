@@ -33,13 +33,17 @@ export async function POST(request: NextRequest) {
     // Hash da senha
     const hashedPassword = await bcrypt.hash(password, 10)
 
-    // Criar usuário
+    // Criar usuário (por enquanto associado ao tenant default — Fase 3
+    // de auth vai criar um Tenant novo pra cada signup)
+    const { getDefaultTenantId } = await import('@/lib/tenant')
+    const tenantId = await getDefaultTenantId()
     const user = await prisma.user.create({
       data: {
         email,
         username,
         password: hashedPassword,
-        name
+        name,
+        tenantId,
       }
     })
 
