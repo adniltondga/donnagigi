@@ -215,6 +215,17 @@ export async function GET(req: NextRequest) {
       const orderDate = new Date(order.date_closed || order.date_created);
       const closedDate = new Date(order.date_closed || order.date_created);
 
+      // Extrair taxa de venda do ML (sale_fee).
+      // Campo: order.order_items[].sale_fee — vem null em pedidos recém-criados
+      // e é preenchido após a liquidação. Aqui tratamos null como 0.
+      let saleFee = 0;
+      if (order.order_items && order.order_items.length > 0) {
+        saleFee = order.order_items.reduce(
+          (sum: number, item: any) => sum + (Number(item.sale_fee) || 0),
+          0
+        );
+      }
+
       // Extrair taxa de envio
       // Fórmula: list_cost - cost = taxa final que o vendedor paga
       let shippingFee = 0;
@@ -241,11 +252,16 @@ export async function GET(req: NextRequest) {
       }
 
       // Calcular valor líquido (o que realmente vai receber)
-      const totalTaxes = shippingFee;
+      const totalTaxes = saleFee + shippingFee;
       const netAmount = order.total_amount - totalTaxes;
 
       // Criar única conta a receber com valor líquido
-      const taxBreakdown = shippingFee > 0 ? `Taxa de envio: R$ ${shippingFee.toFixed(2)}` : '';
+      const taxBreakdown = [
+        saleFee > 0 ? `Taxa de venda: R$ ${saleFee.toFixed(2)}` : '',
+        shippingFee > 0 ? `Taxa de envio: R$ ${shippingFee.toFixed(2)}` : '',
+      ]
+        .filter(Boolean)
+        .join(' + ');
 
       const notesContent = `PEDIDO
 #${order.id}
