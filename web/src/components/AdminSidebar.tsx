@@ -29,11 +29,14 @@ export function AdminSidebar() {
     <aside className="w-64 bg-admin-800 text-white min-h-screen shadow-lg flex flex-col">
       <div className="p-6 border-b border-admin-700">
         <div className="flex items-center gap-2 mb-2">
-          <div className="w-10 h-10 bg-primary-500 rounded-full flex items-center justify-center">
-            <span className="font-bold">👜</span>
+          <div className="w-10 h-10 bg-primary-500 rounded-full flex items-center justify-center shadow-lg shadow-primary-500/30">
+            <span className="font-bold text-white">aL</span>
           </div>
-          <h1 className="text-xl font-bold">Donna Gigi</h1>
+          <h1 className="text-xl font-bold tracking-tight">
+            ag<span className="text-primary-300">Livre</span>
+          </h1>
         </div>
+        <p className="text-xs text-admin-400">Gestão ML + Mercado Pago</p>
       </div>
 
       <nav className="flex-1 p-6 space-y-4">

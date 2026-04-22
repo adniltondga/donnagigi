@@ -30,7 +30,7 @@ const CARDS: RelatorioCard[] = [
     title: 'Relatório V2',
     description: 'KPIs com comparativo vs período anterior, tendência diária, top produtos e devoluções.',
     badge: 'BETA',
-    gradient: 'from-primary-500 to-pink-600',
+    gradient: 'from-primary-500 to-fuchsia-600',
   },
   {
     href: '/admin/previsao',

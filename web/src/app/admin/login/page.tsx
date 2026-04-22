@@ -111,7 +111,7 @@ export default function LoginPage() {
         <div className="bg-white rounded-2xl shadow-xl p-8 space-y-6">
           {/* Header */}
           <div className="text-center">
-            <h1 className="text-3xl font-bold text-primary-600">Donna Gigi</h1>
+            <h1 className="text-3xl font-bold text-primary-600">agLivre</h1>
             <p className="text-admin-600 mt-2">
               {isRegister ? "Crie sua conta" : "Bem-vindo de volta"}
             </p>

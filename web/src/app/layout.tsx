@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Donna Gigi - Capinhas de Celular Premium",
-  description: "Loja online de capinhas de celular de alta qualidade",
+  title: "agLivre — Gestão financeira para vendedores do Mercado Livre",
+  description: "Controle de vendas, custos, taxas do ML e liberação de caixa via Mercado Pago em um só painel.",
 };
 
 export default function RootLayout({
