@@ -822,21 +822,22 @@ export default function FinanceiroPage() {
                     <TableCell className="text-sm font-semibold">
                       {bill.type === 'receivable' ? (
                         (() => {
+                          const vendaMatch = bill.notes?.match(/Taxa de venda:\s*R\$\s*([\d,\.]+)/);
+                          const taxaVenda = vendaMatch ? parseFloat(vendaMatch[1].replace(',', '.')) : 0;
                           const envioMatch = bill.notes?.match(/Taxa de envio:\s*R\$\s*([\d,\.]+)/);
                           const taxaEnvio = envioMatch ? parseFloat(envioMatch[1].replace(',', '.')) : 0;
 
                           // Usar custos do cache (preenchido quando abre modal) ou do bill
                           let prodCost = costCache[bill.id]?.productCost ?? bill.productCost ?? 0;
 
-                          // Bruto: prefere o valor gravado nas notes (consistente com modal
-                          // e correto para bills antigas, onde amount era líquido após saleFee)
+                          // Bruto: prefere o valor gravado nas notes
                           const brutoMatch = bill.notes?.match(/Bruto:\s*R\$\s*([\d,\.]+)/);
                           const bruto = brutoMatch
                             ? parseFloat(brutoMatch[1].replace(',', '.'))
-                            : bill.amount + taxaEnvio;
+                            : bill.amount + taxaVenda + taxaEnvio;
 
-                          // Lucro = Bruto - Taxa de envio - Custo da mercadoria
-                          const profit = bruto - taxaEnvio - prodCost;
+                          // Lucro = Bruto - Taxa venda - Taxa envio - Custo
+                          const profit = bruto - taxaVenda - taxaEnvio - prodCost;
                           return (
                             <span className={profit > 0 ? 'text-green-600' : 'text-red-600'}>
                               {formatCurrency(profit)}
@@ -951,11 +952,14 @@ export default function FinanceiroPage() {
                 const brutoMatch = notesModal.notes.match(/Bruto: R\$ ([\d,\.]+)/);
                 const bruto = brutoMatch ? parseFloat(brutoMatch[1].replace(',', '.')) : 0;
 
+                const vendaMatch = notesModal.notes.match(/Taxa de venda: R\$ ([\d,\.]+)/);
+                const taxaVenda = vendaMatch ? parseFloat(vendaMatch[1].replace(',', '.')) : 0;
+
                 const envioMatch = notesModal.notes.match(/Taxa de envio: R\$ ([\d,\.]+)/);
                 const taxaEnvio = envioMatch ? parseFloat(envioMatch[1].replace(',', '.')) : 0;
 
                 const prodCost = notesModal.productCost ?? 0;
-                const allTaxes = taxaEnvio + prodCost;
+                const allTaxes = taxaVenda + taxaEnvio + prodCost;
                 const liquidoReal = bruto - allTaxes;
 
                 return (
@@ -970,6 +974,10 @@ export default function FinanceiroPage() {
                         {/* Taxa Mercado Livre */}
                         <div className="space-y-1">
                           <div className="font-medium text-gray-700">Taxa Mercado Livre:</div>
+                          <div className="flex justify-between ml-2">
+                            <span>  • Venda:</span>
+                            <span>{formatCurrency(taxaVenda)}</span>
+                          </div>
                           <div className="flex justify-between ml-2">
                             <span>  • Envio:</span>
                             <span>{formatCurrency(taxaEnvio)}</span>
