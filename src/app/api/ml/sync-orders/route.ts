@@ -217,13 +217,21 @@ export async function GET(req: NextRequest) {
 
       // Extrair taxa de venda do ML (sale_fee).
       // Campo: order.order_items[].sale_fee — vem null em pedidos recém-criados
-      // e é preenchido após a liquidação. Aqui tratamos null como 0.
+      // e é preenchido após a liquidação. Se vier 0/null, estimamos em 18% e
+      // marcamos "(est.)" nas notes. O cron backfill-salefee substitui pelo
+      // valor real quando o ML liquida.
+      const SALE_FEE_PCT = 0.18;
       let saleFee = 0;
+      let saleFeeEstimated = false;
       if (order.order_items && order.order_items.length > 0) {
         saleFee = order.order_items.reduce(
           (sum: number, item: any) => sum + (Number(item.sale_fee) || 0),
           0
         );
+      }
+      if (saleFee === 0 && order.total_amount) {
+        saleFee = order.total_amount * SALE_FEE_PCT;
+        saleFeeEstimated = true;
       }
 
       // Extrair taxa de envio
@@ -256,8 +264,9 @@ export async function GET(req: NextRequest) {
       const netAmount = order.total_amount - totalTaxes;
 
       // Criar única conta a receber com valor líquido
+      const saleFeeSuffix = saleFeeEstimated ? ' (est.)' : '';
       const taxBreakdown = [
-        saleFee > 0 ? `Taxa de venda: R$ ${saleFee.toFixed(2)}` : '',
+        saleFee > 0 ? `Taxa de venda: R$ ${saleFee.toFixed(2)}${saleFeeSuffix}` : '',
         shippingFee > 0 ? `Taxa de envio: R$ ${shippingFee.toFixed(2)}` : '',
       ]
         .filter(Boolean)
