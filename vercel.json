@@ -3,6 +3,10 @@
     {
       "path": "/api/ml/sync-orders",
       "schedule": "0 6 * * *"
+    },
+    {
+      "path": "/api/ml/backfill-salefee",
+      "schedule": "30 6 * * *"
     }
   ]
 }
