@@ -7,6 +7,10 @@
     {
       "path": "/api/ml/backfill-salefee",
       "schedule": "30 6 * * *"
+    },
+    {
+      "path": "/api/ml/release-and-refunds",
+      "schedule": "45 6 * * *"
     }
   ]
 }
