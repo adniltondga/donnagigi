@@ -10,6 +10,24 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// Tenant (cliente do SaaS agLivre). Cada cliente que se cadastra no
+// produto cria um Tenant; todos os dados (produtos, bills, integrações,
+// custos, fornecedores) são escopados por tenantId.
+model Tenant {
+  id        String   @id @default(cuid())
+  name      String   // nome comercial exibido ao cliente
+  slug      String   @unique // identificador URL-friendly (ex: "dona-gigi")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  users          User[]
+  products       Product[]
+  bills          Bill[]
+  suppliers      Supplier[]
+  mlIntegrations MLIntegration[]
+  mlProductCosts MLProductCost[]
+}
+
 // Usuário admin do sistema
 model User {
   id        String   @id @default(cuid())
@@ -17,8 +35,12 @@ model User {
   username  String   @unique
   password  String
   name      String
+  tenantId  String
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@index([tenantId])
 }
 
 // Produto base (título do produto)
@@ -40,6 +62,10 @@ model Product {
   // Status
   active        Boolean @default(true)
 
+  // Tenant owner
+  tenantId      String
+  tenant        Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
@@ -47,6 +73,8 @@ model Product {
   variants      ProductVariant[]
   bills         Bill[]
   images        ProductImage[]
+
+  @@index([tenantId])
 }
 
 // Imagens do produto
@@ -109,8 +137,12 @@ model MLProductCost {
   mlListingId String   @id
   title       String?
   productCost Float
+  tenantId    String
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+
+  @@index([tenantId])
 }
 
 // Estado temporário do fluxo OAuth PKCE do Mercado Livre
@@ -132,12 +164,18 @@ model MLIntegration {
   accessToken  String
   refreshToken String?
   expiresAt    DateTime
-  
+
+  // Tenant owner (1 integração por tenant)
+  tenantId     String
+  tenant       Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
-  
+
   // Relações
   products     MLProduct[]
+
+  @@index([tenantId])
 }
 
 // Rastreamento de produtos no Mercado Livre
@@ -165,8 +203,12 @@ model Supplier {
   id        String   @id @default(cuid())
   name      String
   bills     Bill[]
+  tenantId  String
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@index([tenantId])
 }
 
 // Conta (contas a pagar/receber)
@@ -188,6 +230,10 @@ model Bill {
   quantity        Int      @default(1) // unidades vendidas no pedido (soma de order_items[].quantity)
   mlOrderId       String?  @unique  // evita duplicatas de pedidos ML
   mlPackId        String?  // pack_id do ML (ID que aparece no painel "vendas" do seller)
+  tenantId        String
+  tenant          Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
+
+  @@index([tenantId])
 }

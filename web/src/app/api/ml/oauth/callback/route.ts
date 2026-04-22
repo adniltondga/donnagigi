@@ -156,12 +156,15 @@ export async function GET(request: NextRequest) {
     // Deletar integração anterior se existir
     await prisma.mLIntegration.deleteMany({})
 
+    const { getDefaultTenantId } = await import("@/lib/tenant")
+    const tenantId = await getDefaultTenantId()
     await prisma.mLIntegration.create({
       data: {
         sellerID: sellerID.toString(),
         accessToken: tokenData.access_token,
         refreshToken: tokenData.refresh_token || null,
-        expiresAt: expiresAt
+        expiresAt: expiresAt,
+        tenantId
       }
     })
 

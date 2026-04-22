@@ -56,12 +56,15 @@ export async function POST(request: NextRequest) {
     }
 
     // Criar nova integração
+    const { getDefaultTenantId } = await import("@/lib/tenant")
+    const tenantId = await getDefaultTenantId()
     const integration = await prisma.mLIntegration.create({
       data: {
         accessToken,
         refreshToken,
         sellerID,
         expiresAt: new Date(expiresAt || new Date().getTime() + 6 * 60 * 60 * 1000), // 6 horas por padrão
+        tenantId,
       },
     })
 

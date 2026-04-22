@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/prisma'
+import { getDefaultTenantId } from '@/lib/tenant'
 
 export async function GET(req: NextRequest) {
   try {
@@ -42,6 +43,14 @@ export async function GET(req: NextRequest) {
               active: true,
               createdAt: true,
               updatedAt: true,
+              images: {
+                select: {
+                  id: true,
+                  url: true,
+                  order: true,
+                },
+                orderBy: { order: 'asc' as const },
+              }
             }
           }
         }
@@ -112,6 +121,7 @@ export async function POST(req: NextRequest) {
     }
 
     // 1. Criar Produto
+    const tenantId = await getDefaultTenantId();
     const product = await prisma.product.create({
       data: {
         name: body.name,
@@ -119,6 +129,7 @@ export async function POST(req: NextRequest) {
         mlListingId: body.mlListingId || null,
         baseSalePrice: body.baseSalePrice ? parseFloat(body.baseSalePrice) : null,
         minStock: body.minStock ? parseInt(body.minStock) : 5,
+        tenantId,
       },
     })
 

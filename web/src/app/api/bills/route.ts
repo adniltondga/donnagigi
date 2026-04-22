@@ -1,4 +1,5 @@
 import prisma from '@/lib/prisma';
+import { getDefaultTenantId } from '@/lib/tenant';
 import { NextRequest, NextResponse } from 'next/server';
 
 export async function GET(req: NextRequest) {
@@ -97,6 +98,7 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    const tenantId = await getDefaultTenantId();
     const bill = await prisma.bill.create({
       data: {
         type,
@@ -109,6 +111,7 @@ export async function POST(req: NextRequest) {
         notes: notes || null,
         productCost: finalProductCost ? parseFloat(finalProductCost) : null,
         mlOrderId: mlOrderId || null,
+        tenantId,
       },
       include: { supplier: true, product: true },
     });

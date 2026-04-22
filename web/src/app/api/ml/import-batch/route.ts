@@ -88,6 +88,8 @@ export async function POST(request: NextRequest) {
         }
 
         // Criar Product
+        const { getDefaultTenantId } = await import("@/lib/tenant")
+        const tenantId = await getDefaultTenantId()
         const novoProduct = await prisma.product.create({
           data: {
             name: mlProduto.title,
@@ -95,7 +97,8 @@ export async function POST(request: NextRequest) {
             baseSalePrice: mlProduto.price,
             mlListingId: mlProduto.id,
             minStock: 0,
-            active: true
+            active: true,
+            tenantId
           }
         })
 

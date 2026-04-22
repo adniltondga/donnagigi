@@ -1,4 +1,5 @@
 import prisma from '@/lib/prisma';
+import { getDefaultTenantId } from '@/lib/tenant';
 import { NextRequest, NextResponse } from 'next/server';
 
 // Função para renovar token se expirou
@@ -343,6 +344,7 @@ Bruto: R$ ${order.total_amount.toFixed(2)} | Taxas: ${taxBreakdown} (Total: R$ $
         ? `\n\nDevolução detectada em ${new Date().toLocaleDateString('pt-BR')} (order cancelled no ML)`
         : '';
 
+      const tenantId = await getDefaultTenantId();
       const saleBill = await prisma.bill.create({
         data: {
           type: 'receivable',
@@ -358,6 +360,7 @@ Bruto: R$ ${order.total_amount.toFixed(2)} | Taxas: ${taxBreakdown} (Total: R$ $
           productId,
           productCost,
           quantity,
+          tenantId,
         },
         include: { supplier: true },
       });
