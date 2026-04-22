@@ -9,6 +9,7 @@ interface DiaRow {
   bruto: number;
   taxaVenda: number;
   envio: number;
+  totalVenda: number;
   custo: number;
   lucro: number;
 }
@@ -19,6 +20,7 @@ interface Relatorio {
   totalBruto: number;
   totalTaxaVenda: number;
   totalEnvio: number;
+  totalTotalVenda: number;
   totalCusto: number;
   totalLucro: number;
   melhorDia: DiaRow;
@@ -99,7 +101,7 @@ export default function RelatoriosPage() {
 
       {data && (
         <>
-          <div className="grid grid-cols-2 md:grid-cols-7 gap-3 mb-6">
+          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-3 mb-6">
             <div className="bg-white rounded-lg shadow p-4">
               <p className="text-xs uppercase text-gray-500">💵 Bruto</p>
               <p className="text-lg font-bold text-gray-800">{formatCurrency(data.totalBruto)}</p>
@@ -111,6 +113,10 @@ export default function RelatoriosPage() {
             <div className="bg-white rounded-lg shadow p-4">
               <p className="text-xs uppercase text-gray-500">📦 Envio</p>
               <p className="text-lg font-bold text-amber-600">{formatCurrency(data.totalEnvio)}</p>
+            </div>
+            <div className="bg-white rounded-lg shadow p-4">
+              <p className="text-xs uppercase text-gray-500">🛒 Total Venda</p>
+              <p className="text-lg font-bold text-blue-600">{formatCurrency(data.totalTotalVenda)}</p>
             </div>
             <div className="bg-white rounded-lg shadow p-4">
               <p className="text-xs uppercase text-gray-500">💰 Custo</p>
@@ -143,12 +149,13 @@ export default function RelatoriosPage() {
           <div className="bg-white rounded-lg shadow overflow-hidden">
             <div className="p-4 border-b font-semibold">Faturamento por dia do mês</div>
             <div className="p-4 space-y-2 overflow-x-auto">
-              <div className="flex items-center gap-3 text-xs text-gray-500 font-semibold uppercase pb-1 border-b min-w-[900px]">
+              <div className="flex items-center gap-3 text-xs text-gray-500 font-semibold uppercase pb-1 border-b min-w-[1050px]">
                 <div className="w-10 text-right">Dia</div>
                 <div className="flex-1" />
                 <div className="w-24 text-right">Bruto</div>
                 <div className="w-24 text-right">Tx.Venda</div>
                 <div className="w-24 text-right">Envio</div>
+                <div className="w-24 text-right">Total Venda</div>
                 <div className="w-24 text-right">Custo</div>
                 <div className="w-24 text-right">Lucro</div>
                 <div className="w-14 text-right">Qtd</div>
@@ -157,7 +164,7 @@ export default function RelatoriosPage() {
                 const isBest = data.melhorDia.dia === d.dia && d.bruto > 0;
                 const pct = (d.bruto / maxBruto) * 100;
                 return (
-                  <div key={d.dia} className="flex items-center gap-3 min-w-[900px]">
+                  <div key={d.dia} className="flex items-center gap-3 min-w-[1050px]">
                     <div className="w-10 text-right text-sm text-gray-600 font-mono">
                       {String(d.dia).padStart(2, '0')}
                     </div>
@@ -175,6 +182,9 @@ export default function RelatoriosPage() {
                     </div>
                     <div className="w-24 text-right text-sm text-amber-600">
                       {d.envio > 0 ? formatCurrency(d.envio) : '—'}
+                    </div>
+                    <div className="w-24 text-right text-sm text-blue-600 font-semibold">
+                      {d.totalVenda !== 0 ? formatCurrency(d.totalVenda) : '—'}
                     </div>
                     <div className="w-24 text-right text-sm text-rose-600">
                       {d.custo > 0 ? formatCurrency(d.custo) : '—'}

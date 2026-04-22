@@ -44,13 +44,23 @@ export async function GET(req: NextRequest) {
       bruto: number;
       taxaVenda: number;
       envio: number;
+      totalVenda: number;
       custo: number;
       lucro: number;
     };
 
     const map = new Map<number, DiaAgg>();
     for (let d = 1; d <= 31; d++) {
-      map.set(d, { dia: d, vendas: 0, bruto: 0, taxaVenda: 0, envio: 0, custo: 0, lucro: 0 });
+      map.set(d, {
+        dia: d,
+        vendas: 0,
+        bruto: 0,
+        taxaVenda: 0,
+        envio: 0,
+        totalVenda: 0,
+        custo: 0,
+        lucro: 0,
+      });
     }
 
     const parseAmount = (notes: string | null, re: RegExp) => {
@@ -70,12 +80,14 @@ export async function GET(req: NextRequest) {
       const custo = b.productCost ?? 0;
 
       const brutoReal = bruto > 0 ? bruto : b.amount + taxaVenda + envio;
-      const lucro = brutoReal - taxaVenda - envio - custo;
+      const totalVenda = brutoReal - taxaVenda - envio; // o que efetivamente entra do ML
+      const lucro = totalVenda - custo;
 
       agg.vendas += 1;
       agg.bruto += brutoReal;
       agg.taxaVenda += taxaVenda;
       agg.envio += envio;
+      agg.totalVenda += totalVenda;
       agg.custo += custo;
       agg.lucro += lucro;
     }
@@ -86,10 +98,20 @@ export async function GET(req: NextRequest) {
     const totalBruto = dias.reduce((s, d) => s + d.bruto, 0);
     const totalTaxaVenda = dias.reduce((s, d) => s + d.taxaVenda, 0);
     const totalEnvio = dias.reduce((s, d) => s + d.envio, 0);
+    const totalTotalVenda = dias.reduce((s, d) => s + d.totalVenda, 0);
     const totalCusto = dias.reduce((s, d) => s + d.custo, 0);
     const totalLucro = dias.reduce((s, d) => s + d.lucro, 0);
 
-    const zero: DiaAgg = { dia: 0, vendas: 0, bruto: 0, taxaVenda: 0, envio: 0, custo: 0, lucro: 0 };
+    const zero: DiaAgg = {
+      dia: 0,
+      vendas: 0,
+      bruto: 0,
+      taxaVenda: 0,
+      envio: 0,
+      totalVenda: 0,
+      custo: 0,
+      lucro: 0,
+    };
     const melhorDia = dias.reduce((b, d) => (d.bruto > b.bruto ? d : b), zero);
     const melhorDiaLucro = dias.reduce((b, d) => (d.lucro > b.lucro ? d : b), zero);
 
@@ -99,6 +121,7 @@ export async function GET(req: NextRequest) {
       totalBruto,
       totalTaxaVenda,
       totalEnvio,
+      totalTotalVenda,
       totalCusto,
       totalLucro,
       melhorDia,
