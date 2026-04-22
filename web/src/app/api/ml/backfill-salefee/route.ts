@@ -64,7 +64,11 @@ export async function GET(_req: NextRequest) {
         category: 'venda',
         mlOrderId: { not: null },
         paidDate: { gte: since },
-        NOT: { notes: { contains: 'Taxa de venda' } },
+        // Bills sem saleFee OU com saleFee ainda estimado
+        OR: [
+          { NOT: { notes: { contains: 'Taxa de venda' } } },
+          { notes: { contains: '(est.)' } },
+        ],
       },
       select: { id: true, mlOrderId: true, amount: true, notes: true },
     });
@@ -88,38 +92,57 @@ export async function GET(_req: NextRequest) {
         }
 
         const order: any = await res.json();
-        const saleFee = (order.order_items || []).reduce(
+        const realSaleFee = (order.order_items || []).reduce(
           (s: number, it: any) => s + (Number(it.sale_fee) || 0),
           0
         );
 
-        if (saleFee === 0) {
-          zeros++;
-          continue;
-        }
+        // Detectar saleFee anterior registrado nas notes (estimativa ou real)
+        const inner = (b.notes || '').match(/VENDAS\n([^\n]*)/)?.[1] || '';
+        const prevSaleFeeMatch = inner.match(/Taxa de venda:\s*R\$\s*([\d,\.]+)/);
+        const prevSaleFee = prevSaleFeeMatch
+          ? parseFloat(prevSaleFeeMatch[1].replace(',', '.'))
+          : 0;
 
-        const newAmount = b.amount - saleFee;
-
-        let newNotes = b.notes || '';
-        const inner = newNotes.match(/VENDAS\n([^\n]*)/)?.[1] || '';
         const envio = parseFloat(
           inner.match(/Taxa de envio:\s*R\$\s*([\d,\.]+)/)?.[1]?.replace(',', '.') || '0'
         );
         const bruto = parseFloat(
           inner.match(/Bruto:\s*R\$\s*([\d,\.]+)/)?.[1]?.replace(',', '.') || '0'
         );
-        const liquido = bruto - envio - saleFee;
-        const totalTaxas = envio + saleFee;
+
+        // Se ML ainda não liquidou E a bill já tem uma estimativa OK, só pula.
+        // Se ML ainda não liquidou E a bill está sem saleFee, aplica estimativa de 18%.
+        let newSaleFee: number;
+        let estimated: boolean;
+        if (realSaleFee > 0) {
+          newSaleFee = realSaleFee;
+          estimated = false;
+        } else if (!prevSaleFeeMatch && bruto > 0) {
+          newSaleFee = bruto * 0.18;
+          estimated = true;
+        } else {
+          zeros++;
+          continue;
+        }
+
+        const newAmount = b.amount + prevSaleFee - newSaleFee;
+        const liquido = bruto - envio - newSaleFee;
+        const totalTaxas = envio + newSaleFee;
+        const suffix = estimated ? ' (est.)' : '';
+
+        const taxasStr =
+          envio > 0
+            ? `Taxa de venda: R$ ${newSaleFee.toFixed(2)}${suffix} + Taxa de envio: R$ ${envio.toFixed(2)}`
+            : `Taxa de venda: R$ ${newSaleFee.toFixed(2)}${suffix}`;
 
         const newLine = `VENDAS\nBruto: R$ ${bruto.toFixed(
           2
-        )} | Taxas: Taxa de venda: R$ ${saleFee.toFixed(
-          2
-        )} + Taxa de envio: R$ ${envio.toFixed(2)} (Total: R$ ${totalTaxas.toFixed(
+        )} | Taxas: ${taxasStr} (Total: R$ ${totalTaxas.toFixed(
           2
         )}) | Líquido: R$ ${liquido.toFixed(2)}`;
 
-        newNotes = newNotes.replace(/VENDAS\n[^\n]*/, newLine);
+        const newNotes = (b.notes || '').replace(/VENDAS\n[^\n]*/, newLine);
 
         await prisma.bill.update({
           where: { id: b.id },

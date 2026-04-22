@@ -952,8 +952,9 @@ export default function FinanceiroPage() {
                 const brutoMatch = notesModal.notes.match(/Bruto: R\$ ([\d,\.]+)/);
                 const bruto = brutoMatch ? parseFloat(brutoMatch[1].replace(',', '.')) : 0;
 
-                const vendaMatch = notesModal.notes.match(/Taxa de venda: R\$ ([\d,\.]+)/);
+                const vendaMatch = notesModal.notes.match(/Taxa de venda: R\$ ([\d,\.]+)(\s*\(est\.\))?/);
                 const taxaVenda = vendaMatch ? parseFloat(vendaMatch[1].replace(',', '.')) : 0;
+                const vendaEstimado = !!vendaMatch?.[2];
 
                 const envioMatch = notesModal.notes.match(/Taxa de envio: R\$ ([\d,\.]+)/);
                 const taxaEnvio = envioMatch ? parseFloat(envioMatch[1].replace(',', '.')) : 0;
@@ -975,8 +976,10 @@ export default function FinanceiroPage() {
                         <div className="space-y-1">
                           <div className="font-medium text-gray-700">Taxa Mercado Livre:</div>
                           <div className="flex justify-between ml-2">
-                            <span>  • Venda:</span>
-                            <span>{formatCurrency(taxaVenda)}</span>
+                            <span>  • Venda{vendaEstimado ? ' (est. 18%)' : ''}:</span>
+                            <span className={vendaEstimado ? 'text-amber-600' : ''}>
+                              {formatCurrency(taxaVenda)}
+                            </span>
                           </div>
                           <div className="flex justify-between ml-2">
                             <span>  • Envio:</span>
