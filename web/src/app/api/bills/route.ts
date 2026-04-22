@@ -8,48 +8,45 @@ export async function GET(req: NextRequest) {
     const limit = parseInt(searchParams.get('limit') || '10');
     const skip = (page - 1) * limit;
 
-    const [bills, total, summary] = await Promise.all([
+    const category = searchParams.get('category');
+    const excludeCategory = searchParams.get('excludeCategory');
+    const type = searchParams.get('type');
+    const status = searchParams.get('status');
+    const q = searchParams.get('q')?.trim();
+    const orderBy = searchParams.get('orderBy') || 'dueDate_desc';
+
+    const where: any = {};
+    if (category) where.category = category;
+    if (excludeCategory) where.category = { not: excludeCategory };
+    if (type) where.type = type;
+    if (status) where.status = status;
+    if (q) {
+      where.OR = [
+        { description: { contains: q, mode: 'insensitive' } },
+        { notes: { contains: q, mode: 'insensitive' } },
+        { mlOrderId: { contains: q, mode: 'insensitive' } },
+        { mlPackId: { contains: q, mode: 'insensitive' } },
+      ];
+    }
+
+    const [orderField, orderDir] = orderBy.split('_');
+    const orderClause = { [orderField || 'dueDate']: (orderDir as 'asc' | 'desc') || 'desc' };
+
+    const [bills, total] = await Promise.all([
       prisma.bill.findMany({
+        where,
         include: { supplier: true, product: true },
-        orderBy: { dueDate: 'desc' },
+        orderBy: orderClause,
         skip,
         take: limit,
       }),
-      prisma.bill.count(),
-      prisma.$queryRaw<
-        { total_payable: number; total_receivable_bruto: number; total_receivable_liquid: number; total_overdue: number; count_overdue: number }[]
-      >`
-        SELECT
-          COALESCE(SUM(CASE WHEN type = 'payable' THEN amount ELSE 0 END), 0) as total_payable,
-          COALESCE(SUM(CASE WHEN type = 'receivable' THEN amount ELSE 0 END), 0) as total_receivable_bruto,
-          COALESCE(SUM(CASE WHEN type = 'receivable' THEN amount - COALESCE("productCost", 0) ELSE 0 END), 0) as total_receivable_liquid,
-          COALESCE(SUM(CASE WHEN status = 'overdue' THEN amount ELSE 0 END), 0) as total_overdue,
-          COALESCE(COUNT(CASE WHEN status = 'overdue' THEN 1 END), 0) as count_overdue
-        FROM "Bill"
-      `,
+      prisma.bill.count({ where }),
     ]);
-
-    const summaryData = summary[0] || {
-      total_payable: 0,
-      total_receivable_bruto: 0,
-      total_receivable_liquid: 0,
-      total_overdue: 0,
-      count_overdue: 0,
-    };
 
     return NextResponse.json({
       data: bills,
       total,
       pages: Math.ceil(total / limit),
-      summary: {
-        totalPayable: Number(summaryData.total_payable),
-        totalReceivableBruto: Number(summaryData.total_receivable_bruto),
-        totalReceivableLiquid: Number(summaryData.total_receivable_liquid),
-        balanceBruto: Number(summaryData.total_receivable_bruto) - Number(summaryData.total_payable),
-        balanceLucroReal: Number(summaryData.total_receivable_liquid) - Number(summaryData.total_payable),
-        totalOverdue: Number(summaryData.total_overdue),
-        countOverdue: Number(summaryData.count_overdue),
-      },
     });
   } catch (error) {
     console.error('Error fetching bills:', error);
