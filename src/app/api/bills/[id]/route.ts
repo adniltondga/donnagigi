@@ -34,7 +34,7 @@ export async function PUT(
 ) {
   try {
     const body = await req.json();
-    const { description, amount, dueDate, category, supplierId, notes, productCost, productId } = body;
+    const { description, amount, dueDate, category, supplierId, notes, productCost, productId, status, type } = body;
 
     // Se productId foi fornecido, buscar os custos do produto
     let finalProductCost = productCost;
@@ -55,6 +55,8 @@ export async function PUT(
       ...(amount && { amount: parseFloat(amount) }),
       ...(dueDate && { dueDate: new Date(dueDate) }),
       ...(category && { category }),
+      ...(status && { status }),
+      ...(type && { type }),
       ...(supplierId !== undefined && { supplierId: supplierId || null }),
       ...(notes !== undefined && { notes: notes || null }),
       ...(productId !== undefined && { productId: productId || null }),
