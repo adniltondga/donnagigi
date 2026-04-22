@@ -6,17 +6,21 @@ import { formatCurrency } from '@/lib/calculations';
 interface DiaRow {
   dia: number;
   vendas: number;
-  total: number;
+  bruto: number;
+  taxaVenda: number;
+  envio: number;
   custo: number;
-  liquido: number;
+  lucro: number;
 }
 
 interface Relatorio {
   periodo: { from: string; to: string };
   totalVendas: number;
-  totalGeral: number;
+  totalBruto: number;
+  totalTaxaVenda: number;
+  totalEnvio: number;
   totalCusto: number;
-  totalLiquido: number;
+  totalLucro: number;
   melhorDia: DiaRow;
   melhorDiaLucro: DiaRow;
   dias: DiaRow[];
@@ -56,12 +60,14 @@ export default function RelatoriosPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const maxTotal = data ? Math.max(1, ...data.dias.map((d) => d.total)) : 1;
+  const maxBruto = data ? Math.max(1, ...data.dias.map((d) => d.bruto)) : 1;
 
   return (
-    <div className="max-w-6xl mx-auto">
+    <div className="max-w-7xl mx-auto">
       <h1 className="text-3xl font-bold mb-2">📈 Relatório de Vendas</h1>
-      <p className="text-gray-600 mb-6">Dia do mês (1 a 31) com maior faturamento no período.</p>
+      <p className="text-gray-600 mb-6">
+        Faturamento bruto, taxas do ML, custo de mercadoria e lucro líquido real por dia do mês.
+      </p>
 
       <div className="bg-white rounded-lg shadow p-4 mb-6 flex flex-wrap gap-4 items-end">
         <div>
@@ -93,34 +99,42 @@ export default function RelatoriosPage() {
 
       {data && (
         <>
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
+          <div className="grid grid-cols-2 md:grid-cols-7 gap-3 mb-6">
             <div className="bg-white rounded-lg shadow p-4">
               <p className="text-xs uppercase text-gray-500">💵 Bruto</p>
-              <p className="text-xl font-bold text-gray-800">{formatCurrency(data.totalGeral)}</p>
+              <p className="text-lg font-bold text-gray-800">{formatCurrency(data.totalBruto)}</p>
+            </div>
+            <div className="bg-white rounded-lg shadow p-4">
+              <p className="text-xs uppercase text-gray-500">🏷️ Tx. Venda</p>
+              <p className="text-lg font-bold text-amber-600">{formatCurrency(data.totalTaxaVenda)}</p>
+            </div>
+            <div className="bg-white rounded-lg shadow p-4">
+              <p className="text-xs uppercase text-gray-500">📦 Envio</p>
+              <p className="text-lg font-bold text-amber-600">{formatCurrency(data.totalEnvio)}</p>
             </div>
             <div className="bg-white rounded-lg shadow p-4">
               <p className="text-xs uppercase text-gray-500">💰 Custo</p>
-              <p className="text-xl font-bold text-rose-600">{formatCurrency(data.totalCusto)}</p>
+              <p className="text-lg font-bold text-rose-600">{formatCurrency(data.totalCusto)}</p>
             </div>
             <div className="bg-white rounded-lg shadow p-4">
               <p className="text-xs uppercase text-gray-500">📈 Lucro</p>
-              <p className="text-xl font-bold text-emerald-600">{formatCurrency(data.totalLiquido)}</p>
+              <p className="text-lg font-bold text-emerald-600">{formatCurrency(data.totalLucro)}</p>
             </div>
             <div className="bg-white rounded-lg shadow p-4">
-              <p className="text-xs uppercase text-gray-500">Qtd. vendas</p>
-              <p className="text-xl font-bold text-gray-800">{data.totalVendas}</p>
+              <p className="text-xs uppercase text-gray-500">Qtd.</p>
+              <p className="text-lg font-bold text-gray-800">{data.totalVendas}</p>
             </div>
             <div className="bg-gradient-to-br from-primary-500 to-pink-600 rounded-lg shadow p-4 text-white">
               <p className="text-xs uppercase opacity-90">🏆 Melhor dia</p>
-              <p className="text-xl font-bold">
+              <p className="text-lg font-bold">
                 {data.melhorDia.dia > 0 ? `Dia ${data.melhorDia.dia}` : '—'}
               </p>
               <p className="text-xs opacity-90">
-                {formatCurrency(data.melhorDia.total)} · {data.melhorDia.vendas} venda(s)
+                {formatCurrency(data.melhorDia.bruto)}
               </p>
               {data.melhorDiaLucro.dia > 0 && (
                 <p className="text-xs opacity-90 mt-1 border-t border-white/30 pt-1">
-                  Lucro: dia {data.melhorDiaLucro.dia} · {formatCurrency(data.melhorDiaLucro.liquido)}
+                  💰 Lucro: dia {data.melhorDiaLucro.dia} · {formatCurrency(data.melhorDiaLucro.lucro)}
                 </p>
               )}
             </div>
@@ -128,20 +142,22 @@ export default function RelatoriosPage() {
 
           <div className="bg-white rounded-lg shadow overflow-hidden">
             <div className="p-4 border-b font-semibold">Faturamento por dia do mês</div>
-            <div className="p-4 space-y-2">
-              <div className="flex items-center gap-3 text-xs text-gray-500 font-semibold uppercase pb-1 border-b">
+            <div className="p-4 space-y-2 overflow-x-auto">
+              <div className="flex items-center gap-3 text-xs text-gray-500 font-semibold uppercase pb-1 border-b min-w-[900px]">
                 <div className="w-10 text-right">Dia</div>
                 <div className="flex-1" />
-                <div className="w-28 text-right">Bruto</div>
-                <div className="w-28 text-right">Custo</div>
-                <div className="w-28 text-right">Lucro</div>
-                <div className="w-16 text-right">Qtd</div>
+                <div className="w-24 text-right">Bruto</div>
+                <div className="w-24 text-right">Tx.Venda</div>
+                <div className="w-24 text-right">Envio</div>
+                <div className="w-24 text-right">Custo</div>
+                <div className="w-24 text-right">Lucro</div>
+                <div className="w-14 text-right">Qtd</div>
               </div>
               {data.dias.map((d) => {
-                const isBest = data.melhorDia.dia === d.dia && d.total > 0;
-                const pct = (d.total / maxTotal) * 100;
+                const isBest = data.melhorDia.dia === d.dia && d.bruto > 0;
+                const pct = (d.bruto / maxBruto) * 100;
                 return (
-                  <div key={d.dia} className="flex items-center gap-3">
+                  <div key={d.dia} className="flex items-center gap-3 min-w-[900px]">
                     <div className="w-10 text-right text-sm text-gray-600 font-mono">
                       {String(d.dia).padStart(2, '0')}
                     </div>
@@ -151,17 +167,27 @@ export default function RelatoriosPage() {
                         style={{ width: `${pct}%` }}
                       />
                     </div>
-                    <div className="w-28 text-right text-sm font-semibold">
-                      {formatCurrency(d.total)}
+                    <div className="w-24 text-right text-sm font-semibold">
+                      {d.bruto > 0 ? formatCurrency(d.bruto) : '—'}
                     </div>
-                    <div className="w-28 text-right text-sm text-rose-600">
+                    <div className="w-24 text-right text-sm text-amber-600">
+                      {d.taxaVenda > 0 ? formatCurrency(d.taxaVenda) : '—'}
+                    </div>
+                    <div className="w-24 text-right text-sm text-amber-600">
+                      {d.envio > 0 ? formatCurrency(d.envio) : '—'}
+                    </div>
+                    <div className="w-24 text-right text-sm text-rose-600">
                       {d.custo > 0 ? formatCurrency(d.custo) : '—'}
                     </div>
-                    <div className="w-28 text-right text-sm font-semibold text-emerald-600">
-                      {d.liquido !== 0 ? formatCurrency(d.liquido) : '—'}
+                    <div
+                      className={`w-24 text-right text-sm font-semibold ${
+                        d.lucro > 0 ? 'text-emerald-600' : d.lucro < 0 ? 'text-red-600' : 'text-gray-400'
+                      }`}
+                    >
+                      {d.lucro !== 0 ? formatCurrency(d.lucro) : '—'}
                     </div>
-                    <div className="w-16 text-right text-xs text-gray-500">
-                      {d.vendas > 0 ? `${d.vendas} vd` : ''}
+                    <div className="w-14 text-right text-xs text-gray-500">
+                      {d.vendas > 0 ? `${d.vendas}` : ''}
                     </div>
                   </div>
                 );

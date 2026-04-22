@@ -4,7 +4,10 @@ import { NextRequest, NextResponse } from 'next/server';
 export const dynamic = 'force-dynamic';
 
 /**
- * Agrega vendas (bills receivable + category=venda + paidDate) por dia do mês (1..31).
+ * Agrega vendas (bills receivable + category=venda + status=paid) por dia do
+ * mês (1..31). Extrai bruto/saleFee/envio das notes para calcular valores
+ * reais do ML.
+ *
  * Query params opcionais:
  *   - from=YYYY-MM-DD (padrão: início do ano corrente)
  *   - to=YYYY-MM-DD   (padrão: hoje)
@@ -25,58 +28,79 @@ export async function GET(req: NextRequest) {
       ? new Date(`${toParam}T23:59:59.999`)
       : new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
 
-    const rows = await prisma.$queryRaw<
-      { day: number; count: bigint; total: number; custo: number; liquido: number }[]
-    >`
-      SELECT
-        EXTRACT(DAY FROM "paidDate")::int AS day,
-        COUNT(*)::bigint AS count,
-        COALESCE(SUM(amount), 0)::float AS total,
-        COALESCE(SUM(COALESCE("productCost", 0)), 0)::float AS custo,
-        COALESCE(SUM(amount - COALESCE("productCost", 0)), 0)::float AS liquido
-      FROM "Bill"
-      WHERE type = 'receivable'
-        AND category = 'venda'
-        AND status = 'paid'
-        AND "paidDate" IS NOT NULL
-        AND "paidDate" >= ${from}
-        AND "paidDate" <= ${to}
-      GROUP BY day
-      ORDER BY day
-    `;
-
-    // Preencher 1..31 com zeros
-    const map = new Map<number, { count: number; total: number; custo: number; liquido: number }>();
-    for (const r of rows) {
-      map.set(r.day, {
-        count: Number(r.count),
-        total: Number(r.total),
-        custo: Number(r.custo),
-        liquido: Number(r.liquido),
-      });
-    }
-
-    const dias = Array.from({ length: 31 }, (_, i) => {
-      const day = i + 1;
-      const v = map.get(day) || { count: 0, total: 0, custo: 0, liquido: 0 };
-      return { dia: day, vendas: v.count, total: v.total, custo: v.custo, liquido: v.liquido };
+    const bills = await prisma.bill.findMany({
+      where: {
+        type: 'receivable',
+        category: 'venda',
+        status: 'paid',
+        paidDate: { gte: from, lte: to },
+      },
+      select: { amount: true, paidDate: true, notes: true, productCost: true },
     });
 
-    const totalGeral = dias.reduce((s, d) => s + d.total, 0);
-    const totalCusto = dias.reduce((s, d) => s + d.custo, 0);
-    const totalLiquido = dias.reduce((s, d) => s + d.liquido, 0);
-    const totalVendas = dias.reduce((s, d) => s + d.vendas, 0);
+    type DiaAgg = {
+      dia: number;
+      vendas: number;
+      bruto: number;
+      taxaVenda: number;
+      envio: number;
+      custo: number;
+      lucro: number;
+    };
 
-    const zero = { dia: 0, vendas: 0, total: 0, custo: 0, liquido: 0 };
-    const melhorDia = dias.reduce((best, d) => (d.total > best.total ? d : best), zero);
-    const melhorDiaLucro = dias.reduce((best, d) => (d.liquido > best.liquido ? d : best), zero);
+    const map = new Map<number, DiaAgg>();
+    for (let d = 1; d <= 31; d++) {
+      map.set(d, { dia: d, vendas: 0, bruto: 0, taxaVenda: 0, envio: 0, custo: 0, lucro: 0 });
+    }
+
+    const parseAmount = (notes: string | null, re: RegExp) => {
+      const m = notes?.match(re);
+      return m ? parseFloat(m[1].replace(',', '.')) : 0;
+    };
+
+    for (const b of bills) {
+      if (!b.paidDate) continue;
+      const dia = b.paidDate.getDate();
+      const agg = map.get(dia);
+      if (!agg) continue;
+
+      const bruto = parseAmount(b.notes, /Bruto:\s*R\$\s*([\d,\.]+)/);
+      const taxaVenda = parseAmount(b.notes, /Taxa de venda:\s*R\$\s*([\d,\.]+)/);
+      const envio = parseAmount(b.notes, /Taxa de envio:\s*R\$\s*([\d,\.]+)/);
+      const custo = b.productCost ?? 0;
+
+      const brutoReal = bruto > 0 ? bruto : b.amount + taxaVenda + envio;
+      const lucro = brutoReal - taxaVenda - envio - custo;
+
+      agg.vendas += 1;
+      agg.bruto += brutoReal;
+      agg.taxaVenda += taxaVenda;
+      agg.envio += envio;
+      agg.custo += custo;
+      agg.lucro += lucro;
+    }
+
+    const dias = Array.from(map.values());
+
+    const totalVendas = dias.reduce((s, d) => s + d.vendas, 0);
+    const totalBruto = dias.reduce((s, d) => s + d.bruto, 0);
+    const totalTaxaVenda = dias.reduce((s, d) => s + d.taxaVenda, 0);
+    const totalEnvio = dias.reduce((s, d) => s + d.envio, 0);
+    const totalCusto = dias.reduce((s, d) => s + d.custo, 0);
+    const totalLucro = dias.reduce((s, d) => s + d.lucro, 0);
+
+    const zero: DiaAgg = { dia: 0, vendas: 0, bruto: 0, taxaVenda: 0, envio: 0, custo: 0, lucro: 0 };
+    const melhorDia = dias.reduce((b, d) => (d.bruto > b.bruto ? d : b), zero);
+    const melhorDiaLucro = dias.reduce((b, d) => (d.lucro > b.lucro ? d : b), zero);
 
     return NextResponse.json({
       periodo: { from: from.toISOString(), to: to.toISOString() },
       totalVendas,
-      totalGeral,
+      totalBruto,
+      totalTaxaVenda,
+      totalEnvio,
       totalCusto,
-      totalLiquido,
+      totalLucro,
       melhorDia,
       melhorDiaLucro,
       dias,
