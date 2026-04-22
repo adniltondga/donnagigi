@@ -68,6 +68,7 @@ async function refreshTokenIfNeeded() {
 
 interface MLOrder {
   id: number;
+  pack_id?: number | null;
   status: string;
   date_created: string;
   date_closed: string;
@@ -237,7 +238,6 @@ export async function GET(req: NextRequest) {
       const itemTitle =
         order.order_items?.[0]?.item?.title || 'Venda Mercado Livre';
       const itemId = order.order_items?.[0]?.item?.id || '';
-      const orderDate = new Date(order.date_closed || order.date_created);
       const closedDate = new Date(order.date_closed || order.date_created);
 
       // Extrair taxa de venda do ML (sale_fee).
@@ -297,9 +297,11 @@ export async function GET(req: NextRequest) {
         .filter(Boolean)
         .join(' + ');
 
+      const packLine = order.pack_id ? `\nPack\n#${order.pack_id}\n` : '';
+
       const notesContent = `PEDIDO
 #${order.id}
-
+${packLine}
 Comprador
 ${order.buyer.nickname}
 
@@ -309,17 +311,27 @@ ${itemId}
 VENDAS
 Bruto: R$ ${order.total_amount.toFixed(2)} | Taxas: ${taxBreakdown} (Total: R$ ${totalTaxes.toFixed(2)}) | Líquido: R$ ${netAmount.toFixed(2)}`;
 
-      // Buscar custo cadastrado para o listing (MLProductCost)
+      // Quantidade total de unidades vendidas no pedido (soma de todos os itens)
+      const quantity = (order.order_items || []).reduce(
+        (sum, oi) => sum + (Number(oi.quantity) || 1),
+        0
+      ) || 1;
+
+      // Custo total do pedido = Σ (custo_unitário × quantity) por item.
+      // Se nenhum item tiver custo cadastrado, mantém null.
       let productCost: number | null = null;
       const productId: string | null = null;
 
-      if (itemId) {
+      for (const oi of order.order_items || []) {
+        const oiId = oi.item?.id;
+        const oiQty = Number(oi.quantity) || 1;
+        if (!oiId) continue;
         const cost = await prisma.mLProductCost.findUnique({
-          where: { mlListingId: itemId },
+          where: { mlListingId: oiId },
           select: { productCost: true },
         });
-        if (cost) {
-          productCost = cost.productCost;
+        if (cost?.productCost) {
+          productCost = (productCost ?? 0) + cost.productCost * oiQty;
         }
       }
 
@@ -341,9 +353,11 @@ Bruto: R$ ${order.total_amount.toFixed(2)} | Taxas: ${taxBreakdown} (Total: R$ $
           paidDate: closedDate,
           status: isCancelled ? 'cancelled' : 'pending',
           mlOrderId: `order_${order.id}`,
+          mlPackId: order.pack_id ? String(order.pack_id) : null,
           notes: `PRODUTO ML ID: ${itemId || 'SEM ID'}\n\n${notesContent}${cancelledSuffix}`,
           productId,
           productCost,
+          quantity,
         },
         include: { supplier: true },
       });
