@@ -122,7 +122,7 @@ export default function RelatoriosPage() {
               <p className="text-xs uppercase text-gray-500">Qtd.</p>
               <p className="text-lg font-bold text-gray-800">{data.totalVendas}</p>
             </div>
-            <div className="bg-gradient-to-br from-primary-500 to-pink-600 rounded-lg shadow p-4 text-white">
+            <div className="bg-gradient-to-br from-primary-500 to-fuchsia-600 rounded-lg shadow p-4 text-white">
               <p className="text-xs uppercase opacity-90">🏆 Melhor dia</p>
               <p className="text-lg font-bold">
                 {data.melhorDia.dia > 0 ? `Dia ${data.melhorDia.dia}` : '—'}
@@ -162,7 +162,7 @@ export default function RelatoriosPage() {
                     </div>
                     <div className="flex-1 bg-gray-100 rounded h-6 relative overflow-hidden">
                       <div
-                        className={`h-full ${isBest ? 'bg-gradient-to-r from-primary-500 to-pink-600' : 'bg-admin-400'}`}
+                        className={`h-full ${isBest ? 'bg-gradient-to-r from-primary-500 to-fuchsia-600' : 'bg-admin-400'}`}
                         style={{ width: `${pct}%` }}
                       />
                     </div>

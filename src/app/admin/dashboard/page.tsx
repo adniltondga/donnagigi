@@ -95,7 +95,7 @@ export default function Dashboard() {
       <div className="mb-8">
         <h1 className="text-4xl font-bold text-admin-900">Dashboard</h1>
         <p className="text-admin-600 mt-2">
-          Bem-vindo ao painel administrativo da Donna Gigi
+          Bem-vindo ao agLivre — gestão ML e Mercado Pago
         </p>
       </div>
 

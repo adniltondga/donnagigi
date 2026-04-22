@@ -28,7 +28,7 @@ function generateCodeChallenge(codeVerifier: string): string {
 export async function GET(_request: NextRequest) {
   try {
     const clientId = process.env.ML_CLIENT_ID
-    const redirectUri = process.env.ML_REDIRECT_URI || "https://www.donnagigi.com.br/api/ml/oauth/callback"
+    const redirectUri = process.env.ML_REDIRECT_URI || "https://www.aglivre.com.br/api/ml/oauth/callback"
 
     if (!clientId) {
       return NextResponse.json(

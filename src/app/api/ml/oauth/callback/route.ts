@@ -79,7 +79,7 @@ export async function GET(request: NextRequest) {
     // 2️⃣ Obter credenciais
     const clientId = process.env.ML_CLIENT_ID
     const clientSecret = process.env.ML_CLIENT_SECRET
-    const redirectUri = process.env.ML_REDIRECT_URI || "https://www.donnagigi.com.br/api/ml/oauth/callback"
+    const redirectUri = process.env.ML_REDIRECT_URI || "https://www.aglivre.com.br/api/ml/oauth/callback"
 
     if (!clientId || !clientSecret) {
       console.error("[PKCE/CALLBACK] ❌ Credenciais ML não configuradas")
