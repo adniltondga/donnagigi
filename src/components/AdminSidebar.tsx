@@ -82,12 +82,24 @@ export function AdminSidebar() {
               <Link
                 href="/admin/relatorios"
                 className={`block px-4 py-2 rounded-lg transition ${
-                  pathname.startsWith("/admin/relatorios")
+                  pathname === "/admin/relatorios"
                     ? "bg-primary-500 text-white"
                     : "text-admin-300 hover:bg-admin-700"
                 }`}
               >
                 📈 Relatórios
+              </Link>
+            </li>
+            <li>
+              <Link
+                href="/admin/relatorios-v2"
+                className={`block px-4 py-2 rounded-lg transition ${
+                  pathname.startsWith("/admin/relatorios-v2")
+                    ? "bg-primary-500 text-white"
+                    : "text-admin-300 hover:bg-admin-700"
+                }`}
+              >
+                📊 Relatórios V2
               </Link>
             </li>
             <li>

@@ -32,10 +32,10 @@ export async function GET(req: NextRequest) {
       where: {
         type: 'receivable',
         category: 'venda',
-        status: 'paid',
+        status: { not: 'cancelled' },
         paidDate: { gte: from, lte: to },
       },
-      select: { amount: true, paidDate: true, notes: true, productCost: true },
+      select: { amount: true, paidDate: true, notes: true, productCost: true, quantity: true },
     });
 
     type DiaAgg = {
@@ -83,7 +83,7 @@ export async function GET(req: NextRequest) {
       const totalVenda = brutoReal - taxaVenda - envio; // o que efetivamente entra do ML
       const lucro = totalVenda - custo;
 
-      agg.vendas += 1;
+      agg.vendas += b.quantity ?? 1;
       agg.bruto += brutoReal;
       agg.taxaVenda += taxaVenda;
       agg.envio += envio;

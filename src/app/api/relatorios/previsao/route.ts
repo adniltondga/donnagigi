@@ -35,10 +35,10 @@ export async function GET(req: NextRequest) {
       where: {
         type: 'receivable',
         category: 'venda',
-        status: 'paid',
+        status: { not: 'cancelled' },
         paidDate: { gte: paidFrom, lte: paidTo },
       },
-      select: { amount: true, paidDate: true, notes: true },
+      select: { amount: true, paidDate: true, notes: true, quantity: true },
     });
 
     type DiaAgg = { dia: number; vendas: number; totalVenda: number };
@@ -70,7 +70,7 @@ export async function GET(req: NextRequest) {
       const dia = expected.getDate();
       const agg = map.get(dia);
       if (!agg) continue;
-      agg.vendas += 1;
+      agg.vendas += b.quantity ?? 1;
       agg.totalVenda += totalVenda;
     }
 

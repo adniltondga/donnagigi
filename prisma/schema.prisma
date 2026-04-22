@@ -184,8 +184,10 @@ model Bill {
   productId       String?   // relaciona com o produto vendido
   product         Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
   notes           String?  @db.Text
-  productCost     Float?   // custo da mercadoria (pode vir do produto ou ser manual)
+  productCost     Float?   // custo total da mercadoria (custo unitário × quantity)
+  quantity        Int      @default(1) // unidades vendidas no pedido (soma de order_items[].quantity)
   mlOrderId       String?  @unique  // evita duplicatas de pedidos ML
+  mlPackId        String?  // pack_id do ML (ID que aparece no painel "vendas" do seller)
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 }

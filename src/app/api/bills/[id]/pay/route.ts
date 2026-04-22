@@ -6,11 +6,21 @@ export async function PATCH(
   { params }: { params: { id: string } }
 ) {
   try {
+    const existing = await prisma.bill.findUnique({
+      where: { id: params.id },
+      select: { paidDate: true },
+    });
+    if (!existing) {
+      return NextResponse.json({ error: 'Bill not found' }, { status: 404 });
+    }
+
+    // Só preenche paidDate se estiver vazio — bills de venda ML já nascem com
+    // paidDate = data_closed do pedido, e não devem ser sobrescritas.
     const bill = await prisma.bill.update({
       where: { id: params.id },
       data: {
         status: 'paid',
-        paidDate: new Date(),
+        ...(existing.paidDate ? {} : { paidDate: new Date() }),
       },
       include: { supplier: true },
     });
