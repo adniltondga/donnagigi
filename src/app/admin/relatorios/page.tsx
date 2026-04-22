@@ -101,18 +101,10 @@ export default function RelatoriosPage() {
 
       {data && (
         <>
-          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-3 mb-6">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 mb-6">
             <div className="bg-white rounded-lg shadow p-4">
               <p className="text-xs uppercase text-gray-500">💵 Bruto</p>
               <p className="text-lg font-bold text-gray-800">{formatCurrency(data.totalBruto)}</p>
-            </div>
-            <div className="bg-white rounded-lg shadow p-4">
-              <p className="text-xs uppercase text-gray-500">🏷️ Tx. Venda</p>
-              <p className="text-lg font-bold text-amber-600">{formatCurrency(data.totalTaxaVenda)}</p>
-            </div>
-            <div className="bg-white rounded-lg shadow p-4">
-              <p className="text-xs uppercase text-gray-500">📦 Envio</p>
-              <p className="text-lg font-bold text-amber-600">{formatCurrency(data.totalEnvio)}</p>
             </div>
             <div className="bg-white rounded-lg shadow p-4">
               <p className="text-xs uppercase text-gray-500">🛒 Total Venda</p>
