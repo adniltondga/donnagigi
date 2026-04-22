@@ -298,15 +298,19 @@ Bruto: R$ ${order.total_amount.toFixed(2)} | Taxas: ${taxBreakdown} (Total: R$ $
         }
       }
 
+      // dueDate = data estimada de liberação pelo ML (paidDate + 30 dias)
+      const estimatedReleaseDate = new Date(closedDate);
+      estimatedReleaseDate.setDate(estimatedReleaseDate.getDate() + 30);
+
       const saleBill = await prisma.bill.create({
         data: {
           type: 'receivable',
           category: 'venda',
           description: `Venda ML - ${itemTitle} [Produto ML: ${itemId || 'sem-id'}]`,
           amount: netAmount,
-          dueDate: orderDate,
-          paidDate: closedDate,
-          status: 'paid',
+          dueDate: estimatedReleaseDate,
+          paidDate: closedDate, // quando o ML recebeu o pagamento do comprador
+          status: 'pending', // vira "paid" quando o ML libera (cron ou MP)
           mlOrderId: `order_${order.id}`,
           notes: `PRODUTO ML ID: ${itemId || 'SEM ID'}\n\n${notesContent}`,
           productId,
