@@ -90,6 +90,18 @@ export function AdminSidebar() {
                 📈 Relatórios
               </Link>
             </li>
+            <li>
+              <Link
+                href="/admin/previsao"
+                className={`block px-4 py-2 rounded-lg transition ${
+                  pathname.startsWith("/admin/previsao")
+                    ? "bg-primary-500 text-white"
+                    : "text-admin-300 hover:bg-admin-700"
+                }`}
+              >
+                💸 Previsão
+              </Link>
+            </li>
           </ul>
         </div>
 
