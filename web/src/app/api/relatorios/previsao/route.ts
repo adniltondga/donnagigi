@@ -1,0 +1,99 @@
+import prisma from '@/lib/prisma';
+import { NextRequest, NextResponse } from 'next/server';
+
+export const dynamic = 'force-dynamic';
+
+/**
+ * Previsão de recebimentos: considera que o ML paga ~30 dias após a venda.
+ * Para cada dia (1..31) do mês selecionado, soma o "Total Venda" (bruto -
+ * taxaVenda - envio) das Bills cujo paidDate + 30 dias cai naquele dia.
+ *
+ * Query params:
+ *   - year  (padrão: ano atual)
+ *   - month (padrão: mês atual, 1-12)
+ *   - daysToReceive (padrão: 30)
+ */
+export async function GET(req: NextRequest) {
+  try {
+    const sp = req.nextUrl.searchParams;
+    const now = new Date();
+    const year = Number(sp.get('year')) || now.getFullYear();
+    const month = Number(sp.get('month')) || now.getMonth() + 1;
+    const daysToReceive = Number(sp.get('daysToReceive')) || 30;
+
+    // Janela de recebimento: primeiro ao último dia do mês selecionado
+    const firstDay = new Date(year, month - 1, 1, 0, 0, 0, 0);
+    const lastDay = new Date(year, month, 0, 23, 59, 59, 999);
+
+    // Janela de paidDate: firstDay - 30d até lastDay - 30d
+    const paidFrom = new Date(firstDay);
+    paidFrom.setDate(paidFrom.getDate() - daysToReceive);
+    const paidTo = new Date(lastDay);
+    paidTo.setDate(paidTo.getDate() - daysToReceive);
+
+    const bills = await prisma.bill.findMany({
+      where: {
+        type: 'receivable',
+        category: 'venda',
+        status: 'paid',
+        paidDate: { gte: paidFrom, lte: paidTo },
+      },
+      select: { amount: true, paidDate: true, notes: true },
+    });
+
+    type DiaAgg = { dia: number; vendas: number; totalVenda: number };
+
+    const map = new Map<number, DiaAgg>();
+    const daysInMonth = new Date(year, month, 0).getDate();
+    for (let d = 1; d <= daysInMonth; d++) {
+      map.set(d, { dia: d, vendas: 0, totalVenda: 0 });
+    }
+
+    const parseAmount = (notes: string | null, re: RegExp) => {
+      const m = notes?.match(re);
+      return m ? parseFloat(m[1].replace(',', '.')) : 0;
+    };
+
+    for (const b of bills) {
+      if (!b.paidDate) continue;
+      const expected = new Date(b.paidDate);
+      expected.setDate(expected.getDate() + daysToReceive);
+
+      if (expected < firstDay || expected > lastDay) continue;
+
+      const bruto = parseAmount(b.notes, /Bruto:\s*R\$\s*([\d,\.]+)/);
+      const taxaVenda = parseAmount(b.notes, /Taxa de venda:\s*R\$\s*([\d,\.]+)/);
+      const envio = parseAmount(b.notes, /Taxa de envio:\s*R\$\s*([\d,\.]+)/);
+      const brutoReal = bruto > 0 ? bruto : b.amount + taxaVenda + envio;
+      const totalVenda = brutoReal - taxaVenda - envio;
+
+      const dia = expected.getDate();
+      const agg = map.get(dia);
+      if (!agg) continue;
+      agg.vendas += 1;
+      agg.totalVenda += totalVenda;
+    }
+
+    const dias = Array.from(map.values());
+    const total = dias.reduce((s, d) => s + d.totalVenda, 0);
+    const totalVendas = dias.reduce((s, d) => s + d.vendas, 0);
+    const melhorDia = dias.reduce(
+      (best, d) => (d.totalVenda > best.totalVenda ? d : best),
+      { dia: 0, vendas: 0, totalVenda: 0 } as DiaAgg
+    );
+
+    return NextResponse.json({
+      periodo: { year, month, daysToReceive, firstDay, lastDay },
+      total,
+      totalVendas,
+      melhorDia,
+      dias,
+    });
+  } catch (error) {
+    console.error('Erro em /api/relatorios/previsao:', error);
+    return NextResponse.json(
+      { erro: 'Falha ao gerar previsão', mensagem: error instanceof Error ? error.message : 'erro' },
+      { status: 500 }
+    );
+  }
+}
