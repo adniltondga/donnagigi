@@ -28,15 +28,15 @@ interface MenuItem {
 
 const MENU: MenuItem[] = [
   { label: "Dashboard", href: "/admin/dashboard", icon: LayoutDashboard },
+  { label: "Financeiro", href: "/admin/financeiro", icon: DollarSign },
+  { label: "Produtos", href: "/admin/products", icon: Package, isActive: (p) => p.startsWith("/admin/products") },
+  { label: "Custos ML", href: "/admin/custos-ml", icon: Tag },
   {
     label: "Relatórios",
     href: "/admin/relatorios",
     icon: BarChart3,
     isActive: (p) => p.startsWith("/admin/relatorios") || p === "/admin/previsao",
   },
-  { label: "Financeiro", href: "/admin/financeiro", icon: DollarSign },
-  { label: "Produtos", href: "/admin/products", icon: Package, isActive: (p) => p.startsWith("/admin/products") },
-  { label: "Custos ML", href: "/admin/custos-ml", icon: Tag },
 ]
 
 // Itens no rodapé (acima do Sair): configurações gerais.
