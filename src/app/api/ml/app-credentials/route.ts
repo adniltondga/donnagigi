@@ -19,12 +19,12 @@ export async function GET(request: NextRequest) {
 
   const creds = await prisma.mLAppCredentials.findUnique({
     where: { tenantId: session.tenantId },
-    select: { clientId: true, clientSecret: true, updatedAt: true },
+    select: { clientId: true, clientSecret: true, redirectUri: true, updatedAt: true },
   })
 
   const envId = process.env.ML_CLIENT_ID || null
   const envHasSecret = !!process.env.ML_CLIENT_SECRET
-  const redirectUri = getMLRedirectUri(request)
+  const redirectUri = await getMLRedirectUri(request, session.tenantId)
 
   if (creds) {
     return NextResponse.json({
@@ -35,6 +35,7 @@ export async function GET(request: NextRequest) {
         ? `${creds.clientSecret.slice(0, 4)}…${creds.clientSecret.slice(-4)}`
         : "••••",
       redirectUri,
+      customRedirectUri: creds.redirectUri || null,
       updatedAt: creds.updatedAt,
     })
   }
@@ -54,9 +55,10 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Não autenticado" }, { status: 401 })
   }
 
-  const { clientId, clientSecret } = (await request.json()) as {
+  const { clientId, clientSecret, redirectUri } = (await request.json()) as {
     clientId?: string
     clientSecret?: string
+    redirectUri?: string | null
   }
 
   if (!clientId || !clientSecret) {
@@ -69,16 +71,31 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Credenciais muito curtas" }, { status: 400 })
   }
 
+  // redirectUri é opcional — valida formato se fornecido
+  let normalizedUri: string | null = null
+  if (redirectUri && redirectUri.trim()) {
+    const trimmed = redirectUri.trim()
+    if (!/^https?:\/\//i.test(trimmed)) {
+      return NextResponse.json(
+        { error: "Redirect URI precisa começar com http:// ou https://" },
+        { status: 400 }
+      )
+    }
+    normalizedUri = trimmed
+  }
+
   const saved = await prisma.mLAppCredentials.upsert({
     where: { tenantId: session.tenantId },
     create: {
       tenantId: session.tenantId,
       clientId: clientId.trim(),
       clientSecret: clientSecret.trim(),
+      redirectUri: normalizedUri,
     },
     update: {
       clientId: clientId.trim(),
       clientSecret: clientSecret.trim(),
+      redirectUri: normalizedUri,
     },
     select: { updatedAt: true },
   })

@@ -506,6 +506,7 @@ function CredentialsSection() {
   const [editing, setEditing] = useState(false)
   const [clientId, setClientId] = useState("")
   const [clientSecret, setClientSecret] = useState("")
+  const [redirectUri, setRedirectUri] = useState("")
   const [showSecret, setShowSecret] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [msg, setMsg] = useState<{ type: "success" | "error"; text: string } | null>(null)
@@ -526,6 +527,7 @@ function CredentialsSection() {
     setEditing(true)
     setClientId("")
     setClientSecret("")
+    setRedirectUri(data?.customRedirectUri || "")
     setMsg(null)
   }
 
@@ -533,6 +535,7 @@ function CredentialsSection() {
     setEditing(false)
     setClientId("")
     setClientSecret("")
+    setRedirectUri("")
     setMsg(null)
   }
 
@@ -544,7 +547,11 @@ function CredentialsSection() {
       const res = await fetch("/api/ml/app-credentials", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ clientId: clientId.trim(), clientSecret: clientSecret.trim() }),
+        body: JSON.stringify({
+          clientId: clientId.trim(),
+          clientSecret: clientSecret.trim(),
+          redirectUri: redirectUri.trim() || null,
+        }),
       })
       const d = await res.json().catch(() => ({}))
       if (res.ok) {
@@ -656,21 +663,22 @@ function CredentialsSection() {
             </ol>
           </div>
 
-          {data?.redirectUri && (
-            <div>
-              <div className="text-xs text-gray-500 mb-1">Redirect URI</div>
-              <div className="flex items-center gap-2 bg-gray-50 px-3 py-2 rounded-lg border border-gray-200">
-                <code className="flex-1 text-xs font-mono break-all">{data.redirectUri}</code>
-                <button
-                  type="button"
-                  onClick={() => copy(data.redirectUri)}
-                  className="text-xs text-primary-600 hover:text-primary-700 font-medium whitespace-nowrap"
-                >
-                  Copiar
-                </button>
-              </div>
-            </div>
-          )}
+          <div>
+            <label className="block text-xs font-medium text-gray-700 mb-1">
+              Redirect URI <span className="text-gray-400 font-normal">(opcional — usa a padrão se deixar vazio)</span>
+            </label>
+            <input
+              type="url"
+              value={redirectUri}
+              onChange={(e) => setRedirectUri(e.target.value)}
+              placeholder={data?.redirectUri || "https://seudominio.com.br/api/ml/oauth/callback"}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg font-mono text-sm focus:ring-2 focus:ring-primary-600 focus:border-transparent outline-none"
+            />
+            <p className="text-xs text-gray-500 mt-1">
+              Esta URI precisa estar cadastrada no app do ML DevCenter. Padrão atual:{" "}
+              <code className="font-mono">{data?.redirectUri || "—"}</code>
+            </p>
+          </div>
 
           <div className="flex gap-2 justify-end">
             <Button type="button" variant="outline" size="sm" onClick={cancel}>
@@ -843,7 +851,8 @@ interface AppCredentialsResponse {
   source: "tenant" | "env" | null
   clientId: string | null
   clientSecretMasked: string | null
-  redirectUri: string
+  redirectUri: string // a URI efetiva (custom do tenant, .env ou derivada)
+  customRedirectUri?: string | null // o que o tenant cadastrou (se existir)
   updatedAt?: string
 }
 

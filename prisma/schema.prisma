@@ -41,6 +41,7 @@ model MLAppCredentials {
   tenant       Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   clientId     String
   clientSecret String
+  redirectUri  String?  // URI cadastrada no DevCenter do cliente (opcional — fallback: .env ou derivado do request)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 }
