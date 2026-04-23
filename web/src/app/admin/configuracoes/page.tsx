@@ -22,6 +22,8 @@ import {
 } from "lucide-react"
 import { PageHeader } from "@/components/ui/page-header"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
 import { formatCurrency } from "@/lib/calculations"
 
 type Tab = "perfil" | "senha" | "ml" | "assinatura"
@@ -328,6 +330,12 @@ function MLPanel({ initialSuccess, initialError }: { initialSuccess: string | nu
     expiresAt?: string
     isExpired?: boolean
   } | null>(null)
+  const [appInfo, setAppInfo] = useState<{
+    configured: boolean
+    clientIdPreview: string | null
+    redirectUri: string
+    devCenterUrl: string
+  } | null>(null)
   const [loading, setLoading] = useState(true)
   const [status, setStatus] = useState<"idle" | "loading" | "syncing" | "success" | "error">("idle")
   const [message, setMessage] = useState("")
@@ -347,6 +355,10 @@ function MLPanel({ initialSuccess, initialError }: { initialSuccess: string | nu
 
   useEffect(() => {
     check()
+    fetch("/api/ml/app-info")
+      .then((r) => (r.ok ? r.json() : null))
+      .then(setAppInfo)
+      .catch(() => {})
   }, [])
 
   useEffect(() => {
@@ -434,76 +446,139 @@ function MLPanel({ initialSuccess, initialError }: { initialSuccess: string | nu
     <div className="space-y-4">
       {message && <StatusMessage status={status === "success" ? "success" : "error"} message={message} />}
 
+      {/* Status do app registrado no ML DevCenter */}
+      {appInfo && !appInfo.configured && (
+        <Card className="border-amber-200 bg-amber-50">
+          <CardContent className="flex items-start gap-3">
+            <AlertCircle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+            <div className="text-sm text-amber-900 space-y-1">
+              <p className="font-semibold">App Mercado Livre não configurado</p>
+              <p>
+                Antes dos clientes conseguirem conectar, registre um app no{" "}
+                <a
+                  href={appInfo.devCenterUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="underline font-medium hover:text-amber-950"
+                >
+                  Mercado Livre DevCenter
+                </a>{" "}
+                e configure <code className="px-1 bg-amber-100 rounded text-xs font-mono">ML_CLIENT_ID</code> e{" "}
+                <code className="px-1 bg-amber-100 rounded text-xs font-mono">ML_CLIENT_SECRET</code> no <code className="px-1 bg-amber-100 rounded text-xs font-mono">.env</code> do servidor.
+              </p>
+              <p className="text-xs">
+                Redirect URI a registrar no DevCenter:{" "}
+                <code className="px-1 bg-amber-100 rounded text-xs font-mono break-all">{appInfo.redirectUri}</code>
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {appInfo?.configured && (
+        <Card className="bg-gray-50/50">
+          <CardContent className="flex items-center justify-between gap-3 text-sm">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-lg bg-primary-50 text-primary-700 flex items-center justify-center">
+                <CheckCircle className="w-4 h-4" />
+              </div>
+              <div>
+                <p className="font-semibold text-gray-900">App agLivre registrado no ML</p>
+                <p className="text-xs text-gray-500 font-mono">
+                  Client ID: {appInfo.clientIdPreview} · Redirect: <span className="break-all">{appInfo.redirectUri}</span>
+                </p>
+              </div>
+            </div>
+            <a
+              href={appInfo.devCenterUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-xs text-primary-600 hover:text-primary-700 font-medium whitespace-nowrap"
+            >
+              DevCenter ↗
+            </a>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Card principal de status */}
       <Card>
         <CardHeader>
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 bg-amber-50 rounded-lg flex items-center justify-center text-2xl">
-              🇧🇷
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div className="w-11 h-11 rounded-lg bg-amber-50 text-amber-700 flex items-center justify-center">
+                <Plug className="w-5 h-5" />
+              </div>
+              <div>
+                <CardTitle>Mercado Livre</CardTitle>
+                <CardDescription>
+                  Conecte sua conta do ML via OAuth pra sincronizar produtos e vendas.
+                </CardDescription>
+              </div>
             </div>
-            <div>
-              <CardTitle>Mercado Livre</CardTitle>
-              <CardDescription>Sincronize seus produtos e vendas automaticamente.</CardDescription>
-            </div>
+            {!loading && (
+              <Badge variant={integration?.configured ? (integration.isExpired ? "destructive" : "default") : "secondary"}>
+                {loading ? "..." : integration?.configured ? (integration.isExpired ? "Expirado" : "Conectado") : "Não conectado"}
+              </Badge>
+            )}
           </div>
         </CardHeader>
+
         <CardContent>
           {loading ? (
             <LoadingBox />
           ) : integration?.configured ? (
-            <div className="space-y-4">
-              <div className="bg-green-50 border border-green-200 rounded-lg p-4 text-sm">
-                <div className="flex items-center gap-2 mb-2">
-                  <CheckCircle className="text-green-600 w-5 h-5" />
-                  <span className="font-semibold text-green-900">Conectado</span>
+            <div className="space-y-5">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pb-4 border-b border-gray-100">
+                <div>
+                  <div className="text-xs text-gray-500 uppercase tracking-wide">Seller ID</div>
+                  <div className="text-sm font-mono font-semibold text-gray-900 mt-1">{integration.sellerID}</div>
                 </div>
-                <div className="space-y-1 text-green-800">
-                  <p>
-                    <span className="font-semibold">Seller ID:</span> {integration.sellerID}
-                  </p>
-                  {integration.expiresAt && (
-                    <p>
-                      <span className="font-semibold">Token expira em:</span>{" "}
-                      {new Date(integration.expiresAt).toLocaleString("pt-BR")}
-                    </p>
-                  )}
-                  {integration.isExpired && (
-                    <p className="text-orange-600 font-semibold">
-                      ⚠️ Token expirado — reconecte sua conta
-                    </p>
-                  )}
+                <div>
+                  <div className="text-xs text-gray-500 uppercase tracking-wide">
+                    {integration.isExpired ? "Token expirou em" : "Token válido até"}
+                  </div>
+                  <div className="text-sm font-medium text-gray-900 mt-1">
+                    {integration.expiresAt ? new Date(integration.expiresAt).toLocaleString("pt-BR") : "—"}
+                  </div>
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                <button
-                  onClick={syncProducts}
-                  disabled={status === "syncing"}
-                  className="bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-semibold px-4 py-2 rounded-lg flex items-center justify-center gap-2 disabled:opacity-50"
-                >
-                  {status === "syncing" ? <Loader className="animate-spin w-4 h-4" /> : <RefreshCw className="w-4 h-4" />}
+              {integration.isExpired && (
+                <div className="flex items-start gap-3 bg-amber-50 border border-amber-200 rounded-lg p-3 text-sm text-amber-900">
+                  <AlertCircle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+                  <div>
+                    <p className="font-semibold">Token expirado</p>
+                    <p>Reconecte pra voltar a sincronizar.</p>
+                  </div>
+                </div>
+              )}
+
+              <div className="flex flex-wrap gap-2">
+                <Button onClick={syncProducts} disabled={status === "syncing"} variant="default" size="sm">
+                  {status === "syncing" ? <Loader className="w-4 h-4 animate-spin mr-2" /> : <RefreshCw className="w-4 h-4 mr-2" />}
                   Sincronizar produtos
-                </button>
-                <button
-                  onClick={syncOrders}
-                  disabled={status === "syncing"}
-                  className="bg-sky-50 hover:bg-sky-100 text-sky-700 font-semibold px-4 py-2 rounded-lg flex items-center justify-center gap-2 disabled:opacity-50"
-                >
-                  {status === "syncing" ? <Loader className="animate-spin w-4 h-4" /> : <RefreshCw className="w-4 h-4" />}
+                </Button>
+                <Button onClick={syncOrders} disabled={status === "syncing"} variant="outline" size="sm">
+                  {status === "syncing" ? <Loader className="w-4 h-4 animate-spin mr-2" /> : <RefreshCw className="w-4 h-4 mr-2" />}
                   Sincronizar vendas
-                </button>
+                </Button>
+                {integration.isExpired ? (
+                  <Button onClick={handleLogin} variant="default" size="sm">
+                    <Plug className="w-4 h-4 mr-2" />
+                    Reconectar
+                  </Button>
+                ) : (
+                  <Button onClick={handleDisconnect} variant="destructive" size="sm" className="ml-auto">
+                    <LogOut className="w-4 h-4 mr-2" />
+                    Desconectar
+                  </Button>
+                )}
               </div>
-
-              <button
-                onClick={handleDisconnect}
-                className="w-full border border-red-300 hover:bg-red-50 text-red-700 font-semibold px-4 py-2 rounded-lg flex items-center justify-center gap-2"
-              >
-                <LogOut className="w-4 h-4" />
-                Desconectar
-              </button>
 
               {syncResult && syncResult.stats && (
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-sm">
-                  <p className="font-semibold text-blue-900 mb-2">📊 Resultado:</p>
+                <div className="rounded-lg border border-gray-200 p-4 text-sm bg-gray-50">
+                  <p className="font-semibold text-gray-900 mb-2 text-xs uppercase tracking-wide">Último resultado</p>
                   <div className="grid grid-cols-3 gap-2">
                     <StatBox label="Total" value={syncResult.stats.total} />
                     <StatBox label="Sincronizados" value={syncResult.stats.synced ?? syncResult.stats.created} cls="text-emerald-600" />
@@ -513,23 +588,111 @@ function MLPanel({ initialSuccess, initialError }: { initialSuccess: string | nu
               )}
             </div>
           ) : (
-            <div className="space-y-3">
-              <p className="text-sm text-gray-600">
-                Conecte sua conta do Mercado Livre para começar a sincronizar produtos e vendas automaticamente.
-              </p>
-              <button
-                onClick={handleLogin}
-                disabled={status === "loading"}
-                className="w-full bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white font-semibold px-4 py-2 rounded-lg flex items-center justify-center gap-2"
-              >
-                {status === "loading" && <Loader className="animate-spin w-4 h-4" />}
+            <div className="space-y-5">
+              <div className="rounded-lg border border-gray-200 p-4 bg-gray-50 text-sm text-gray-700 space-y-2">
+                <p className="font-semibold text-gray-900">Como funciona a conexão?</p>
+                <ul className="space-y-1 text-xs text-gray-600 list-disc pl-4">
+                  <li>Você é redirecionado pro site do Mercado Livre.</li>
+                  <li>Faz login na sua conta ML e autoriza o agLivre.</li>
+                  <li>Voltamos aqui com o token — nunca vemos sua senha.</li>
+                  <li>A sincronização começa automaticamente.</li>
+                </ul>
+              </div>
+
+              <Button onClick={handleLogin} disabled={status === "loading"} className="w-full" size="lg">
+                {status === "loading" ? <Loader className="w-4 h-4 animate-spin mr-2" /> : <Plug className="w-4 h-4 mr-2" />}
                 {status === "loading" ? "Redirecionando..." : "Conectar Mercado Livre"}
-              </button>
+              </Button>
             </div>
           )}
         </CardContent>
       </Card>
+
+      {/* Método avançado — token manual */}
+      {!integration?.configured && <ManualTokenCard onSuccess={check} />}
     </div>
+  )
+}
+
+function ManualTokenCard({ onSuccess }: { onSuccess: () => void }) {
+  const [open, setOpen] = useState(false)
+  const [token, setToken] = useState("")
+  const [submitting, setSubmitting] = useState(false)
+  const [err, setErr] = useState("")
+
+  const onSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!token.trim()) return
+    setSubmitting(true)
+    setErr("")
+    try {
+      const res = await fetch("/api/mercadolivre/authenticate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ accessToken: token.trim() }),
+      })
+      const d = await res.json()
+      if (!res.ok) {
+        setErr(d.error || d.details || "Token inválido")
+        return
+      }
+      setToken("")
+      setOpen(false)
+      onSuccess()
+    } catch {
+      setErr("Erro de conexão")
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <button
+          type="button"
+          onClick={() => setOpen((v) => !v)}
+          className="flex items-center justify-between w-full text-left"
+        >
+          <div>
+            <CardTitle className="text-base">Usar access_token manualmente</CardTitle>
+            <CardDescription>
+              Avançado: cole um token que você já tenha. Prefira OAuth sempre que possível.
+            </CardDescription>
+          </div>
+          <span className="text-sm text-gray-400">{open ? "▲" : "▼"}</span>
+        </button>
+      </CardHeader>
+      {open && (
+        <CardContent>
+          <form onSubmit={onSubmit} className="space-y-3">
+            {err && <StatusMessage status="error" message={err} />}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Access token do ML</label>
+              <input
+                type="password"
+                value={token}
+                onChange={(e) => setToken(e.target.value)}
+                placeholder="APP_USR-..."
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg font-mono text-sm focus:ring-2 focus:ring-primary-600 focus:border-transparent outline-none"
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                Validamos o token em <code className="font-mono">/users/me</code> antes de salvar.
+              </p>
+            </div>
+            <div className="flex gap-2 justify-end">
+              <Button type="button" variant="outline" size="sm" onClick={() => setOpen(false)}>
+                Cancelar
+              </Button>
+              <Button type="submit" disabled={submitting || !token.trim()} size="sm">
+                {submitting && <Loader className="w-4 h-4 animate-spin mr-2" />}
+                Validar e salvar
+              </Button>
+            </div>
+          </form>
+        </CardContent>
+      )}
+    </Card>
   )
 }
 
