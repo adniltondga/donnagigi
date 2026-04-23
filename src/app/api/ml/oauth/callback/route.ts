@@ -182,7 +182,10 @@ export async function GET(request: NextRequest) {
 
     // 6️⃣ Redirecionar para a tela de integração com mensagem de sucesso
     const successMsg = encodeURIComponent(`Conectado ao Mercado Livre (seller ${sellerID})`)
-    const redirectUrl = new URL(`/admin/integracao?success=${successMsg}`, request.nextUrl.origin)
+    const redirectUrl = new URL(
+      `/admin/configuracoes?tab=ml&success=${successMsg}`,
+      request.nextUrl.origin
+    )
 
     console.log("[PKCE/CALLBACK] ✅ PKCE flow completo com sucesso!")
     return NextResponse.redirect(redirectUrl)
