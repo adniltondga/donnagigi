@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import prisma from "@/lib/prisma"
 import { getSession } from "@/lib/tenant"
+import { getMLRedirectUri } from "@/lib/ml-url"
 
 export const dynamic = "force-dynamic"
 
@@ -10,7 +11,7 @@ export const dynamic = "force-dynamic"
  * DELETE: remove credenciais do tenant (volta pro fallback do .env)
  */
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   const session = await getSession()
   if (!session) {
     return NextResponse.json({ error: "Não autenticado" }, { status: 401 })
@@ -23,9 +24,7 @@ export async function GET() {
 
   const envId = process.env.ML_CLIENT_ID || null
   const envHasSecret = !!process.env.ML_CLIENT_SECRET
-  const redirectUri =
-    process.env.ML_REDIRECT_URI ||
-    "https://www.aglivre.com.br/api/ml/oauth/callback"
+  const redirectUri = getMLRedirectUri(request)
 
   if (creds) {
     return NextResponse.json({
