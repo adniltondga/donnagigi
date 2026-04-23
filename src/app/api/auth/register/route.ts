@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import bcrypt from "bcryptjs"
 import prisma from "@/lib/prisma"
 import { generateUniqueTenantSlug } from "@/lib/tenant"
+import { generateOTP, sendEmail, verifyEmailTemplate } from "@/lib/email"
 
 export async function POST(request: NextRequest) {
   try {
@@ -43,7 +44,10 @@ export async function POST(request: NextRequest) {
     const slug = await generateUniqueTenantSlug(tenantName)
     const hashedPassword = await bcrypt.hash(password, 10)
 
-    // Transação: cria Tenant e User atomicamente — se um falhar, nada fica
+    // OTP de ativação: 10 minutos de validade
+    const verifyCode = generateOTP()
+    const verifyCodeExpires = new Date(Date.now() + 10 * 60 * 1000)
+
     const { user, tenant } = await prisma.$transaction(async (tx) => {
       const tenant = await tx.tenant.create({
         data: { name: tenantName, slug },
@@ -55,20 +59,27 @@ export async function POST(request: NextRequest) {
           password: hashedPassword,
           name,
           tenantId: tenant.id,
+          emailVerified: false,
+          verifyCode,
+          verifyCodeExpires,
+          verifyLastSentAt: new Date(),
         },
       })
       return { user, tenant }
     })
 
+    // Envia email de ativação (best-effort: não falha o cadastro se o email der erro)
+    try {
+      const tpl = verifyEmailTemplate(verifyCode)
+      await sendEmail({ to: email, ...tpl })
+    } catch (err) {
+      console.error("[register] falha ao enviar email de verificação:", err)
+    }
+
     return NextResponse.json(
       {
-        message: "Conta criada com sucesso",
-        user: {
-          id: user.id,
-          email: user.email,
-          name: user.name,
-          username: user.username,
-        },
+        message: "Conta criada. Verifique seu email para ativar.",
+        email: user.email,
         tenant: { id: tenant.id, name: tenant.name, slug: tenant.slug },
       },
       { status: 201 }

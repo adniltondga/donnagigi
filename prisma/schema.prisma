@@ -37,6 +37,18 @@ model User {
   name      String
   tenantId  String
   tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  // Verificação de email (OTP de 6 dígitos)
+  emailVerified       Boolean   @default(false)
+  verifyCode          String?
+  verifyCodeExpires   DateTime?
+  verifyLastSentAt    DateTime? // cooldown de reenvio
+
+  // Reset de senha (OTP de 6 dígitos)
+  resetCode           String?
+  resetCodeExpires    DateTime?
+  resetLastSentAt     DateTime?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

@@ -81,6 +81,10 @@ export default function LoginPage() {
       })
       const data = await res.json()
       if (!res.ok) {
+        if (data.error === "EMAIL_NOT_VERIFIED") {
+          router.push(`/verify-email?email=${encodeURIComponent(loginEmail)}`)
+          return
+        }
         setError(data.error || "Erro ao fazer login")
         return
       }
@@ -122,20 +126,8 @@ export default function LoginPage() {
         setError(data.error || "Erro ao criar conta")
         return
       }
-      // Auto-login (Fase 2 de email verification troca isso por redirect pra /verify-email)
-      const loginRes = await fetch("/api/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: regEmail, password: regPassword }),
-      })
-      const loginData = await loginRes.json()
-      if (loginRes.ok && loginData.token) {
-        await setTokenAndGo(loginData.token)
-      } else {
-        setIsRegisterMode(false)
-        setRegPassword("")
-        setRegConfirm("")
-      }
+      // Cadastro OK → redireciona pra verificação por email
+      router.push(`/verify-email?email=${encodeURIComponent(regEmail)}`)
     } catch {
       setError("Erro ao conectar ao servidor")
     } finally {
