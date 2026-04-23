@@ -3,6 +3,7 @@ import bcrypt from "bcryptjs"
 import prisma from "@/lib/prisma"
 import { generateUniqueTenantSlug } from "@/lib/tenant"
 import { generateOTP, sendEmail, verifyEmailTemplate } from "@/lib/email"
+import { TRIAL_DAYS } from "@/lib/plans"
 
 export async function POST(request: NextRequest) {
   try {
@@ -48,9 +49,20 @@ export async function POST(request: NextRequest) {
     const verifyCode = generateOTP()
     const verifyCodeExpires = new Date(Date.now() + 10 * 60 * 1000)
 
+    const trialEndsAt = new Date()
+    trialEndsAt.setDate(trialEndsAt.getDate() + TRIAL_DAYS)
+
     const { user, tenant } = await prisma.$transaction(async (tx) => {
       const tenant = await tx.tenant.create({
         data: { name: tenantName, slug },
+      })
+      await tx.subscription.create({
+        data: {
+          tenantId: tenant.id,
+          plan: "FREE",
+          status: "TRIAL",
+          trialEndsAt,
+        },
       })
       const user = await tx.user.create({
         data: {
