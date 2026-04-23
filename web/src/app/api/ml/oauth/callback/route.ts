@@ -74,6 +74,7 @@ export async function GET(request: NextRequest) {
     }
 
     const codeVerifier = oauthState.codeVerifier
+    const tenantIdFromState = oauthState.tenantId
     console.log("[PKCE/CALLBACK] ✅ code_verifier recuperado do banco")
 
     // 2️⃣ Obter credenciais
@@ -153,11 +154,20 @@ export async function GET(request: NextRequest) {
 
     console.log("[PKCE/CALLBACK] 💾 Salvando integração no banco...")
 
-    // Deletar integração anterior se existir
-    await prisma.mLIntegration.deleteMany({})
+    // Tenant do usuário que iniciou o fluxo (salvo no state). Se o state é
+    // antigo/null, cai pro default — só pra não quebrar integrações legadas
+    // enquanto o SaaS tem um único tenant.
+    let tenantId: string
+    if (tenantIdFromState) {
+      tenantId = tenantIdFromState
+    } else {
+      const { getDefaultTenantId } = await import("@/lib/tenant")
+      tenantId = await getDefaultTenantId()
+    }
 
-    const { getDefaultTenantId } = await import("@/lib/tenant")
-    const tenantId = await getDefaultTenantId()
+    // Deletar integração anterior do MESMO tenant se existir (não todas)
+    await prisma.mLIntegration.deleteMany({ where: { tenantId } })
+
     await prisma.mLIntegration.create({
       data: {
         sellerID: sellerID.toString(),

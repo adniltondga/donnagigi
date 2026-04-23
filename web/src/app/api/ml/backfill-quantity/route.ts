@@ -1,4 +1,6 @@
 import prisma from '@/lib/prisma';
+import { getTenantIdOrDefault } from '@/lib/tenant';
+import { getMLIntegrationForTenant } from '@/lib/ml';
 import { NextRequest, NextResponse } from 'next/server';
 
 export const dynamic = 'force-dynamic';
@@ -6,7 +8,7 @@ export const maxDuration = 300;
 
 /**
  * Backfill de `quantity` (e `productCost` quando aplicável) nas Bills de venda
- * já existentes. Re-busca cada pedido no ML via `mlOrderId`, soma as quantities
+ * do tenant. Re-busca cada pedido no ML via `mlOrderId`, soma as quantities
  * de todos os order_items e recalcula o custo total.
  *
  * Query params:
@@ -15,51 +17,6 @@ export const maxDuration = 300;
  *   - dry=1  — não grava no banco, só retorna o que seria alterado
  */
 
-async function refreshTokenIfNeeded() {
-  const integration = await prisma.mLIntegration.findFirst();
-  if (!integration) throw new Error('Mercado Livre not configured');
-
-  if (new Date() <= integration.expiresAt) return integration;
-
-  if (!integration.refreshToken) {
-    throw new Error('Mercado Livre token expired and refresh token not available');
-  }
-
-  const clientId = process.env.ML_CLIENT_ID;
-  const clientSecret = process.env.ML_CLIENT_SECRET;
-  if (!clientId || !clientSecret) {
-    throw new Error('Mercado Livre credentials not configured');
-  }
-
-  const tokenParams = new URLSearchParams({
-    grant_type: 'refresh_token',
-    client_id: clientId,
-    client_secret: clientSecret,
-    refresh_token: integration.refreshToken,
-  });
-
-  const tokenResponse = await fetch('https://api.mercadolibre.com/oauth/token', {
-    method: 'POST',
-    body: tokenParams.toString(),
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-  });
-
-  if (!tokenResponse.ok) throw new Error('Failed to refresh Mercado Livre token');
-
-  const tokenData = await tokenResponse.json();
-  const expiresAt = new Date();
-  expiresAt.setSeconds(expiresAt.getSeconds() + tokenData.expires_in);
-
-  return prisma.mLIntegration.update({
-    where: { id: integration.id },
-    data: {
-      accessToken: tokenData.access_token,
-      refreshToken: tokenData.refresh_token || integration.refreshToken,
-      expiresAt,
-    },
-  });
-}
-
 export async function GET(req: NextRequest) {
   try {
     const sp = req.nextUrl.searchParams;
@@ -67,11 +24,19 @@ export async function GET(req: NextRequest) {
     const force = sp.get('force') === '1';
     const dry = sp.get('dry') === '1';
 
-    const integration = await refreshTokenIfNeeded();
+    const tenantId = await getTenantIdOrDefault();
+    const integration = await getMLIntegrationForTenant(tenantId);
+    if (!integration) {
+      return NextResponse.json(
+        { error: 'Mercado Livre not configured for this tenant' },
+        { status: 400 }
+      );
+    }
     const accessToken = integration.accessToken;
 
     const bills = await prisma.bill.findMany({
       where: {
+        tenantId,
         type: 'receivable',
         category: 'venda',
         mlOrderId: { not: null },

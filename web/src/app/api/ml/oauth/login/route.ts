@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import crypto from "crypto"
 import { PrismaClient } from "@prisma/client"
+import { getCurrentTenantId } from "@/lib/tenant"
 
 const prisma = new PrismaClient()
 
@@ -40,6 +41,17 @@ export async function GET(_request: NextRequest) {
       )
     }
 
+    // Precisa estar logado — associamos a MLIntegration ao tenant do usuário
+    let tenantId: string
+    try {
+      tenantId = await getCurrentTenantId()
+    } catch {
+      return NextResponse.json(
+        { erro: "Você precisa estar logado para conectar sua conta do Mercado Livre" },
+        { status: 401 }
+      )
+    }
+
     // 1️⃣ Gerar PKCE code_verifier (43-128 caracteres)
     const codeVerifier = crypto.randomBytes(32).toString("base64url")
     const codeChallenge = generateCodeChallenge(codeVerifier)
@@ -61,7 +73,7 @@ export async function GET(_request: NextRequest) {
     })
 
     await prisma.mLOAuthState.create({
-      data: { state, codeVerifier, expiresAt }
+      data: { state, codeVerifier, expiresAt, tenantId }
     })
 
     console.log("[PKCE/LOGIN] 💾 code_verifier salvo no banco")
