@@ -31,3 +31,32 @@ export function normalizeVariationKey(variation: string | null | undefined): str
     .sort()
     .join(" · ")
 }
+
+/**
+ * Parseia a description de uma bill de venda ML e extrai as partes.
+ * Formato gravado pelo sync: "Venda ML - <title>[ · <var>] [Produto ML: MLB...]"
+ * Formato legado: "Venda ML - <title>" (sem variação, sem MLB no final).
+ * Se não casar, devolve a string inteira como title (fallback seguro).
+ */
+export function parseSaleDescription(description: string | null | undefined): {
+  title: string
+  variation: string | null
+  mlListingId: string | null
+} {
+  const raw = (description || "").trim()
+  if (!raw) return { title: "", variation: null, mlListingId: null }
+
+  // MLB pode estar no final entre colchetes ou embutido
+  const mlbMatch = raw.match(/MLB\d{6,}/i)
+  const mlListingId = mlbMatch?.[0]?.toUpperCase() || null
+
+  // Tira prefixo "Venda ML - " e sufixo "[Produto ML: ...]"
+  let body = raw.replace(/^Venda ML\s*-\s*/i, "")
+  body = body.replace(/\s*\[Produto ML:[^\]]*\]\s*$/i, "").trim()
+
+  const parts = body.split(" · ")
+  const title = (parts[0] || body).trim()
+  const variation = parts.length > 1 ? parts.slice(1).join(" · ").trim() : null
+
+  return { title, variation, mlListingId }
+}

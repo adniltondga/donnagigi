@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { formatCurrency } from '@/lib/calculations';
 import { PageHeader } from '@/components/ui/page-header';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { ProductLabel } from '@/components/ProductLabel';
 import {
   LineChart,
   Line,
@@ -417,10 +418,7 @@ export default function RelatoriosV2Page() {
                       <tr key={`${p.productId ?? p.mlListingId ?? 'sem'}-${i}`} className="border-t">
                         <td className="px-4 py-2 text-gray-500 font-mono">{i + 1}</td>
                         <td className="px-4 py-2">
-                          <div className="font-medium">{p.name}</div>
-                          {p.mlListingId && (
-                            <div className="text-xs text-gray-500 font-mono">{p.mlListingId}</div>
-                          )}
+                          <ProductLabel title={p.name} mlListingId={p.mlListingId} size="sm" />
                         </td>
                         <td className="px-4 py-2 text-right">{p.vendas}</td>
                         <td className="px-4 py-2 text-right font-semibold">{formatCurrency(p.bruto)}</td>

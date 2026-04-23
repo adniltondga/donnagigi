@@ -28,6 +28,7 @@ import { formatCurrency } from "@/lib/calculations"
 import { PageHeader } from "@/components/ui/page-header"
 import { Card } from "@/components/ui/card"
 import { StatCard } from "@/components/ui/stat-card"
+import { ProductLabel } from "@/components/ProductLabel"
 
 interface Me {
   id: string
@@ -294,8 +295,8 @@ export default function Dashboard() {
                     {i + 1}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-gray-900 line-clamp-1">{p.name}</p>
-                    <div className="flex items-center gap-2 text-xs">
+                    <ProductLabel title={p.name} mlListingId={p.mlListingId} size="sm" singleLine />
+                    <div className="flex items-center gap-2 text-xs mt-1">
                       <span className="text-gray-500">{p.vendas} un.</span>
                       <span className="text-emerald-600 font-semibold">{formatCurrency(p.lucro)}</span>
                       <span className="text-gray-400">·</span>
