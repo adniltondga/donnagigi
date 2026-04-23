@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import { formatCurrency } from '@/lib/calculations';
+import { PageHeader } from '@/components/ui/page-header';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 interface DiaRow {
   dia: number;
@@ -65,13 +67,13 @@ export default function RelatoriosPage() {
   const maxBruto = data ? Math.max(1, ...data.dias.map((d) => d.bruto)) : 1;
 
   return (
-    <div className="max-w-7xl mx-auto">
-      <h1 className="text-3xl font-bold mb-2">📈 Relatório de Vendas</h1>
-      <p className="text-gray-600 mb-6">
-        Faturamento bruto, taxas do ML, custo de mercadoria e lucro líquido real por dia do mês.
-      </p>
+    <div className="space-y-6">
+      <PageHeader
+        title="📈 Relatório de Vendas"
+        description="Faturamento bruto, taxas do ML, custo de mercadoria e lucro líquido real por dia do mês."
+      />
 
-      <div className="bg-white rounded-lg shadow p-4 mb-6 flex flex-wrap gap-4 items-end">
+      <Card className="p-4 flex flex-wrap gap-4 items-end">
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">De</label>
           <input
@@ -97,32 +99,32 @@ export default function RelatoriosPage() {
         >
           {loading ? 'Carregando...' : 'Atualizar'}
         </button>
-      </div>
+      </Card>
 
       {data && (
         <>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 mb-6">
-            <div className="bg-white rounded-lg shadow p-4">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+            <Card className="p-4">
               <p className="text-xs uppercase text-gray-500">💵 Bruto</p>
               <p className="text-lg font-bold text-gray-800">{formatCurrency(data.totalBruto)}</p>
-            </div>
-            <div className="bg-white rounded-lg shadow p-4">
+            </Card>
+            <Card className="p-4">
               <p className="text-xs uppercase text-gray-500">🛒 Total Venda</p>
               <p className="text-lg font-bold text-blue-600">{formatCurrency(data.totalTotalVenda)}</p>
-            </div>
-            <div className="bg-white rounded-lg shadow p-4">
+            </Card>
+            <Card className="p-4">
               <p className="text-xs uppercase text-gray-500">💰 Custo</p>
               <p className="text-lg font-bold text-rose-600">{formatCurrency(data.totalCusto)}</p>
-            </div>
-            <div className="bg-white rounded-lg shadow p-4">
+            </Card>
+            <Card className="p-4">
               <p className="text-xs uppercase text-gray-500">📈 Lucro</p>
               <p className="text-lg font-bold text-emerald-600">{formatCurrency(data.totalLucro)}</p>
-            </div>
-            <div className="bg-white rounded-lg shadow p-4">
+            </Card>
+            <Card className="p-4">
               <p className="text-xs uppercase text-gray-500">Qtd.</p>
               <p className="text-lg font-bold text-gray-800">{data.totalVendas}</p>
-            </div>
-            <div className="bg-gradient-to-br from-primary-500 to-fuchsia-600 rounded-lg shadow p-4 text-white">
+            </Card>
+            <div className="bg-gradient-to-br from-primary-500 to-fuchsia-600 rounded-xl shadow-sm p-4 text-white">
               <p className="text-xs uppercase opacity-90">🏆 Melhor dia</p>
               <p className="text-lg font-bold">
                 {data.melhorDia.dia > 0 ? `Dia ${data.melhorDia.dia}` : '—'}
@@ -138,9 +140,11 @@ export default function RelatoriosPage() {
             </div>
           </div>
 
-          <div className="bg-white rounded-lg shadow overflow-hidden">
-            <div className="p-4 border-b font-semibold">Faturamento por dia do mês</div>
-            <div className="p-4 space-y-2 overflow-x-auto">
+          <Card className="overflow-hidden">
+            <CardHeader className="border-b border-gray-100">
+              <CardTitle>Faturamento por dia do mês</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2 overflow-x-auto">
               <div className="flex items-center gap-3 text-xs text-gray-500 font-semibold uppercase pb-1 border-b min-w-[1050px]">
                 <div className="w-10 text-right">Dia</div>
                 <div className="flex-1" />
@@ -194,8 +198,8 @@ export default function RelatoriosPage() {
                   </div>
                 );
               })}
-            </div>
-          </div>
+            </CardContent>
+          </Card>
         </>
       )}
     </div>

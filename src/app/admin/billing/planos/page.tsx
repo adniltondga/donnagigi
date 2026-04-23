@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation"
 import { ArrowRight, Check, Loader2, X, Sparkles } from "lucide-react"
 import { formatCurrency } from "@/lib/calculations"
 import { maskCpfCnpj, unmaskCpfCnpj } from "@/lib/mask"
+import { PageHeader } from "@/components/ui/page-header"
 
 interface PlanInfo {
   id: "FREE" | "PRO"
@@ -105,11 +106,8 @@ export default function PlanosPage() {
   }
 
   return (
-    <div className="max-w-6xl mx-auto space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold text-gray-900">Planos</h1>
-        <p className="text-gray-600 mt-1">Escolha o plano ideal pro seu negócio no Mercado Livre.</p>
-      </div>
+    <div className="space-y-6">
+      <PageHeader title="Planos" description="Escolha o plano ideal pro seu negócio no Mercado Livre." />
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {(plans || []).map((p) => {

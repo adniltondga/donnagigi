@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import { formatCurrency } from '@/lib/calculations';
+import { PageHeader } from '@/components/ui/page-header';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   LineChart,
   Line,
@@ -125,14 +127,14 @@ function KpiCard({
       : prev.toLocaleString('pt-BR');
 
   return (
-    <div className="bg-white rounded-lg shadow p-4">
+    <Card className="p-4">
       <p className="text-xs uppercase text-gray-500">{label}</p>
       <p className={`text-lg font-bold ${accent || 'text-gray-800'}`}>{formatted}</p>
       <div className="flex items-center gap-2 mt-1">
         <DeltaBadge curr={value} prev={prev} inverso={inverso} />
         <span className="text-xs text-gray-400">ant: {prevFormatted}</span>
       </div>
-    </div>
+    </Card>
   );
 }
 
@@ -200,17 +202,17 @@ export default function RelatoriosV2Page() {
   const topList = data ? (tab === 'lucro' ? data.topPorLucro : data.topPorBruto) : [];
 
   return (
-    <div className="max-w-7xl mx-auto">
-      <div className="flex items-center gap-3 mb-2">
-        <h1 className="text-3xl font-bold">📊 Relatório V2</h1>
-        <span className="bg-primary-100 text-primary-700 text-xs font-semibold px-2 py-1 rounded">BETA</span>
-      </div>
-      <p className="text-gray-600 mb-6">
-        KPIs com comparativo vs período anterior, tendência diária real, top produtos e devoluções.
-      </p>
+    <div className="space-y-6">
+      <PageHeader
+        title="📊 Relatório V2"
+        description="KPIs com comparativo vs período anterior, tendência diária real, top produtos e devoluções."
+        badge={
+          <span className="bg-primary-100 text-primary-700 text-xs font-semibold px-2 py-1 rounded">BETA</span>
+        }
+      />
 
       {/* Filtros */}
-      <div className="bg-white rounded-lg shadow p-4 mb-6 flex flex-wrap gap-4 items-end">
+      <Card className="p-4 flex flex-wrap gap-4 items-end">
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">De</label>
           <input
@@ -254,12 +256,12 @@ export default function RelatoriosV2Page() {
             Ano
           </button>
         </div>
-      </div>
+      </Card>
 
       {data && (
         <>
           {/* KPIs com comparativo */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             <KpiCard label="💵 Bruto" value={data.kpisAtual.bruto} prev={data.kpisAnterior.bruto} />
             <KpiCard
               label="🛒 Total Venda"
@@ -298,7 +300,7 @@ export default function RelatoriosV2Page() {
               format="percent"
               accent="text-emerald-600"
             />
-            <div className="bg-gradient-to-br from-red-500 to-rose-600 rounded-lg shadow p-4 text-white">
+            <div className="bg-gradient-to-br from-red-500 to-rose-600 rounded-xl shadow-sm p-4 text-white">
               <p className="text-xs uppercase opacity-90">↩️ Devoluções</p>
               <p className="text-lg font-bold">{data.cancelamentos.vendas}</p>
               <p className="text-xs opacity-90">
@@ -308,13 +310,14 @@ export default function RelatoriosV2Page() {
           </div>
 
           {/* Gráfico de tendência */}
-          <div className="bg-white rounded-lg shadow p-4 mb-6">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="font-semibold">Tendência diária</h2>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <CardTitle>Tendência diária</CardTitle>
               <span className="text-xs text-gray-500">
                 {data.timeline.length} dia{data.timeline.length === 1 ? '' : 's'} no período
               </span>
-            </div>
+            </CardHeader>
+            <CardContent className="pt-0">
             <div className="h-80">
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={data.timeline} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
@@ -358,12 +361,13 @@ export default function RelatoriosV2Page() {
                 </LineChart>
               </ResponsiveContainer>
             </div>
-          </div>
+            </CardContent>
+          </Card>
 
           {/* Top produtos */}
-          <div className="bg-white rounded-lg shadow overflow-hidden mb-6">
-            <div className="p-4 border-b flex items-center justify-between">
-              <h2 className="font-semibold">Top 10 produtos</h2>
+          <Card className="overflow-hidden">
+            <CardHeader className="border-b border-gray-100 flex flex-row items-center justify-between">
+              <CardTitle>Top 10 produtos</CardTitle>
               <div className="flex gap-2">
                 <button
                   onClick={() => setTab('lucro')}
@@ -386,7 +390,7 @@ export default function RelatoriosV2Page() {
                   Por Bruto
                 </button>
               </div>
-            </div>
+            </CardHeader>
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead className="bg-gray-50 text-xs uppercase text-gray-500">
@@ -440,13 +444,13 @@ export default function RelatoriosV2Page() {
                 </tbody>
               </table>
             </div>
-          </div>
+          </Card>
 
           {/* Comparativo vs período anterior */}
-          <div className="bg-white rounded-lg shadow p-4 text-xs text-gray-500">
+          <Card className="p-4 text-xs text-gray-500">
             Comparativo: {new Date(data.periodoAnterior.from).toLocaleDateString('pt-BR')} até{' '}
             {new Date(data.periodoAnterior.to).toLocaleDateString('pt-BR')}
-          </div>
+          </Card>
         </>
       )}
     </div>

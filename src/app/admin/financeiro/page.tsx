@@ -4,6 +4,11 @@ import { useEffect, useState } from 'react';
 import { formatCurrency } from '@/lib/calculations';
 import { Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
+import { PageHeader } from '@/components/ui/page-header';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { StatCard } from '@/components/ui/stat-card';
+import { EmptyState } from '@/components/ui/empty-state';
+import { CalendarClock, AlertTriangle, Wallet, FileText } from 'lucide-react';
 
 interface Supplier {
   id: string;
@@ -295,23 +300,23 @@ export default function FinanceiroPage() {
   }, [bills]);
 
   return (
-    <div className="max-w-7xl mx-auto">
-      <div className="flex justify-between items-center mb-6">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">💳 Financeiro</h1>
-          <p className="text-gray-600 text-sm">Contas a pagar e a receber manuais.</p>
-        </div>
-        <button
-          onClick={() => setShowNewForm(!showNewForm)}
-          className="bg-gradient-to-r from-primary-500 to-primary-600 hover:from-primary-600 hover:to-primary-700 text-white font-semibold py-2 px-4 rounded-lg transition"
-        >
-          + Nova Conta
-        </button>
-      </div>
+    <div className="space-y-6">
+      <PageHeader
+        title="💳 Financeiro"
+        description="Contas a pagar e a receber manuais."
+        actions={
+          <button
+            onClick={() => setShowNewForm(!showNewForm)}
+            className="bg-gradient-to-r from-primary-500 to-primary-600 hover:from-primary-600 hover:to-primary-700 text-white font-semibold py-2 px-4 rounded-lg transition"
+          >
+            + Nova Conta
+          </button>
+        }
+      />
 
       {message && (
         <div
-          className={`p-3 rounded mb-4 text-sm ${
+          className={`p-3 rounded text-sm ${
             message.type === 'success' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
           }`}
         >
@@ -321,35 +326,38 @@ export default function FinanceiroPage() {
 
       {/* Cards resumo */}
       {summary && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-6">
-          <div className="bg-white rounded-lg shadow p-4">
-            <p className="text-xs uppercase text-gray-500">📅 A pagar · 7 dias</p>
-            <p className="text-lg font-bold text-amber-600">
-              {formatCurrency(summary.payableVencendo7d.amount)}
-            </p>
-            <p className="text-xs text-gray-500">{summary.payableVencendo7d.count} conta(s)</p>
-          </div>
-          <div className="bg-white rounded-lg shadow p-4">
-            <p className="text-xs uppercase text-gray-500">⚠️ Vencidas</p>
-            <p className="text-lg font-bold text-red-600">
-              {formatCurrency(summary.payableVencidas.amount)}
-            </p>
-            <p className="text-xs text-gray-500">{summary.payableVencidas.count} conta(s)</p>
-          </div>
-          <div className="bg-white rounded-lg shadow p-4">
-            <p className="text-xs uppercase text-gray-500">💰 A receber</p>
-            <p className="text-lg font-bold text-emerald-600">
-              {formatCurrency(summary.receivablePendente.amount)}
-            </p>
-            <p className="text-xs text-gray-500">{summary.receivablePendente.count} conta(s)</p>
-          </div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <StatCard
+            label="A pagar · 7 dias"
+            value={formatCurrency(summary.payableVencendo7d.amount)}
+            sub={`${summary.payableVencendo7d.count} conta(s)`}
+            icon={CalendarClock}
+            accent="amber"
+          />
+          <StatCard
+            label="Vencidas"
+            value={formatCurrency(summary.payableVencidas.amount)}
+            sub={`${summary.payableVencidas.count} conta(s)`}
+            icon={AlertTriangle}
+            accent="rose"
+          />
+          <StatCard
+            label="A receber"
+            value={formatCurrency(summary.receivablePendente.amount)}
+            sub={`${summary.receivablePendente.count} conta(s)`}
+            icon={Wallet}
+            accent="emerald"
+          />
         </div>
       )}
 
       {/* Formulário Novo */}
       {showNewForm && (
-        <div className="bg-white rounded-lg shadow p-6 mb-6">
-          <h2 className="text-lg font-bold mb-4">Nova Conta</h2>
+        <Card>
+          <CardHeader>
+            <CardTitle>Nova Conta</CardTitle>
+          </CardHeader>
+          <CardContent className="pt-0">
           <form onSubmit={onSubmit} className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium mb-1">Tipo *</label>
@@ -450,11 +458,12 @@ export default function FinanceiroPage() {
               </button>
             </div>
           </form>
-        </div>
+          </CardContent>
+        </Card>
       )}
 
       {/* Filtros */}
-      <div className="bg-white rounded-lg shadow p-4 mb-4 flex flex-wrap gap-3 items-end">
+      <Card className="p-4 flex flex-wrap gap-3 items-end">
         <form onSubmit={onSearch} className="flex-1 min-w-[260px] flex gap-2 items-end">
           <div className="flex-1">
             <label className="block text-xs font-medium text-gray-600 mb-1">Busca</label>
@@ -514,16 +523,16 @@ export default function FinanceiroPage() {
             <option value="cancelled">Cancelado</option>
           </select>
         </div>
-      </div>
+      </Card>
 
-      <div className="mb-2 text-xs text-gray-500">
+      <div className="text-xs text-gray-500">
         {loading ? 'Carregando...' : `${total} conta${total === 1 ? '' : 's'}`}
       </div>
 
       {/* Tabela */}
-      <div className="bg-white rounded-lg shadow overflow-hidden">
+      <Card className="overflow-hidden">
         {bills.length === 0 && !loading ? (
-          <div className="p-8 text-center text-gray-500">Nenhuma conta encontrada</div>
+          <EmptyState icon={FileText} title="Nenhuma conta encontrada" />
         ) : (
           <Table>
             <TableHeader>
@@ -634,11 +643,11 @@ export default function FinanceiroPage() {
             </TableBody>
           </Table>
         )}
-      </div>
+      </Card>
 
       {/* Paginação */}
       {pages > 1 && (
-        <div className="mt-6 flex justify-center gap-2">
+        <div className="flex justify-center gap-2">
           <button
             onClick={() => setPage(Math.max(1, page - 1))}
             disabled={page === 1}

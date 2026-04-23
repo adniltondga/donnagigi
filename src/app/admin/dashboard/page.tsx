@@ -25,6 +25,9 @@ import {
   Settings,
 } from "lucide-react"
 import { formatCurrency } from "@/lib/calculations"
+import { PageHeader } from "@/components/ui/page-header"
+import { Card } from "@/components/ui/card"
+import { StatCard } from "@/components/ui/stat-card"
 
 interface Me {
   id: string
@@ -137,18 +140,15 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="space-y-6 max-w-7xl">
-      {/* Greeting */}
-      <div>
-        <h1 className="text-3xl font-bold text-gray-900">
-          Olá, {firstName(me?.name)}! 👋
-        </h1>
-        <p className="text-gray-600 mt-1">
-          {me?.tenant?.name
+    <div className="space-y-6">
+      <PageHeader
+        title={`Olá, ${firstName(me?.name)}! 👋`}
+        description={
+          me?.tenant?.name
             ? `Aqui está um resumo da ${me.tenant.name} hoje.`
-            : "Aqui está um resumo do seu negócio."}
-        </p>
-      </div>
+            : "Aqui está um resumo do seu negócio."
+        }
+      />
 
       {/* Status ML */}
       {!mlStatus?.connected ? (
@@ -201,21 +201,21 @@ export default function Dashboard() {
           label="Vendas hoje"
           value={vendasHoje ? `${vendasHoje.vendas} un.` : "—"}
           sub={vendasHoje ? formatCurrency(vendasHoje.bruto) : "sem vendas ainda"}
-          icon={<TrendingUp />}
+          icon={TrendingUp}
           accent="emerald"
         />
         <StatCard
           label="A receber (ML)"
           value={pendingCount ? `${pendingCount.count}` : "—"}
           sub={pendingCount ? formatCurrency(pendingCount.amount) : "nenhuma pendente"}
-          icon={<DollarSign />}
+          icon={DollarSign}
           accent="amber"
         />
         <StatCard
           label="Libera neste mês"
           value={prev ? `${prev.totalVendas} un.` : "—"}
           sub={prev ? formatCurrency(prev.total) : "—"}
-          icon={<Calendar />}
+          icon={Calendar}
           accent="sky"
         />
         <StatCard
@@ -229,14 +229,14 @@ export default function Dashboard() {
                 })()
               : "—"
           }
-          icon={<Package />}
+          icon={Package}
           accent="primary"
         />
       </div>
 
       {/* Tendência 7d + Top produtos */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        <div className="lg:col-span-2 bg-white rounded-xl border border-gray-200 p-5">
+        <Card className="lg:col-span-2 p-5">
           <div className="flex items-center justify-between mb-4">
             <h2 className="font-bold text-gray-900 flex items-center gap-2">
               <TrendingUp className="w-5 h-5 text-primary-600" />
@@ -278,11 +278,11 @@ export default function Dashboard() {
               </ResponsiveContainer>
             </div>
           ) : (
-            <EmptyState message="Nenhuma venda nos últimos 7 dias" />
+            <EmptyInline message="Nenhuma venda nos últimos 7 dias" />
           )}
-        </div>
+        </Card>
 
-        <div className="bg-white rounded-xl border border-gray-200 p-5">
+        <Card className="p-5">
           <div className="flex items-center justify-between mb-4">
             <h2 className="font-bold text-gray-900">🏆 Top produtos (mês)</h2>
           </div>
@@ -306,14 +306,14 @@ export default function Dashboard() {
               ))}
             </ul>
           ) : (
-            <EmptyState message="Sem dados ainda" />
+            <EmptyInline message="Sem dados ainda" />
           )}
-        </div>
+        </Card>
       </div>
 
       {/* Próximas liberações + Devoluções */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        <div className="lg:col-span-2 bg-white rounded-xl border border-gray-200 p-5">
+        <Card className="lg:col-span-2 p-5">
           <div className="flex items-center justify-between mb-4">
             <h2 className="font-bold text-gray-900 flex items-center gap-2">
               <Calendar className="w-5 h-5 text-primary-600" />
@@ -349,11 +349,11 @@ export default function Dashboard() {
               ))}
             </ul>
           ) : (
-            <EmptyState message="Nada liberando nesse mês" />
+            <EmptyInline message="Nada liberando nesse mês" />
           )}
-        </div>
+        </Card>
 
-        <div className="bg-white rounded-xl border border-gray-200 p-5">
+        <Card className="p-5">
           <h2 className="font-bold text-gray-900 mb-4">↩️ Devoluções (mês)</h2>
           {v2?.cancelamentos ? (
             <div className="space-y-3">
@@ -371,9 +371,9 @@ export default function Dashboard() {
               </div>
             </div>
           ) : (
-            <EmptyState message="—" />
+            <EmptyInline message="—" />
           )}
-        </div>
+        </Card>
       </div>
 
       {/* Quick Actions */}
@@ -411,43 +411,6 @@ export default function Dashboard() {
   )
 }
 
-const ACCENTS: Record<string, { bg: string; text: string }> = {
-  primary: { bg: "bg-primary-100", text: "text-primary-700" },
-  emerald: { bg: "bg-emerald-100", text: "text-emerald-700" },
-  amber: { bg: "bg-amber-100", text: "text-amber-700" },
-  sky: { bg: "bg-sky-100", text: "text-sky-700" },
-}
-
-function StatCard({
-  label,
-  value,
-  sub,
-  icon,
-  accent = "primary",
-}: {
-  label: string
-  value: string | number
-  sub?: string
-  icon: React.ReactNode
-  accent?: keyof typeof ACCENTS
-}) {
-  const a = ACCENTS[accent] || ACCENTS.primary
-  return (
-    <div className="bg-white rounded-xl border border-gray-200 p-5 hover:shadow-md transition">
-      <div className="flex items-start justify-between">
-        <div className="min-w-0">
-          <p className="text-xs font-semibold uppercase text-gray-500 tracking-wide">{label}</p>
-          <p className="text-2xl font-bold text-gray-900 mt-2">{value}</p>
-          {sub && <p className="text-xs text-gray-500 mt-1 truncate">{sub}</p>}
-        </div>
-        <div className={`w-10 h-10 ${a.bg} ${a.text} rounded-lg flex items-center justify-center flex-shrink-0`}>
-          {icon}
-        </div>
-      </div>
-    </div>
-  )
-}
-
 function QuickAction({
   href,
   icon,
@@ -479,6 +442,6 @@ function QuickAction({
   )
 }
 
-function EmptyState({ message }: { message: string }) {
+function EmptyInline({ message }: { message: string }) {
   return <div className="text-center text-sm text-gray-400 py-8">{message}</div>
 }
