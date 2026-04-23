@@ -17,6 +17,7 @@ export async function GET() {
       email: true,
       name: true,
       username: true,
+      role: true,
       tenantId: true,
       tenant: { select: { id: true, name: true, slug: true } },
     },
@@ -55,6 +56,10 @@ export async function PATCH(request: NextRequest) {
     await prisma.user.update({ where: { id: session.id }, data: { name } })
   }
   if (tenantName) {
+    // Nome do negócio: só OWNER/ADMIN podem alterar.
+    if (session.role === "VIEWER") {
+      return NextResponse.json({ error: "Sem permissão pra alterar o nome do negócio" }, { status: 403 })
+    }
     await prisma.tenant.update({ where: { id: session.tenantId }, data: { name: tenantName } })
   }
 
@@ -65,6 +70,7 @@ export async function PATCH(request: NextRequest) {
       email: true,
       name: true,
       username: true,
+      role: true,
       tenantId: true,
       tenant: { select: { id: true, name: true, slug: true } },
     },

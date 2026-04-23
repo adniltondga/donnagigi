@@ -9,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { StatCard } from '@/components/ui/stat-card';
 import { EmptyState } from '@/components/ui/empty-state';
 import { CalendarClock, AlertTriangle, Wallet, FileText } from 'lucide-react';
+import { useUserRole } from '@/lib/useUserRole';
 
 interface Supplier {
   id: string;
@@ -66,6 +67,7 @@ function daysUntil(date: string | Date): number {
 }
 
 export default function FinanceiroPage() {
+  const { canWrite } = useUserRole();
   const [bills, setBills] = useState<Bill[]>([]);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [total, setTotal] = useState(0);
@@ -305,12 +307,14 @@ export default function FinanceiroPage() {
         title="💳 Financeiro"
         description="Contas a pagar e a receber manuais."
         actions={
-          <button
-            onClick={() => setShowNewForm(!showNewForm)}
-            className="bg-gradient-to-r from-primary-500 to-primary-600 hover:from-primary-600 hover:to-primary-700 text-white font-semibold py-2 px-4 rounded-lg transition"
-          >
-            + Nova Conta
-          </button>
+          canWrite ? (
+            <button
+              onClick={() => setShowNewForm(!showNewForm)}
+              className="bg-gradient-to-r from-primary-500 to-primary-600 hover:from-primary-600 hover:to-primary-700 text-white font-semibold py-2 px-4 rounded-lg transition"
+            >
+              + Nova Conta
+            </button>
+          ) : null
         }
       />
 
@@ -602,10 +606,12 @@ export default function FinanceiroPage() {
                     </TableCell>
                     <TableCell>
                       <div className="flex gap-1">
-                        <Button onClick={() => openEdit(b)} size="sm" variant="ghost" title="Editar">
-                          ✏️
-                        </Button>
-                        {b.status !== 'paid' && b.status !== 'cancelled' && (
+                        {canWrite && (
+                          <Button onClick={() => openEdit(b)} size="sm" variant="ghost" title="Editar">
+                            ✏️
+                          </Button>
+                        )}
+                        {canWrite && b.status !== 'paid' && b.status !== 'cancelled' && (
                           <Button
                             onClick={() => onMarkPaid(b.id)}
                             disabled={loading}
@@ -616,7 +622,7 @@ export default function FinanceiroPage() {
                             ✓
                           </Button>
                         )}
-                        {deleteConfirm === b.id ? (
+                        {canWrite && deleteConfirm === b.id ? (
                           <>
                             <Button onClick={() => onDelete(b.id)} size="sm" variant="ghost">
                               Confirmar
@@ -625,7 +631,7 @@ export default function FinanceiroPage() {
                               ✕
                             </Button>
                           </>
-                        ) : (
+                        ) : canWrite ? (
                           <Button
                             onClick={() => setDeleteConfirm(b.id)}
                             size="sm"
@@ -634,7 +640,7 @@ export default function FinanceiroPage() {
                           >
                             🗑️
                           </Button>
-                        )}
+                        ) : null}
                       </div>
                     </TableCell>
                   </TableRow>

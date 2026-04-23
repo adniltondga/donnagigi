@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import prisma from "@/lib/prisma"
 import { getSession } from "@/lib/tenant"
 import { getMLRedirectUri } from "@/lib/ml-url"
+import { isWriter } from "@/lib/auth"
 
 export const dynamic = "force-dynamic"
 
@@ -53,6 +54,9 @@ export async function POST(request: NextRequest) {
   const session = await getSession()
   if (!session) {
     return NextResponse.json({ error: "Não autenticado" }, { status: 401 })
+  }
+  if (!isWriter(session.role)) {
+    return NextResponse.json({ error: "Sem permissão pra essa ação" }, { status: 403 })
   }
 
   const { clientId, clientSecret, redirectUri } = (await request.json()) as {
@@ -107,6 +111,9 @@ export async function DELETE() {
   const session = await getSession()
   if (!session) {
     return NextResponse.json({ error: "Não autenticado" }, { status: 401 })
+  }
+  if (!isWriter(session.role)) {
+    return NextResponse.json({ error: "Sem permissão pra essa ação" }, { status: 403 })
   }
 
   await prisma.mLAppCredentials.deleteMany({

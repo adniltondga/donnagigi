@@ -6,6 +6,7 @@ import { PageHeader } from '@/components/ui/page-header';
 import { Card } from '@/components/ui/card';
 import { EmptyState } from '@/components/ui/empty-state';
 import { Package } from 'lucide-react';
+import { useUserRole } from '@/lib/useUserRole';
 
 interface Item {
   mlListingId: string;
@@ -20,6 +21,7 @@ interface Item {
 type Filtro = 'todos' | 'sem' | 'com';
 
 export default function CustosMLPage() {
+  const { canWrite } = useUserRole();
   const [items, setItems] = useState<Item[]>([]);
   const [loading, setLoading] = useState(false);
   const [drafts, setDrafts] = useState<Record<string, string>>({});
@@ -186,26 +188,34 @@ export default function CustosMLPage() {
                     <td className="px-4 py-3 text-right">{it.vendas}</td>
                     <td className="px-4 py-3 text-right">{formatCurrency(it.totalBruto)}</td>
                     <td className="px-4 py-3 text-right">
-                      <input
-                        type="number"
-                        step="0.01"
-                        min="0"
-                        value={drafts[it.mlListingId] ?? ''}
-                        onChange={(e) =>
-                          setDrafts((d) => ({ ...d, [it.mlListingId]: e.target.value }))
-                        }
-                        className="w-28 border rounded px-2 py-1 text-right"
-                        placeholder="0,00"
-                      />
+                      {canWrite ? (
+                        <input
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          value={drafts[it.mlListingId] ?? ''}
+                          onChange={(e) =>
+                            setDrafts((d) => ({ ...d, [it.mlListingId]: e.target.value }))
+                          }
+                          className="w-28 border rounded px-2 py-1 text-right"
+                          placeholder="0,00"
+                        />
+                      ) : (
+                        <span className="text-gray-700">
+                          {it.productCost != null ? formatCurrency(it.productCost) : '—'}
+                        </span>
+                      )}
                     </td>
                     <td className="px-4 py-3 text-right">
-                      <button
-                        onClick={() => save(it)}
-                        disabled={saving === it.mlListingId}
-                        className="bg-primary-600 hover:bg-primary-700 text-white text-xs px-3 py-1.5 rounded font-semibold disabled:opacity-60"
-                      >
-                        {saving === it.mlListingId ? 'Salvando...' : 'Salvar'}
-                      </button>
+                      {canWrite && (
+                        <button
+                          onClick={() => save(it)}
+                          disabled={saving === it.mlListingId}
+                          className="bg-primary-600 hover:bg-primary-700 text-white text-xs px-3 py-1.5 rounded font-semibold disabled:opacity-60"
+                        >
+                          {saving === it.mlListingId ? 'Salvando...' : 'Salvar'}
+                        </button>
+                      )}
                     </td>
                   </tr>
                 );

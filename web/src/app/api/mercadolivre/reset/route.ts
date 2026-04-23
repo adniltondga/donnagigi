@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import prisma from "@/lib/prisma"
 import { getTenantIdOrDefault } from "@/lib/tenant"
+import { AuthError, authErrorResponse, requireRole } from "@/lib/auth"
 
 export const dynamic = "force-dynamic"
 
@@ -10,6 +11,7 @@ export const dynamic = "force-dynamic"
  */
 export async function DELETE() {
   try {
+    await requireRole(['OWNER', 'ADMIN'])
     const tenantId = await getTenantIdOrDefault()
     const integration = await prisma.mLIntegration.findFirst({ where: { tenantId } })
 
@@ -38,6 +40,7 @@ export async function DELETE() {
       nextStep: "/api/ml/oauth/login",
     })
   } catch (error) {
+    if (error instanceof AuthError) return authErrorResponse(error)
     console.error("[ML/RESET] Erro ao resetar:", error)
     return NextResponse.json(
       {

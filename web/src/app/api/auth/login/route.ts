@@ -22,6 +22,7 @@ export async function POST(request: NextRequest) {
         name: true,
         username: true,
         password: true,
+        role: true,
         tenantId: true,
         emailVerified: true,
         tenant: { select: { id: true, name: true, slug: true } },
@@ -61,6 +62,7 @@ export async function POST(request: NextRequest) {
       id: user.id,
       email: user.email,
       tenantId: user.tenantId,
+      role: user.role,
     })
       .setProtectedHeader({ alg: "HS256" })
       .setExpirationTime("7d")
@@ -73,6 +75,7 @@ export async function POST(request: NextRequest) {
         email: user.email,
         name: user.name,
         username: user.username,
+        role: user.role,
       },
       tenant: user.tenant,
     })

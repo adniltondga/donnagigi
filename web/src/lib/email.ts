@@ -107,6 +107,43 @@ export function verifyEmailTemplate(code: string) {
   };
 }
 
+export function teamInviteTemplate(params: {
+  inviterName: string
+  tenantName: string
+  role: "OWNER" | "ADMIN" | "VIEWER"
+  acceptUrl: string
+}) {
+  const { inviterName, tenantName, role, acceptUrl } = params
+  const roleLabel = role === "ADMIN" ? "Administrador" : role === "OWNER" ? "Dono" : "Visualizador"
+  const roleDesc =
+    role === "ADMIN"
+      ? "acesso total — pode cadastrar custos, integrar Mercado Livre e gerenciar o negócio."
+      : role === "OWNER"
+      ? "acesso total ao negócio."
+      : "acesso de leitura — vê dashboard, relatórios e pedidos, mas não altera dados."
+  const body = `
+    <p><strong>${inviterName}</strong> te convidou pra fazer parte de <strong>${tenantName}</strong> no agLivre como <strong>${roleLabel}</strong>.</p>
+    <p style="color:#6b7280;font-size:14px">Com esse papel, você terá ${roleDesc}</p>
+    <div style="text-align:center;margin:32px 0">
+      <a href="${acceptUrl}" style="display:inline-block;background:${BRAND};color:white;font-weight:bold;padding:14px 28px;border-radius:10px;text-decoration:none;font-size:15px">
+        Aceitar convite
+      </a>
+    </div>
+    <p style="color:#6b7280;font-size:13px">
+      Ou copie o link: <br>
+      <span style="font-family:monospace;word-break:break-all">${acceptUrl}</span>
+    </p>
+    <p style="color:#6b7280;font-size:12px;margin-top:24px">
+      O convite expira em 7 dias. Se você não conhece ${inviterName}, pode ignorar este email.
+    </p>
+  `
+  return {
+    subject: `${inviterName} te convidou pra ${tenantName} no agLivre`,
+    html: layout(`Convite pra ${tenantName}`, body),
+    text: `${inviterName} te convidou pra ${tenantName} no agLivre como ${roleLabel}.\n\nAceite: ${acceptUrl}\n\nO convite expira em 7 dias.`,
+  }
+}
+
 export function resetPasswordTemplate(code: string) {
   const body = `
     <p>Recebemos um pedido pra redefinir sua senha. Use o código abaixo:</p>

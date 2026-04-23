@@ -70,6 +70,7 @@ export async function POST(request: NextRequest) {
           username,
           password: hashedPassword,
           name,
+          role: "OWNER",
           tenantId: tenant.id,
           emailVerified: false,
           verifyCode,

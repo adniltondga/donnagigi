@@ -1,5 +1,6 @@
 import prisma from '@/lib/prisma';
 import { getTenantIdOrDefault } from '@/lib/tenant';
+import { AuthError, authErrorResponse, requireRole } from '@/lib/auth';
 import { NextRequest, NextResponse } from 'next/server';
 
 export async function GET(_req: NextRequest) {
@@ -24,6 +25,7 @@ export async function GET(_req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
+    await requireRole(['OWNER', 'ADMIN']);
     const body = await req.json();
     const { name } = body;
 
@@ -41,6 +43,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json(supplier, { status: 201 });
   } catch (error) {
+    if (error instanceof AuthError) return authErrorResponse(error);
     console.error('Error creating supplier:', error);
     return NextResponse.json(
       { error: 'Failed to create supplier' },

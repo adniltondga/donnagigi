@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/prisma'
+import { AuthError, authErrorResponse, requireRole } from '@/lib/auth'
 
 interface Params {
   params: Promise<{ id: string; variantId: string }>
@@ -40,6 +41,7 @@ export async function GET(_request: NextRequest, { params }: Params) {
  */
 export async function PATCH(request: NextRequest, { params }: Params) {
   try {
+    await requireRole(['OWNER', 'ADMIN'])
     const { id: productId, variantId } = await params
     const body = await request.json()
 
@@ -68,6 +70,7 @@ export async function PATCH(request: NextRequest, { params }: Params) {
 
     return NextResponse.json({ success: true, data: updatedVariant })
   } catch (error) {
+    if (error instanceof AuthError) return authErrorResponse(error)
     console.error('PATCH /api/products/[id]/variants/[variantId]:', error)
     return NextResponse.json(
       { success: false, error: 'Erro ao atualizar variação' },
@@ -82,6 +85,7 @@ export async function PATCH(request: NextRequest, { params }: Params) {
  */
 export async function DELETE(_request: NextRequest, { params }: Params) {
   try {
+    await requireRole(['OWNER', 'ADMIN'])
     const { id: productId, variantId } = await params
 
     // Verificar se variante pertence ao produto
@@ -106,6 +110,7 @@ export async function DELETE(_request: NextRequest, { params }: Params) {
       message: 'Variação deletada com sucesso',
     })
   } catch (error) {
+    if (error instanceof AuthError) return authErrorResponse(error)
     console.error('DELETE /api/products/[id]/variants/[variantId]:', error)
     return NextResponse.json(
       { success: false, error: 'Erro ao deletar variação' },

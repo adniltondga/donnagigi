@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/prisma'
 import { getTenantIdOrDefault } from '@/lib/tenant'
+import { AuthError, authErrorResponse, requireRole } from '@/lib/auth'
 
 export async function GET(req: NextRequest) {
   try {
@@ -84,6 +85,7 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
+    await requireRole(['OWNER', 'ADMIN'])
     const body = await req.json()
 
     // Validar campos obrigatórios
@@ -168,6 +170,7 @@ export async function POST(req: NextRequest) {
       { status: 201 }
     )
   } catch (error) {
+    if (error instanceof AuthError) return authErrorResponse(error)
     console.error('POST /api/products:', error)
     return NextResponse.json(
       { success: false, error: 'Erro ao criar produto' },
