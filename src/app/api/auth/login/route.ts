@@ -1,15 +1,12 @@
 import { NextRequest, NextResponse } from "next/server"
-import { PrismaClient } from "@prisma/client"
 import bcrypt from "bcryptjs"
 import { SignJWT } from "jose"
-
-const prisma = new PrismaClient()
+import prisma from "@/lib/prisma"
 
 export async function POST(request: NextRequest) {
   try {
     const { email, password } = await request.json()
 
-    // Validar entrada
     if (!email || !password) {
       return NextResponse.json(
         { error: "Email e senha são obrigatórios" },
@@ -17,9 +14,17 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Buscar usuário
     const user = await prisma.user.findUnique({
-      where: { email }
+      where: { email },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        username: true,
+        password: true,
+        tenantId: true,
+        tenant: { select: { id: true, name: true, slug: true } },
+      },
     })
 
     if (!user) {
@@ -29,7 +34,6 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Validar senha
     const passwordValid = await bcrypt.compare(password, user.password)
     if (!passwordValid) {
       return NextResponse.json(
@@ -38,14 +42,14 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Gerar token com jose (compatível com middleware)
     const secret = new TextEncoder().encode(
       process.env.JWT_SECRET || "seu_jwt_secret_super_seguro"
     )
 
     const token = await new SignJWT({
       id: user.id,
-      email: user.email
+      email: user.email,
+      tenantId: user.tenantId,
     })
       .setProtectedHeader({ alg: "HS256" })
       .setExpirationTime("7d")
@@ -57,8 +61,9 @@ export async function POST(request: NextRequest) {
         id: user.id,
         email: user.email,
         name: user.name,
-        username: user.username
-      }
+        username: user.username,
+      },
+      tenant: user.tenant,
     })
   } catch (error) {
     console.error("Login error:", error)
