@@ -29,7 +29,16 @@ interface MenuItem {
 
 const MENU: MenuItem[] = [
   { label: "Dashboard", href: "/admin/dashboard", icon: LayoutDashboard },
-  { label: "Financeiro", href: "/admin/financeiro", icon: DollarSign },
+  {
+    label: "Financeiro",
+    icon: DollarSign,
+    isActive: (p) => p.startsWith("/admin/financeiro"),
+    children: [
+      { label: "Contas a pagar", href: "/admin/financeiro/contas-a-pagar" },
+      { label: "Contas a receber", href: "/admin/financeiro/contas-a-receber" },
+      { label: "Categorias", href: "/admin/financeiro/categorias" },
+    ],
+  },
   { label: "Custos ML", href: "/admin/custos-ml", icon: Tag },
   {
     label: "Top Produtos",
