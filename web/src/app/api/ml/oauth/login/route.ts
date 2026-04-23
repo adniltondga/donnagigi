@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import crypto from "crypto"
 import { PrismaClient } from "@prisma/client"
 import { getCurrentTenantId } from "@/lib/tenant"
+import { getMLClientId } from "@/lib/ml-credentials"
 
 const prisma = new PrismaClient()
 
@@ -28,18 +29,7 @@ function generateCodeChallenge(codeVerifier: string): string {
 
 export async function GET(_request: NextRequest) {
   try {
-    const clientId = process.env.ML_CLIENT_ID
     const redirectUri = process.env.ML_REDIRECT_URI || "https://www.aglivre.com.br/api/ml/oauth/callback"
-
-    if (!clientId) {
-      return NextResponse.json(
-        {
-          erro: "ML_CLIENT_ID não configurado",
-          instrucoes: "Configure ML_CLIENT_ID no arquivo .env"
-        },
-        { status: 400 }
-      )
-    }
 
     // Precisa estar logado — associamos a MLIntegration ao tenant do usuário
     let tenantId: string
@@ -51,6 +41,19 @@ export async function GET(_request: NextRequest) {
         { status: 401 }
       )
     }
+
+    // Lê clientId do tenant (ou fallback pro .env)
+    const cred = await getMLClientId(tenantId)
+    if (!cred) {
+      return NextResponse.json(
+        {
+          erro: "App ML não configurado",
+          instrucoes: "Cadastre Client ID + Secret em /admin/configuracoes?tab=ml ou configure ML_CLIENT_ID no .env",
+        },
+        { status: 400 }
+      )
+    }
+    const clientId = cred.clientId
 
     // 1️⃣ Gerar PKCE code_verifier (43-128 caracteres)
     const codeVerifier = crypto.randomBytes(32).toString("base64url")

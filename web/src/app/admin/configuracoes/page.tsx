@@ -330,12 +330,6 @@ function MLPanel({ initialSuccess, initialError }: { initialSuccess: string | nu
     expiresAt?: string
     isExpired?: boolean
   } | null>(null)
-  const [appInfo, setAppInfo] = useState<{
-    configured: boolean
-    clientIdPreview: string | null
-    redirectUri: string
-    devCenterUrl: string
-  } | null>(null)
   const [loading, setLoading] = useState(true)
   const [status, setStatus] = useState<"idle" | "loading" | "syncing" | "success" | "error">("idle")
   const [message, setMessage] = useState("")
@@ -355,10 +349,6 @@ function MLPanel({ initialSuccess, initialError }: { initialSuccess: string | nu
 
   useEffect(() => {
     check()
-    fetch("/api/ml/app-info")
-      .then((r) => (r.ok ? r.json() : null))
-      .then(setAppInfo)
-      .catch(() => {})
   }, [])
 
   useEffect(() => {
@@ -446,60 +436,9 @@ function MLPanel({ initialSuccess, initialError }: { initialSuccess: string | nu
     <div className="space-y-4">
       {message && <StatusMessage status={status === "success" ? "success" : "error"} message={message} />}
 
-      {/* Status do app registrado no ML DevCenter */}
-      {appInfo && !appInfo.configured && (
-        <Card className="border-amber-200 bg-amber-50">
-          <CardContent className="flex items-start gap-3">
-            <AlertCircle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
-            <div className="text-sm text-amber-900 space-y-1">
-              <p className="font-semibold">App Mercado Livre não configurado</p>
-              <p>
-                Antes dos clientes conseguirem conectar, registre um app no{" "}
-                <a
-                  href={appInfo.devCenterUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="underline font-medium hover:text-amber-950"
-                >
-                  Mercado Livre DevCenter
-                </a>{" "}
-                e configure <code className="px-1 bg-amber-100 rounded text-xs font-mono">ML_CLIENT_ID</code> e{" "}
-                <code className="px-1 bg-amber-100 rounded text-xs font-mono">ML_CLIENT_SECRET</code> no <code className="px-1 bg-amber-100 rounded text-xs font-mono">.env</code> do servidor.
-              </p>
-              <p className="text-xs">
-                Redirect URI a registrar no DevCenter:{" "}
-                <code className="px-1 bg-amber-100 rounded text-xs font-mono break-all">{appInfo.redirectUri}</code>
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-      )}
+      {/* Credenciais do app ML do tenant */}
+      <AppCredentialsCard />
 
-      {appInfo?.configured && (
-        <Card className="bg-gray-50/50">
-          <CardContent className="flex items-center justify-between gap-3 text-sm">
-            <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-lg bg-primary-50 text-primary-700 flex items-center justify-center">
-                <CheckCircle className="w-4 h-4" />
-              </div>
-              <div>
-                <p className="font-semibold text-gray-900">App agLivre registrado no ML</p>
-                <p className="text-xs text-gray-500 font-mono">
-                  Client ID: {appInfo.clientIdPreview} · Redirect: <span className="break-all">{appInfo.redirectUri}</span>
-                </p>
-              </div>
-            </div>
-            <a
-              href={appInfo.devCenterUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-xs text-primary-600 hover:text-primary-700 font-medium whitespace-nowrap"
-            >
-              DevCenter ↗
-            </a>
-          </CardContent>
-        </Card>
-      )}
 
       {/* Card principal de status */}
       <Card>
@@ -611,6 +550,242 @@ function MLPanel({ initialSuccess, initialError }: { initialSuccess: string | nu
       {/* Método avançado — token manual */}
       {!integration?.configured && <ManualTokenCard onSuccess={check} />}
     </div>
+  )
+}
+
+interface AppCredentialsResponse {
+  configured: boolean
+  source: "tenant" | "env" | null
+  clientId: string | null
+  clientSecretMasked: string | null
+  redirectUri: string
+  updatedAt?: string
+}
+
+function AppCredentialsCard() {
+  const [data, setData] = useState<AppCredentialsResponse | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [editing, setEditing] = useState(false)
+  const [clientId, setClientId] = useState("")
+  const [clientSecret, setClientSecret] = useState("")
+  const [submitting, setSubmitting] = useState(false)
+  const [showSecret, setShowSecret] = useState(false)
+  const [msg, setMsg] = useState<{ type: "success" | "error"; text: string } | null>(null)
+
+  const load = () => {
+    setLoading(true)
+    fetch("/api/ml/app-credentials")
+      .then((r) => (r.ok ? r.json() : null))
+      .then(setData)
+      .finally(() => setLoading(false))
+  }
+
+  useEffect(() => {
+    load()
+  }, [])
+
+  const startEdit = () => {
+    setEditing(true)
+    setClientId("")
+    setClientSecret("")
+    setMsg(null)
+  }
+
+  const cancel = () => {
+    setEditing(false)
+    setClientId("")
+    setClientSecret("")
+    setMsg(null)
+  }
+
+  const save = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setSubmitting(true)
+    setMsg(null)
+    try {
+      const res = await fetch("/api/ml/app-credentials", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ clientId: clientId.trim(), clientSecret: clientSecret.trim() }),
+      })
+      const d = await res.json().catch(() => ({}))
+      if (res.ok) {
+        setMsg({ type: "success", text: "Credenciais salvas." })
+        setEditing(false)
+        load()
+      } else {
+        setMsg({ type: "error", text: d.error || "Erro ao salvar" })
+      }
+    } catch {
+      setMsg({ type: "error", text: "Erro de conexão" })
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  const remove = async () => {
+    if (!confirm("Remover credenciais do seu app ML? Volta a usar o app padrão do agLivre.")) return
+    try {
+      await fetch("/api/ml/app-credentials", { method: "DELETE" })
+      load()
+    } catch {}
+  }
+
+  const copy = (text: string) => navigator.clipboard.writeText(text)
+
+  return (
+    <Card>
+      <CardHeader>
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <CardTitle className="text-base">App Mercado Livre</CardTitle>
+            <CardDescription>
+              Credenciais do app registrado no{" "}
+              <a
+                href="https://developers.mercadolivre.com.br/devcenter"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-primary-600 hover:text-primary-700 underline"
+              >
+                ML DevCenter
+              </a>
+              .
+            </CardDescription>
+          </div>
+          {!loading && data?.configured && !editing && (
+            <Badge variant={data.source === "tenant" ? "default" : "secondary"}>
+              {data.source === "tenant" ? "App próprio" : "App padrão agLivre"}
+            </Badge>
+          )}
+        </div>
+      </CardHeader>
+
+      <CardContent>
+        {msg && <StatusMessage status={msg.type} message={msg.text} />}
+
+        {loading ? (
+          <LoadingBox />
+        ) : editing ? (
+          <form onSubmit={save} className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Client ID</label>
+              <input
+                type="text"
+                value={clientId}
+                onChange={(e) => setClientId(e.target.value)}
+                required
+                placeholder="1234567890123456"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg font-mono text-sm focus:ring-2 focus:ring-primary-600 focus:border-transparent outline-none"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Client Secret</label>
+              <div className="relative">
+                <input
+                  type={showSecret ? "text" : "password"}
+                  value={clientSecret}
+                  onChange={(e) => setClientSecret(e.target.value)}
+                  required
+                  placeholder="••••••••••••••••"
+                  className="w-full px-3 py-2 pr-10 border border-gray-300 rounded-lg font-mono text-sm focus:ring-2 focus:ring-primary-600 focus:border-transparent outline-none"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowSecret((v) => !v)}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 p-1"
+                >
+                  {showSecret ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+            </div>
+
+            <div className="rounded-lg border border-gray-200 bg-gray-50 p-3 text-xs text-gray-600 space-y-1">
+              <p className="font-semibold text-gray-900">Como obter:</p>
+              <ol className="list-decimal pl-4 space-y-0.5">
+                <li>
+                  Acesse{" "}
+                  <a
+                    href="https://developers.mercadolivre.com.br/devcenter"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-primary-600 underline"
+                  >
+                    ML DevCenter
+                  </a>{" "}
+                  → Criar aplicação
+                </li>
+                <li>Registre a Redirect URI mostrada abaixo</li>
+                <li>Copie Client ID e Client Secret e cole aqui</li>
+              </ol>
+            </div>
+
+            <div className="flex gap-2 justify-end">
+              <Button type="button" variant="outline" size="sm" onClick={cancel}>
+                Cancelar
+              </Button>
+              <Button type="submit" disabled={submitting || !clientId.trim() || !clientSecret.trim()} size="sm">
+                {submitting && <Loader className="w-4 h-4 animate-spin mr-2" />}
+                Salvar credenciais
+              </Button>
+            </div>
+          </form>
+        ) : data?.configured && data.source === "tenant" ? (
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <div className="text-xs text-gray-500 uppercase tracking-wide">Client ID</div>
+                <div className="text-sm font-mono text-gray-900 mt-1">{data.clientId}</div>
+              </div>
+              <div>
+                <div className="text-xs text-gray-500 uppercase tracking-wide">Client Secret</div>
+                <div className="text-sm font-mono text-gray-900 mt-1">{data.clientSecretMasked}</div>
+              </div>
+            </div>
+            <div className="pt-3 border-t border-gray-100">
+              <div className="text-xs text-gray-500 uppercase tracking-wide mb-1">Redirect URI (cadastre no DevCenter)</div>
+              <div className="flex items-center gap-2 bg-gray-50 px-3 py-2 rounded-lg">
+                <code className="flex-1 text-xs font-mono break-all">{data.redirectUri}</code>
+                <button
+                  onClick={() => copy(data.redirectUri)}
+                  className="text-xs text-primary-600 hover:text-primary-700 font-medium whitespace-nowrap"
+                >
+                  Copiar
+                </button>
+              </div>
+            </div>
+            <div className="flex gap-2 justify-end">
+              <Button variant="destructive" size="sm" onClick={remove}>
+                Remover
+              </Button>
+              <Button size="sm" onClick={startEdit}>
+                Editar
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            <div className="rounded-lg border border-gray-200 bg-gray-50 p-4 text-sm space-y-2">
+              <p className="text-gray-900 font-medium">
+                {data?.configured ? (
+                  <>Usando o app padrão do agLivre. Cadastre seu próprio app pra ter rate limit isolado e a autorização mostrar o nome da sua empresa.</>
+                ) : (
+                  <>Nenhum app ML configurado — cadastre o seu pra ativar a conexão.</>
+                )}
+              </p>
+              {data?.redirectUri && (
+                <div className="text-xs text-gray-600">
+                  Redirect URI a cadastrar no DevCenter:{" "}
+                  <code className="font-mono text-xs break-all">{data.redirectUri}</code>
+                </div>
+              )}
+            </div>
+            <Button size="sm" onClick={startEdit}>
+              Cadastrar meu app
+            </Button>
+          </div>
+        )}
+      </CardContent>
+    </Card>
   )
 }
 

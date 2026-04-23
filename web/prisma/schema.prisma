@@ -20,13 +20,29 @@ model Tenant {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  users          User[]
-  products       Product[]
-  bills          Bill[]
-  suppliers      Supplier[]
-  mlIntegrations MLIntegration[]
-  mlProductCosts MLProductCost[]
-  subscription   Subscription?
+  users             User[]
+  products          Product[]
+  bills             Bill[]
+  suppliers         Supplier[]
+  mlIntegrations    MLIntegration[]
+  mlProductCosts    MLProductCost[]
+  subscription      Subscription?
+  mlAppCredentials  MLAppCredentials?
+}
+
+// Credenciais do app do cliente no Mercado Livre DevCenter.
+// Cada tenant registra seu PRÓPRIO app no ML e guarda clientId +
+// clientSecret aqui. O fluxo OAuth (login/callback/refresh) usa essas
+// credenciais. Fallback: se o tenant não tiver cadastrado, usa o
+// ML_CLIENT_ID/ML_CLIENT_SECRET do .env (app global do SaaS).
+model MLAppCredentials {
+  id           String   @id @default(cuid())
+  tenantId     String   @unique
+  tenant       Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  clientId     String
+  clientSecret String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 }
 
 // Assinatura do tenant (1:1) — ASAAS cuida do billing real

@@ -1,4 +1,5 @@
 import prisma from './prisma';
+import { getMLAppCredentials } from './ml-credentials';
 
 /**
  * Helper central para integrações ML por tenant. Substitui o padrão antigo
@@ -24,10 +25,16 @@ async function refreshTokenIfExpired(integration: MLIntegration): Promise<MLInte
     return null;
   }
 
-  const clientId = process.env.ML_CLIENT_ID;
-  const clientSecret = process.env.ML_CLIENT_SECRET;
-  if (!clientId || !clientSecret) {
-    throw new Error('ML_CLIENT_ID/ML_CLIENT_SECRET não configurados');
+  // Usa credenciais do tenant (fallback pro .env)
+  let clientId: string;
+  let clientSecret: string;
+  try {
+    const c = await getMLAppCredentials(integration.tenantId);
+    clientId = c.clientId;
+    clientSecret = c.clientSecret;
+  } catch (err) {
+    console.error(`[ml] sem credenciais pra tenant ${integration.tenantId}:`, err);
+    return null;
   }
 
   const params = new URLSearchParams({
