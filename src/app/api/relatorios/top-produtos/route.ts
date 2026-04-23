@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import prisma from "@/lib/prisma"
 import { getTenantIdOrDefault } from "@/lib/tenant"
 import { AuthError, authErrorResponse, requireSession } from "@/lib/auth"
+import { normalizeVariationKey } from "@/lib/ml-format"
 
 export const dynamic = "force-dynamic"
 
@@ -70,7 +71,10 @@ export async function GET(req: NextRequest) {
       const title = parts[0] || fullTitle
       const variation = parts.length > 1 ? parts.slice(1).join(" · ") : null
 
-      const key = variation ? `${listingId}|${variation}` : listingId
+      // Chave de agrupamento: case-insensitive + valores em ordem alfabética.
+      // Assim "Azul · iPhone 15PM" e "iphone 15PM · Azul" caem no mesmo grupo.
+      const normalizedVariation = normalizeVariationKey(variation)
+      const key = normalizedVariation ? `${listingId}|${normalizedVariation}` : listingId
       const cur =
         agg.get(key) ||
         {
