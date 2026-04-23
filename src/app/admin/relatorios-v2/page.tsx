@@ -234,7 +234,7 @@ export default function RelatoriosV2Page() {
         <button
           onClick={load}
           disabled={loading}
-          className="bg-primary-500 hover:bg-primary-600 text-white px-5 py-2 rounded-lg font-semibold disabled:opacity-60"
+          className="bg-primary-600 hover:bg-primary-700 text-white px-5 py-2 rounded-lg font-semibold disabled:opacity-60"
         >
           {loading ? 'Carregando...' : 'Atualizar'}
         </button>

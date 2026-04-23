@@ -151,7 +151,7 @@ export default function SupplierManager() {
     <div className="p-6">
       <div className="mb-6 flex items-center justify-between">
         <h1 className="text-3xl font-bold">📦 Fornecedores</h1>
-        <Button onClick={handleCreate} className="bg-primary-500 hover:bg-primary-600">
+        <Button onClick={handleCreate} className="bg-primary-600 hover:bg-primary-700">
           + Novo Fornecedor
         </Button>
       </div>
@@ -252,7 +252,7 @@ export default function SupplierManager() {
               >
                 Cancelar
               </Button>
-              <Button type="submit" className="bg-primary-500 hover:bg-primary-600">
+              <Button type="submit" className="bg-primary-600 hover:bg-primary-700">
                 {editing ? 'Atualizar' : 'Criar'}
               </Button>
             </DialogFooter>

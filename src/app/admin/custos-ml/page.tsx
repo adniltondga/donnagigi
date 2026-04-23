@@ -202,7 +202,7 @@ export default function CustosMLPage() {
                       <button
                         onClick={() => save(it)}
                         disabled={saving === it.mlListingId}
-                        className="bg-primary-500 hover:bg-primary-600 text-white text-xs px-3 py-1.5 rounded font-semibold disabled:opacity-60"
+                        className="bg-primary-600 hover:bg-primary-700 text-white text-xs px-3 py-1.5 rounded font-semibold disabled:opacity-60"
                       >
                         {saving === it.mlListingId ? 'Salvando...' : 'Salvar'}
                       </button>

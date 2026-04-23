@@ -3,7 +3,34 @@
     "allow": [
       "Bash(npx prisma:*)",
       "Bash(git checkout:*)",
-      "Bash(npm run:*)"
+      "Bash(npm run:*)",
+      "Bash(curl -s http://localhost:3000/api/products)",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(git push *)",
+      "Bash(node scripts/debug-bills.js)",
+      "Bash(curl -s http://localhost:3000/api/ml/custos)",
+      "Bash(node scripts/migrate-remove-salefee.js)",
+      "Bash(node scripts/debug-ml-order.js)",
+      "Read(//tmp/**)",
+      "Bash(node *)",
+      "Bash(curl -s http://localhost:3000/api/ml/backfill-salefee)",
+      "Bash(curl -s http://localhost:3000/api/ml/release-and-refunds)",
+      "Bash(curl -s 'http://localhost:3000/api/ml/sync-orders?months=1')",
+      "Bash(npx tsc *)",
+      "Bash(curl *)",
+      "Bash(python3 -c \"import json,sys; d=json.load\\(sys.stdin\\); [print\\(f\\\\\"{p['vendas']:>3}  {p['name'][:60]:<60}  {p['mlListingId']}\\\\\"\\) for p in d['topPorLucro']]\")",
+      "Bash(python3 -m json.tool)",
+      "Bash(ps -p 858,4544 -o pid,command)",
+      "Bash(python3 -c \"import json,sys; d=json.load\\(sys.stdin\\); print\\(json.dumps\\(d['stats'], indent=2\\)\\)\")",
+      "Read(//Users/2480dtidigital/site/**)",
+      "Read(//Users/2480dtidigital/**)",
+      "Bash(git tag -a v0.0.1 -m 'v0.0.1 — donnagigi fechada *)",
+      "Bash(git tag *)",
+      "Bash(python3 -c \"import json,sys; d=json.load\\(sys.stdin\\); print\\(f'bills retornados: {len\\(d[\\\\\"data\\\\\"]\\)}, total: {d[\\\\\"total\\\\\"]}'\\)\")",
+      "Bash(python3 -c \"import sys,json; raw=sys.stdin.read\\(\\); parts=raw.rsplit\\('[',1\\); d=json.loads\\(parts[0]\\); print\\(f'kpisAtual.vendas={d[\\\\\"kpisAtual\\\\\"][\\\\\"vendas\\\\\"]} cancelados={d[\\\\\"cancelamentos\\\\\"][\\\\\"vendas\\\\\"]}  [{parts[1]}'\\)\")",
+      "Bash(npm install *)",
+      "Bash(python3 *)"
     ]
   }
 }

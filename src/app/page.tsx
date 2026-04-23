@@ -7,7 +7,11 @@ import {
   Package,
   CheckCircle2,
   ArrowRight,
+  Check,
+  Sparkles,
 } from "lucide-react";
+import { PLANS } from "@/lib/plans";
+import { formatCurrency } from "@/lib/calculations";
 
 export default function Home() {
   return (
@@ -23,7 +27,13 @@ export default function Home() {
               ag<span className="text-primary-600">Livre</span>
             </span>
           </div>
-          <nav className="flex items-center gap-3">
+          <nav className="flex items-center gap-1 sm:gap-3">
+            <Link
+              href="#planos"
+              className="hidden sm:inline text-sm text-gray-700 hover:text-primary-600 font-medium px-3 py-2 transition"
+            >
+              Planos
+            </Link>
             <Link
               href="/admin/login"
               className="text-sm text-gray-700 hover:text-primary-600 font-medium px-3 py-2 transition"
@@ -32,9 +42,10 @@ export default function Home() {
             </Link>
             <Link
               href="/admin/login?register=1"
-              className="text-sm bg-primary-600 hover:bg-primary-700 text-white font-semibold px-4 py-2 rounded-lg transition"
+              className="text-sm bg-primary-600 hover:bg-primary-700 text-white font-semibold px-3 sm:px-4 py-2 rounded-lg transition"
             >
-              Criar conta grátis
+              <span className="hidden sm:inline">Criar conta grátis</span>
+              <span className="sm:hidden">Criar conta</span>
             </Link>
           </nav>
         </div>
@@ -134,6 +145,85 @@ export default function Home() {
               desc="Seus pedidos, lucros e recebimentos aparecem em segundos."
             />
           </div>
+        </div>
+      </section>
+
+      {/* Planos */}
+      <section id="planos" className="py-20 scroll-mt-20">
+        <div className="max-w-6xl mx-auto px-4">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-3">
+              Planos simples, sem fidelidade
+            </h2>
+            <p className="text-gray-600">
+              Comece grátis por 14 dias. Cancele quando quiser.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto">
+            {Object.values(PLANS).map((p) => (
+              <div
+                key={p.id}
+                className={`relative rounded-2xl p-6 flex flex-col border ${
+                  p.popular
+                    ? "bg-gradient-to-br from-primary-600 to-fuchsia-700 text-white border-primary-600 shadow-xl"
+                    : "bg-white border-gray-200"
+                }`}
+              >
+                {p.popular && (
+                  <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-amber-400 text-amber-900 text-xs font-bold px-3 py-1 rounded-full flex items-center gap-1">
+                    <Sparkles className="w-3 h-3" />
+                    Mais popular
+                  </div>
+                )}
+                <div className="mb-4">
+                  <h3 className={`text-xl font-bold ${p.popular ? "text-white" : "text-gray-900"}`}>
+                    {p.name}
+                  </h3>
+                  <p className={`text-sm mt-1 ${p.popular ? "text-primary-100" : "text-gray-500"}`}>
+                    {p.tagline}
+                  </p>
+                </div>
+                <div className="mb-6">
+                  <span className={`text-4xl font-bold ${p.popular ? "text-white" : "text-gray-900"}`}>
+                    {p.priceBRL === 0 ? "Grátis" : formatCurrency(p.priceBRL)}
+                  </span>
+                  {p.priceBRL > 0 && (
+                    <span className={`text-sm ml-1 ${p.popular ? "text-primary-100" : "text-gray-500"}`}>
+                      /mês
+                    </span>
+                  )}
+                </div>
+                <ul className="space-y-2.5 mb-6 flex-1">
+                  {p.features.map((f) => (
+                    <li key={f} className="flex items-start gap-2 text-sm">
+                      <Check
+                        className={`w-4 h-4 shrink-0 mt-0.5 ${
+                          p.popular ? "text-primary-200" : "text-primary-600"
+                        }`}
+                      />
+                      <span className={p.popular ? "text-primary-50" : "text-gray-700"}>{f}</span>
+                    </li>
+                  ))}
+                </ul>
+                <Link
+                  href="/admin/login?register=1"
+                  className={`w-full py-2.5 rounded-lg font-semibold transition flex items-center justify-center gap-2 ${
+                    p.popular
+                      ? "bg-white text-primary-700 hover:bg-primary-50"
+                      : "bg-primary-600 text-white hover:bg-primary-700"
+                  }`}
+                >
+                  {p.id === "FREE" ? "Começar grátis" : `Assinar ${p.name}`}
+                  <ArrowRight className="w-4 h-4" />
+                </Link>
+              </div>
+            ))}
+          </div>
+
+          <p className="text-center text-sm text-gray-500 mt-8">
+            Todos os planos incluem 14 dias de trial grátis. Sem cartão de crédito.
+          </p>
         </div>
       </section>
 
