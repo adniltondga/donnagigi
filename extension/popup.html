@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="pt-br">
+  <head>
+    <meta charset="utf-8" />
+    <title>agLivre</title>
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <header>
+      <h1>agLivre</h1>
+      <p id="tagline">Custo e lucro no Mercado Livre</p>
+    </header>
+
+    <main>
+      <section id="loading" class="state">
+        <p>Carregando…</p>
+      </section>
+
+      <section id="login" class="state hidden">
+        <form id="login-form">
+          <label>
+            Email
+            <input type="email" id="email" required autocomplete="email" />
+          </label>
+          <label>
+            Senha
+            <input type="password" id="password" required autocomplete="current-password" />
+          </label>
+          <button type="submit" id="login-btn">Entrar</button>
+          <p id="login-error" class="error hidden"></p>
+        </form>
+        <details id="advanced">
+          <summary>Servidor</summary>
+          <label>
+            URL da API
+            <input type="url" id="api-base" placeholder="https://aglivre.dgadigital.com.br" />
+          </label>
+          <button type="button" id="save-api">Salvar</button>
+        </details>
+      </section>
+
+      <section id="authed" class="state hidden">
+        <div class="user-card">
+          <strong id="user-name"></strong>
+          <span id="user-email"></span>
+          <span id="tenant-name"></span>
+        </div>
+        <p class="hint">
+          Abra
+          <a href="https://www.mercadolivre.com.br/anuncios" target="_blank" rel="noreferrer">
+            mercadolivre.com.br/anuncios
+          </a>
+          pra ver custo e lucro injetados.
+        </p>
+        <button id="logout-btn" type="button">Sair</button>
+      </section>
+    </main>
+
+    <script src="popup.js"></script>
+  </body>
+</html>

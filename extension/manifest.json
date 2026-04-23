@@ -1,0 +1,29 @@
+{
+  "manifest_version": 3,
+  "name": "agLivre — Custo e Lucro no ML",
+  "short_name": "agLivre",
+  "version": "0.1.0",
+  "description": "Mostra custo da mercadoria e lucro real na listagem de anúncios do Mercado Livre, integrado ao agLivre.",
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "agLivre"
+  },
+  "permissions": ["storage"],
+  "host_permissions": [
+    "https://www.mercadolivre.com.br/*",
+    "https://aglivre.dgadigital.com.br/*",
+    "https://aglivre.com.br/*",
+    "http://localhost:3000/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://www.mercadolivre.com.br/anuncios*"],
+      "js": ["content.js"],
+      "css": ["styles.css"],
+      "run_at": "document_idle"
+    }
+  ]
+}
