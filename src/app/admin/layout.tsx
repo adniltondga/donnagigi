@@ -2,6 +2,7 @@
 
 import { usePathname } from "next/navigation";
 import { AdminSidebar } from "@/components/AdminSidebar";
+import { SubscriptionGuard } from "@/components/SubscriptionGuard";
 
 export default function AdminLayout({
   children,
@@ -19,7 +20,9 @@ export default function AdminLayout({
     <div className="flex min-h-screen bg-admin-100">
       <AdminSidebar />
       <main className="flex-1 overflow-y-auto">
-        <div className="p-8">{children}</div>
+        <div className="p-8">
+          <SubscriptionGuard>{children}</SubscriptionGuard>
+        </div>
       </main>
     </div>
   );
