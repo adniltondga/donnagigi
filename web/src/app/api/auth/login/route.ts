@@ -23,6 +23,7 @@ export async function POST(request: NextRequest) {
         username: true,
         password: true,
         tenantId: true,
+        emailVerified: true,
         tenant: { select: { id: true, name: true, slug: true } },
       },
     })
@@ -39,6 +40,16 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         { error: "Email ou senha inválidos" },
         { status: 401 }
+      )
+    }
+
+    if (!user.emailVerified) {
+      return NextResponse.json(
+        {
+          error: "EMAIL_NOT_VERIFIED",
+          message: "Ative sua conta pelo código enviado por email",
+        },
+        { status: 403 }
       )
     }
 
