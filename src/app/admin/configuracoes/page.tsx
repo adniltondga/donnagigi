@@ -25,25 +25,29 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { formatCurrency } from "@/lib/calculations"
+import { useUserRole } from "@/lib/useUserRole"
 
 type Tab = "perfil" | "senha" | "ml" | "assinatura"
 
-const TABS: Array<{ key: Tab; label: string; icon: LucideIcon }> = [
+const TABS: Array<{ key: Tab; label: string; icon: LucideIcon; writeOnly?: boolean }> = [
   { key: "perfil", label: "Perfil", icon: User },
   { key: "senha", label: "Alterar senha", icon: KeyRound },
-  { key: "ml", label: "Integração ML", icon: Plug },
-  { key: "assinatura", label: "Assinatura", icon: CreditCard },
+  { key: "ml", label: "Integração ML", icon: Plug, writeOnly: true },
+  { key: "assinatura", label: "Assinatura", icon: CreditCard, writeOnly: true },
 ]
 
 function ConfigInner() {
   const router = useRouter()
   const params = useSearchParams()
+  const { canWrite } = useUserRole()
   const [tab, setTab] = useState<Tab>("perfil")
+
+  const visibleTabs = TABS.filter((t) => !t.writeOnly || canWrite)
 
   useEffect(() => {
     const t = params.get("tab") as Tab | null
-    if (t && TABS.some((x) => x.key === t)) setTab(t)
-  }, [params])
+    if (t && visibleTabs.some((x) => x.key === t)) setTab(t)
+  }, [params, canWrite])
 
   const switchTab = (t: Tab) => {
     setTab(t)
@@ -56,7 +60,7 @@ function ConfigInner() {
 
       {/* Tabs */}
       <div className="border-b border-gray-200 flex flex-wrap gap-1">
-        {TABS.map((t) => {
+        {visibleTabs.map((t) => {
           const Icon = t.icon
           const active = tab === t.key
           return (
@@ -78,8 +82,8 @@ function ConfigInner() {
 
       {tab === "perfil" && <PerfilPanel />}
       {tab === "senha" && <SenhaPanel />}
-      {tab === "ml" && <MLPanel initialSuccess={params.get("success")} initialError={params.get("error")} />}
-      {tab === "assinatura" && <AssinaturaPanel />}
+      {tab === "ml" && canWrite && <MLPanel initialSuccess={params.get("success")} initialError={params.get("error")} />}
+      {tab === "assinatura" && canWrite && <AssinaturaPanel />}
     </div>
   )
 }

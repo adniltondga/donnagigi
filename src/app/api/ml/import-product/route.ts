@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { PrismaClient } from "@prisma/client"
+import { AuthError, authErrorResponse, requireRole } from "@/lib/auth"
 
 const prisma = new PrismaClient()
 
@@ -42,6 +43,7 @@ interface MLProduct {
 
 export async function POST(request: NextRequest) {
   try {
+    await requireRole(['OWNER', 'ADMIN'])
     const body = await request.json() as MLProduct
 
     // Validar campos obrigatórios
@@ -169,6 +171,7 @@ export async function POST(request: NextRequest) {
     })
 
   } catch (error) {
+    if (error instanceof AuthError) return authErrorResponse(error)
     console.error("❌ Erro ao importar:", error)
 
     const errorMessage = error instanceof Error ? error.message : "Erro desconhecido"

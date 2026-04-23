@@ -3,12 +3,14 @@ import prisma from "@/lib/prisma"
 import { put } from "@vercel/blob"
 import { getTenantIdOrDefault } from "@/lib/tenant"
 import { getMLIntegrationForTenant } from "@/lib/ml"
+import { AuthError, authErrorResponse, requireRole } from "@/lib/auth"
 
 export async function POST(
   _request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
+    await requireRole(['OWNER', 'ADMIN'])
     const tenantId = await getTenantIdOrDefault()
 
     // Buscar produto (escopo tenant)
@@ -126,6 +128,7 @@ export async function POST(
       images: successfulImports
     })
   } catch (error) {
+    if (error instanceof AuthError) return authErrorResponse(error)
     console.error("Error importing ML images:", error)
     return NextResponse.json(
       { error: "Erro ao importar imagens do ML" },

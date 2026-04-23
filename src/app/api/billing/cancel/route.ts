@@ -15,6 +15,12 @@ export async function POST() {
   if (!session) {
     return NextResponse.json({ error: "Não autenticado" }, { status: 401 })
   }
+  if (session.role !== "OWNER") {
+    return NextResponse.json(
+      { error: "Apenas o dono pode cancelar a assinatura" },
+      { status: 403 }
+    )
+  }
 
   const sub = await prisma.subscription.findUnique({
     where: { tenantId: session.tenantId },

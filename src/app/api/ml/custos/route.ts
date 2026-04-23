@@ -1,5 +1,6 @@
 import prisma from '@/lib/prisma';
 import { getDefaultTenantId } from '@/lib/tenant';
+import { AuthError, authErrorResponse, requireRole } from '@/lib/auth';
 import { NextRequest, NextResponse } from 'next/server';
 
 export const dynamic = 'force-dynamic';
@@ -148,6 +149,7 @@ export async function GET() {
  */
 export async function PUT(req: NextRequest) {
   try {
+    await requireRole(['OWNER', 'ADMIN']);
     const body = await req.json();
     const mlListingId = String(body?.mlListingId || '').trim();
     const productCost = Number(body?.productCost);
@@ -188,6 +190,7 @@ export async function PUT(req: NextRequest) {
 
     return NextResponse.json({ saved, atualizados });
   } catch (error) {
+    if (error instanceof AuthError) return authErrorResponse(error);
     console.error('Erro em /api/ml/custos PUT:', error);
     return NextResponse.json(
       { erro: 'Falha ao salvar custo', mensagem: error instanceof Error ? error.message : 'erro' },

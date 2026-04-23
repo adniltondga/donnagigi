@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { PrismaClient } from "@prisma/client"
+import { AuthError, authErrorResponse, requireRole } from "@/lib/auth"
 
 const prisma = new PrismaClient()
 
@@ -44,6 +45,7 @@ interface BatchRequest {
 
 export async function POST(request: NextRequest) {
   try {
+    await requireRole(['OWNER', 'ADMIN'])
     const body = (await request.json()) as BatchRequest
 
     if (!body.produtos || !Array.isArray(body.produtos)) {
@@ -207,6 +209,7 @@ export async function POST(request: NextRequest) {
       ]
     })
   } catch (error) {
+    if (error instanceof AuthError) return authErrorResponse(error)
     console.error("❌ Erro geral na importação batch:", error)
 
     return NextResponse.json(

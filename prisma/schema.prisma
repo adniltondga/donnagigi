@@ -28,6 +28,7 @@ model Tenant {
   mlProductCosts    MLProductCost[]
   subscription      Subscription?
   mlAppCredentials  MLAppCredentials?
+  invitations       Invitation[]
 }
 
 // Credenciais do app do cliente no Mercado Livre DevCenter.
@@ -118,6 +119,16 @@ enum BillingType {
   CREDIT_CARD
 }
 
+// Papel do usuário dentro do tenant.
+// OWNER  — dono do tenant. Único. Faz tudo, inclusive assinatura.
+// ADMIN  — sócio/gestor. Mexe em tudo exceto billing/tenant.
+// VIEWER — funcionário. Só leitura (dashboard, relatórios, pedidos).
+enum UserRole {
+  OWNER
+  ADMIN
+  VIEWER
+}
+
 // Usuário admin do sistema
 model User {
   id        String   @id @default(cuid())
@@ -125,6 +136,7 @@ model User {
   username  String   @unique
   password  String
   name      String
+  role      UserRole @default(VIEWER)
   tenantId  String
   tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
@@ -139,10 +151,32 @@ model User {
   resetCodeExpires    DateTime?
   resetLastSentAt     DateTime?
 
+  invitesCreated Invitation[] @relation("InvitationCreatedBy")
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([tenantId])
+}
+
+// Convite pendente pra entrar num tenant. Criado pelo OWNER/ADMIN.
+// Consumido em /convite/<token> — vira User ao ser aceito.
+model Invitation {
+  id           String    @id @default(cuid())
+  tenantId     String
+  tenant       Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  email        String
+  role         UserRole
+  token        String    @unique
+  expiresAt    DateTime
+  acceptedAt   DateTime?
+  createdById  String
+  createdBy    User      @relation("InvitationCreatedBy", fields: [createdById], references: [id], onDelete: Cascade)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@index([tenantId])
+  @@index([email])
 }
 
 // Produto base (título do produto)

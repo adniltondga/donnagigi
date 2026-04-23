@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import prisma from "@/lib/prisma"
 import { getTenantIdOrDefault } from "@/lib/tenant"
+import { AuthError, authErrorResponse, requireRole } from "@/lib/auth"
 
 export const dynamic = "force-dynamic"
 
@@ -15,6 +16,7 @@ export const dynamic = "force-dynamic"
  */
 export async function POST(request: NextRequest) {
   try {
+    await requireRole(['OWNER', 'ADMIN'])
     const body = await request.json()
     const { accessToken } = body
 
@@ -82,6 +84,7 @@ export async function POST(request: NextRequest) {
       },
     })
   } catch (error) {
+    if (error instanceof AuthError) return authErrorResponse(error)
     console.error("[ML Auth] Erro:", error)
     return NextResponse.json(
       {

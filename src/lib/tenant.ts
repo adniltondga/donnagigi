@@ -1,5 +1,6 @@
 import { cookies } from 'next/headers';
 import { jwtVerify } from 'jose';
+import type { UserRole } from '@prisma/client';
 import prisma from './prisma';
 
 const JWT_SECRET = new TextEncoder().encode(
@@ -10,11 +11,16 @@ export interface SessionPayload {
   id: string;
   email: string;
   tenantId: string;
+  role: UserRole;
 }
 
 /**
  * Lê o JWT do cookie `token` e retorna o payload.
  * Retorna null se não logado ou token inválido.
+ *
+ * Tokens antigos (pré-roles) não têm `role` — nesse caso consultamos
+ * o banco pra hidratar. Na próxima troca de token (login/refresh) o
+ * payload já virá completo.
  */
 export async function getSession(): Promise<SessionPayload | null> {
   const token = cookies().get('token')?.value;
@@ -23,10 +29,22 @@ export async function getSession(): Promise<SessionPayload | null> {
   try {
     const { payload } = await jwtVerify(token, JWT_SECRET);
     if (!payload.id || !payload.tenantId) return null;
+
+    let role = payload.role as UserRole | undefined;
+    if (!role) {
+      const user = await prisma.user.findUnique({
+        where: { id: String(payload.id) },
+        select: { role: true },
+      });
+      role = user?.role;
+    }
+    if (!role) return null;
+
     return {
       id: String(payload.id),
       email: String(payload.email || ''),
       tenantId: String(payload.tenantId),
+      role,
     };
   } catch {
     return null;

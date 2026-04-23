@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/prisma'
+import { AuthError, authErrorResponse, requireRole } from '@/lib/auth'
 
 export async function GET(
   _req: NextRequest,
@@ -48,6 +49,7 @@ export async function PUT(
   { params }: { params: { id: string } }
 ) {
   try {
+    await requireRole(['OWNER', 'ADMIN'])
     const body = await req.json()
 
     // Verificar se produto existe
@@ -114,6 +116,7 @@ export async function PUT(
 
     return NextResponse.json({ success: true, data: updatedProduct })
   } catch (error) {
+    if (error instanceof AuthError) return authErrorResponse(error)
     console.error('PUT /api/products/[id]:', error)
     return NextResponse.json(
       { success: false, error: 'Erro ao atualizar produto' },
@@ -127,6 +130,7 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
+    await requireRole(['OWNER', 'ADMIN'])
     const product = await prisma.product.findUnique({
       where: { id: params.id },
     })
@@ -147,6 +151,7 @@ export async function DELETE(
       message: 'Produto deletado com sucesso',
     })
   } catch (error) {
+    if (error instanceof AuthError) return authErrorResponse(error)
     console.error('DELETE /api/products/[id]:', error)
     return NextResponse.json(
       { success: false, error: 'Erro ao deletar produto' },
@@ -160,6 +165,7 @@ export async function PATCH(
   { params }: { params: { id: string } }
 ) {
   try {
+    await requireRole(['OWNER', 'ADMIN'])
     const body = await req.json()
 
     // Verificar se produto existe
@@ -203,6 +209,7 @@ export async function PATCH(
       data: updatedProduct,
     })
   } catch (error) {
+    if (error instanceof AuthError) return authErrorResponse(error)
     console.error('PATCH /api/products/[id]:', error)
     return NextResponse.json(
       { success: false, error: 'Erro ao atualizar status do produto' },

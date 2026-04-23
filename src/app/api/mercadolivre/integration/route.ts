@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import prisma from "@/lib/prisma"
 import { getTenantIdOrDefault } from "@/lib/tenant"
+import { AuthError, authErrorResponse, requireRole } from "@/lib/auth"
 
 export const dynamic = "force-dynamic"
 
@@ -37,6 +38,7 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
+    await requireRole(['OWNER', 'ADMIN'])
     const body = await request.json()
     const { accessToken, refreshToken, sellerID, expiresAt } = body
 
@@ -71,6 +73,7 @@ export async function POST(request: NextRequest) {
       },
     })
   } catch (error) {
+    if (error instanceof AuthError) return authErrorResponse(error)
     console.error("Erro ao configurar integração:", error)
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Erro desconhecido" },
@@ -81,6 +84,7 @@ export async function POST(request: NextRequest) {
 
 export async function DELETE() {
   try {
+    await requireRole(['OWNER', 'ADMIN'])
     const tenantId = await getTenantIdOrDefault()
     const integration = await prisma.mLIntegration.findFirst({ where: { tenantId } })
 
@@ -93,6 +97,7 @@ export async function DELETE() {
 
     return NextResponse.json({ success: true, message: "Integração removida com sucesso" })
   } catch (error) {
+    if (error instanceof AuthError) return authErrorResponse(error)
     console.error("Erro ao remover integração:", error)
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Erro desconhecido" },

@@ -23,6 +23,12 @@ export async function POST(request: NextRequest) {
     if (!session) {
       return NextResponse.json({ error: "Não autenticado" }, { status: 401 })
     }
+    if (session.role !== "OWNER") {
+      return NextResponse.json(
+        { error: "Apenas o dono pode gerenciar a assinatura" },
+        { status: 403 }
+      )
+    }
 
     const body = await request.json()
     const plan = String(body.plan || "").toUpperCase()

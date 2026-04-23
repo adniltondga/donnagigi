@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { PrismaClient } from "@prisma/client"
 import { put } from "@vercel/blob"
+import { AuthError, authErrorResponse, requireRole } from "@/lib/auth"
 
 const prisma = new PrismaClient()
 
@@ -29,6 +30,7 @@ export async function POST(
   { params }: { params: { id: string } }
 ) {
   try {
+    await requireRole(['OWNER', 'ADMIN'])
     // Validar que o produto existe
     const product = await prisma.product.findUnique({
       where: { id: params.id }
@@ -93,6 +95,7 @@ export async function POST(
 
     return NextResponse.json(image, { status: 201 })
   } catch (error) {
+    if (error instanceof AuthError) return authErrorResponse(error)
     console.error("Error uploading image:", error)
     return NextResponse.json(
       { error: "Erro ao fazer upload da imagem" },

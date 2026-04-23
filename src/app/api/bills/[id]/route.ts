@@ -1,5 +1,6 @@
 import prisma from '@/lib/prisma';
 import { getTenantIdOrDefault } from '@/lib/tenant';
+import { AuthError, authErrorResponse, requireRole } from '@/lib/auth';
 import { NextRequest, NextResponse } from 'next/server';
 
 export async function GET(
@@ -35,6 +36,7 @@ export async function PUT(
   { params }: { params: { id: string } }
 ) {
   try {
+    await requireRole(['OWNER', 'ADMIN']);
     const body = await req.json();
     const { description, amount, dueDate, category, supplierId, notes, productCost, productId, status, type } = body;
 
@@ -134,6 +136,7 @@ export async function PUT(
 
     return NextResponse.json({ ...bill, mlListingId, propagadas });
   } catch (error) {
+    if (error instanceof AuthError) return authErrorResponse(error);
     console.error('Error updating bill:', error);
     return NextResponse.json(
       { error: 'Failed to update bill' },
@@ -147,6 +150,7 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
+    await requireRole(['OWNER', 'ADMIN']);
     const tenantId = await getTenantIdOrDefault();
     const res = await prisma.bill.deleteMany({
       where: { id: params.id, tenantId },
@@ -158,6 +162,7 @@ export async function DELETE(
 
     return NextResponse.json({ success: true, deleted: res.count });
   } catch (error) {
+    if (error instanceof AuthError) return authErrorResponse(error);
     console.error('Error deleting bill:', error);
     return NextResponse.json(
       { error: 'Failed to delete bill' },

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { PrismaClient } from "@prisma/client"
 import { del } from "@vercel/blob"
+import { AuthError, authErrorResponse, requireRole } from "@/lib/auth"
 
 const prisma = new PrismaClient()
 
@@ -9,6 +10,7 @@ export async function DELETE(
   { params }: { params: { id: string; imageId: string } }
 ) {
   try {
+    await requireRole(['OWNER', 'ADMIN'])
     // Buscar imagem
     const image = await prisma.productImage.findUnique({
       where: { id: params.imageId }
@@ -44,6 +46,7 @@ export async function DELETE(
 
     return NextResponse.json({ success: true })
   } catch (error) {
+    if (error instanceof AuthError) return authErrorResponse(error)
     console.error("Error deleting image:", error)
     return NextResponse.json(
       { error: "Erro ao deletar imagem" },
