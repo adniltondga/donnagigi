@@ -1,12 +1,13 @@
 "use client"
 
-import { useState } from "react"
-import { useRouter } from "next/navigation"
+import { useEffect, useState } from "react"
+import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { AlertCircle, Loader } from "lucide-react"
 
 export default function LoginPage() {
   const router = useRouter()
+  const params = useSearchParams()
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [error, setError] = useState("")
@@ -14,55 +15,44 @@ export default function LoginPage() {
   const [isRegister, setIsRegister] = useState(false)
   const [username, setUsername] = useState("")
   const [name, setName] = useState("")
+  const [companyName, setCompanyName] = useState("")
+
+  useEffect(() => {
+    if (params.get("register") === "1") setIsRegister(true)
+  }, [params])
+
+  const setTokenAndRedirect = async (token: string) => {
+    const tokenRes = await fetch("/api/auth/set-token", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ token }),
+    })
+    if (!tokenRes.ok) {
+      setError("Erro ao salvar autenticação")
+      return
+    }
+    setTimeout(() => router.push("/admin/dashboard"), 100)
+  }
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
     setError("")
     setLoading(true)
-
     try {
       const res = await fetch("/api/auth/login", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({ email, password })
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
       })
-
       const data = await res.json()
-
       if (!res.ok) {
         setError(data.error || "Erro ao fazer login")
         return
       }
-
-      // Salvar token em cookie (para o middleware validar)
-      if (data.token) {
-        try {
-          const tokenRes = await fetch("/api/auth/set-token", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ token: data.token })
-          })
-
-          if (!tokenRes.ok) {
-            setError("Erro ao salvar autenticação")
-            return
-          }
-        } catch (err) {
-          setError("Erro ao salvar autenticação")
-          console.error(err)
-          return
-        }
-      }
-
-      // Aguardar um pouco para o cookie ser definido, depois redirecionar
-      setTimeout(() => {
-        router.push("/admin/dashboard")
-      }, 100)
+      if (data.token) await setTokenAndRedirect(data.token)
     } catch (err) {
-      setError("Erro ao conectar ao servidor")
       console.error(err)
+      setError("Erro ao conectar ao servidor")
     } finally {
       setLoading(false)
     }
@@ -72,52 +62,62 @@ export default function LoginPage() {
     e.preventDefault()
     setError("")
     setLoading(true)
-
     try {
       const res = await fetch("/api/auth/register", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({ email, username, password, name })
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, username, password, name, companyName }),
       })
-
       const data = await res.json()
-
       if (!res.ok) {
         setError(data.error || "Erro ao criar conta")
         return
       }
-
-      // Fazer login automático após registro
-      setIsRegister(false)
-      setEmail("")
-      setPassword("")
-      setUsername("")
-      setName("")
+      // Auto-login após cadastro
+      const loginRes = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      })
+      const loginData = await loginRes.json()
+      if (loginRes.ok && loginData.token) {
+        await setTokenAndRedirect(loginData.token)
+      } else {
+        setIsRegister(false)
+        setPassword("")
+      }
     } catch (err) {
-      setError("Erro ao conectar ao servidor")
       console.error(err)
+      setError("Erro ao conectar ao servidor")
     } finally {
       setLoading(false)
     }
   }
 
   const onSubmit = isRegister ? handleRegister : handleLogin
+  const toggleMode = () => {
+    setIsRegister((v) => !v)
+    setError("")
+  }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary-50 via-white to-primary-50 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-primary-50 via-white to-fuchsia-50 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         <div className="bg-white rounded-2xl shadow-xl p-8 space-y-6">
-          {/* Header */}
           <div className="text-center">
-            <h1 className="text-3xl font-bold text-primary-600">agLivre</h1>
-            <p className="text-admin-600 mt-2">
+            <div className="inline-flex items-center gap-2 mb-4">
+              <div className="w-10 h-10 bg-primary-600 rounded-lg flex items-center justify-center">
+                <span className="font-bold text-white">aL</span>
+              </div>
+              <span className="text-2xl font-bold tracking-tight">
+                ag<span className="text-primary-600">Livre</span>
+              </span>
+            </div>
+            <p className="text-admin-600">
               {isRegister ? "Crie sua conta" : "Bem-vindo de volta"}
             </p>
           </div>
 
-          {/* Error Message */}
           {error && (
             <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-start gap-3">
               <AlertCircle className="text-red-600 mt-0.5" size={20} />
@@ -128,19 +128,33 @@ export default function LoginPage() {
             </div>
           )}
 
-          {/* Form */}
           <form onSubmit={onSubmit} className="space-y-4">
             {isRegister && (
               <>
                 <div>
                   <label className="block text-sm font-medium text-admin-700 mb-2">
-                    Nome Completo
+                    Nome completo
                   </label>
                   <input
                     type="text"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     placeholder="Seu nome"
+                    required
+                    className="w-full px-4 py-3 border border-admin-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-600 focus:border-transparent transition"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-admin-700 mb-2">
+                    Nome do negócio
+                    <span className="text-admin-400 font-normal ml-1">(opcional)</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={companyName}
+                    onChange={(e) => setCompanyName(e.target.value)}
+                    placeholder="Ex: Minha Loja de Capinhas"
                     className="w-full px-4 py-3 border border-admin-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-600 focus:border-transparent transition"
                   />
                 </div>
@@ -153,7 +167,7 @@ export default function LoginPage() {
                     type="text"
                     value={username}
                     onChange={(e) => setUsername(e.target.value)}
-                    placeholder="Seu username"
+                    placeholder="Escolha um username"
                     required
                     className="w-full px-4 py-3 border border-admin-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-600 focus:border-transparent transition"
                   />
@@ -185,8 +199,12 @@ export default function LoginPage() {
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
                 required
+                minLength={isRegister ? 6 : undefined}
                 className="w-full px-4 py-3 border border-admin-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-600 focus:border-transparent transition"
               />
+              {isRegister && (
+                <p className="text-xs text-admin-500 mt-1">Mínimo 6 caracteres</p>
+              )}
             </div>
 
             <button
@@ -195,24 +213,41 @@ export default function LoginPage() {
               className="w-full bg-primary-600 hover:bg-primary-700 disabled:bg-primary-400 text-white font-semibold py-3 rounded-lg transition flex items-center justify-center gap-2"
             >
               {loading && <Loader size={18} className="animate-spin" />}
-              {loading
-                ? "Aguarde..."
-                : isRegister
-                ? "Criar Conta"
-                : "Entrar"}
+              {loading ? "Aguarde..." : isRegister ? "Criar conta" : "Entrar"}
             </button>
           </form>
 
-
-
-
+          <div className="text-center text-sm text-admin-600">
+            {isRegister ? (
+              <>
+                Já tem uma conta?{" "}
+                <button
+                  type="button"
+                  onClick={toggleMode}
+                  className="text-primary-600 hover:text-primary-700 font-semibold"
+                >
+                  Entrar
+                </button>
+              </>
+            ) : (
+              <>
+                Não tem conta?{" "}
+                <button
+                  type="button"
+                  onClick={toggleMode}
+                  className="text-primary-600 hover:text-primary-700 font-semibold"
+                >
+                  Criar conta grátis
+                </button>
+              </>
+            )}
+          </div>
         </div>
 
-        {/* Back Link */}
         <div className="text-center mt-6">
           <Link
             href="/"
-            className="text-admin-600 hover:text-primary-600 font-medium transition"
+            className="text-admin-600 hover:text-primary-600 font-medium transition text-sm"
           >
             ← Voltar ao site
           </Link>
