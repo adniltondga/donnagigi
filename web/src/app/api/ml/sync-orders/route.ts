@@ -22,6 +22,12 @@ interface MLOrder {
     item: {
       id: string;
       title: string;
+      variation_id?: string | number | null;
+      variation_attributes?: Array<{
+        id?: string;
+        name: string;
+        value_name: string;
+      }>;
     };
     quantity: number;
     unit_price: number;
@@ -44,6 +50,20 @@ interface MLOrdersResponse {
     limit: number;
     offset: number;
   };
+}
+
+/**
+ * Junta os atributos de variação do ML num label humano.
+ * Ex: [{name:"Cor", value_name:"Preto"}, {name:"Tamanho", value_name:"M"}] → "Preto · M"
+ */
+export function formatVariationLabel(
+  attrs?: Array<{ name?: string; value_name?: string }>
+): string {
+  if (!attrs || attrs.length === 0) return '';
+  return attrs
+    .map((a) => (a?.value_name || '').trim())
+    .filter(Boolean)
+    .join(' · ');
 }
 
 export async function GET(req: NextRequest) {
@@ -178,9 +198,11 @@ export async function GET(req: NextRequest) {
       }
 
       // Extrair informações do pedido
-      const itemTitle =
-        order.order_items?.[0]?.item?.title || 'Venda Mercado Livre';
-      const itemId = order.order_items?.[0]?.item?.id || '';
+      const firstItem = order.order_items?.[0]?.item;
+      const itemTitle = firstItem?.title || 'Venda Mercado Livre';
+      const itemId = firstItem?.id || '';
+      const variationLabel = formatVariationLabel(firstItem?.variation_attributes);
+      const displayTitle = variationLabel ? `${itemTitle} · ${variationLabel}` : itemTitle;
       const closedDate = new Date(order.date_closed || order.date_created);
 
       // Extrair taxa de venda do ML (sale_fee).
@@ -241,6 +263,7 @@ export async function GET(req: NextRequest) {
         .join(' + ');
 
       const packLine = order.pack_id ? `\nPack\n#${order.pack_id}\n` : '';
+      const variationLine = variationLabel ? `\nVariação\n${variationLabel}\n` : '';
 
       const notesContent = `PEDIDO
 #${order.id}
@@ -250,7 +273,7 @@ ${order.buyer.nickname}
 
 Produto
 ${itemId}
-
+${variationLine}
 VENDAS
 Bruto: R$ ${order.total_amount.toFixed(2)} | Taxas: ${taxBreakdown} (Total: R$ ${totalTaxes.toFixed(2)}) | Líquido: R$ ${netAmount.toFixed(2)}`;
 
@@ -290,7 +313,7 @@ Bruto: R$ ${order.total_amount.toFixed(2)} | Taxas: ${taxBreakdown} (Total: R$ $
         data: {
           type: 'receivable',
           category: 'venda',
-          description: `Venda ML - ${itemTitle} [Produto ML: ${itemId || 'sem-id'}]`,
+          description: `Venda ML - ${displayTitle} [Produto ML: ${itemId || 'sem-id'}]`,
           amount: netAmount,
           dueDate: estimatedReleaseDate,
           paidDate: closedDate,

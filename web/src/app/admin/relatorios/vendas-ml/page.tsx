@@ -2,11 +2,12 @@
 
 import { useEffect, useState } from 'react';
 import { formatCurrency } from '@/lib/calculations';
-import { Info, ShoppingCart } from 'lucide-react';
+import { Info, ShoppingCart, RefreshCw, Loader } from 'lucide-react';
 import { Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from '@/components/ui/table';
 import { PageHeader } from '@/components/ui/page-header';
 import { Card } from '@/components/ui/card';
 import { EmptyState } from '@/components/ui/empty-state';
+import { useUserRole } from '@/lib/useUserRole';
 
 interface Bill {
   id: string;
@@ -36,6 +37,7 @@ function formatDate(date: string | Date): string {
 }
 
 export default function VendasMLPage() {
+  const { canWrite } = useUserRole();
   const [bills, setBills] = useState<Bill[]>([]);
   const [total, setTotal] = useState(0);
   const [pages, setPages] = useState(1);
@@ -48,6 +50,8 @@ export default function VendasMLPage() {
     isOpen: false,
     bill: null,
   });
+  const [backfilling, setBackfilling] = useState(false);
+  const [backfillMsg, setBackfillMsg] = useState<string | null>(null);
 
   const fetchBills = async () => {
     setLoading(true);
@@ -89,6 +93,31 @@ export default function VendasMLPage() {
     setPage(1);
   };
 
+  const runBackfill = async () => {
+    if (!confirm('Buscar no Mercado Livre a variação de cada venda antiga e atualizar a descrição?\n\nPode levar alguns minutos se você tem muitas vendas.')) return;
+    setBackfilling(true);
+    setBackfillMsg(null);
+    try {
+      const res = await fetch('/api/ml/backfill-variations', { method: 'POST' });
+      const data = await res.json();
+      if (!res.ok) {
+        setBackfillMsg(`❌ ${data.error || 'Erro no backfill'}`);
+      } else {
+        const s = data.stats;
+        const pend = s?.pendentes ? ' (ainda há mais vendas antigas — rode de novo pra continuar)' : '';
+        setBackfillMsg(
+          `✅ ${s.updated} atualizada(s), ${s.semVariacao} sem variação no ML, ${s.erros} erro(s)${pend}`
+        );
+        fetchBills();
+      }
+    } catch {
+      setBackfillMsg('❌ Erro de conexão');
+    } finally {
+      setBackfilling(false);
+      setTimeout(() => setBackfillMsg(null), 12000);
+    }
+  };
+
   const bruto = (b: Bill): number => {
     const m = b.notes?.match(/Bruto:\s*R\$\s*([\d,\.]+)/);
     if (m) return parseFloat(m[1].replace(',', '.'));
@@ -110,7 +139,26 @@ export default function VendasMLPage() {
       <PageHeader
         title="🛒 Vendas Mercado Livre"
         description="Listagem de todas as vendas importadas do ML. Clique no ícone ℹ️ para ver o detalhamento de taxas."
+        actions={
+          canWrite ? (
+            <button
+              onClick={runBackfill}
+              disabled={backfilling}
+              className="inline-flex items-center gap-2 border border-gray-300 hover:bg-gray-50 text-gray-700 font-medium px-3 py-2 rounded-lg text-sm disabled:opacity-50"
+              title="Re-busca no ML as vendas antigas pra preencher a variação (cor/tamanho)"
+            >
+              {backfilling ? <Loader className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+              {backfilling ? 'Atualizando variações...' : 'Atualizar variações'}
+            </button>
+          ) : null
+        }
       />
+
+      {backfillMsg && (
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm text-blue-900">
+          {backfillMsg}
+        </div>
+      )}
 
       {/* Filtros */}
       <Card className="p-4 flex flex-wrap gap-4 items-end">
