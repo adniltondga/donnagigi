@@ -26,6 +26,79 @@ model Tenant {
   suppliers      Supplier[]
   mlIntegrations MLIntegration[]
   mlProductCosts MLProductCost[]
+  subscription   Subscription?
+}
+
+// Assinatura do tenant (1:1) — ASAAS cuida do billing real
+model Subscription {
+  id                  String              @id @default(cuid())
+  tenantId            String              @unique
+  tenant              Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  plan                SubscriptionPlan    @default(FREE)
+  status              SubscriptionStatus  @default(TRIAL)
+  billingType         BillingType?
+  value               Float?
+
+  // Referências ASAAS
+  asaasCustomerId     String?
+  asaasSubscriptionId String?
+
+  // Ciclo de vida
+  trialEndsAt         DateTime?
+  currentPeriodStart  DateTime?
+  currentPeriodEnd    DateTime?
+  canceledAt          DateTime?
+
+  createdAt           DateTime            @default(now())
+  updatedAt           DateTime            @updatedAt
+
+  invoices            Invoice[]
+
+  @@index([asaasCustomerId])
+  @@index([asaasSubscriptionId])
+}
+
+// Fatura (payment) gerada pela ASAAS. Alimentada via webhook.
+model Invoice {
+  id              String       @id @default(cuid())
+  subscriptionId  String
+  subscription    Subscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+
+  asaasPaymentId  String       @unique
+  value           Float
+  status          String // PENDING, CONFIRMED, RECEIVED, OVERDUE, REFUNDED, CANCELED
+  billingType     BillingType?
+  dueDate         DateTime
+  paymentDate     DateTime?
+
+  invoiceUrl      String?      // checkout ASAAS (PIX/boleto)
+  bankSlipUrl     String?
+
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  @@index([subscriptionId])
+}
+
+enum SubscriptionPlan {
+  FREE
+  PRO
+}
+
+enum SubscriptionStatus {
+  TRIAL       // 14 dias grátis
+  ACTIVE      // pagamento confirmado
+  PENDING     // aguardando primeiro pagamento
+  OVERDUE     // pagamento atrasado
+  CANCELED    // cancelado pelo user
+  EXPIRED     // trial acabou ou ASAAS cancelou
+}
+
+enum BillingType {
+  PIX
+  BOLETO
+  CREDIT_CARD
 }
 
 // Usuário admin do sistema
