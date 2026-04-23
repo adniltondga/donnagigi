@@ -8,6 +8,7 @@ import { PageHeader } from '@/components/ui/page-header';
 import { Card } from '@/components/ui/card';
 import { EmptyState } from '@/components/ui/empty-state';
 import { useUserRole } from '@/lib/useUserRole';
+import { ProductLabel } from '@/components/ProductLabel';
 
 interface Bill {
   id: string;
@@ -239,7 +240,7 @@ export default function VendasMLPage() {
                       {formatDate(b.dueDate)}
                     </TableCell>
                     <TableCell className="text-sm">
-                      <div>{b.description}</div>
+                      <ProductLabel description={b.description} />
                       {b.mlPackId && (
                         <div className="text-xs text-gray-500 font-mono mt-0.5">Pack #{b.mlPackId}</div>
                       )}

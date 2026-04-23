@@ -6,6 +6,7 @@ import { Trophy, Loader } from "lucide-react"
 import { PageHeader } from "@/components/ui/page-header"
 import { Card } from "@/components/ui/card"
 import { EmptyState } from "@/components/ui/empty-state"
+import { ProductLabel } from "@/components/ProductLabel"
 
 interface Item {
   listingId: string
@@ -109,12 +110,7 @@ export function TopProdutosTable({
                     <tr key={`${it.listingId}-${it.variation || ""}`} className="hover:bg-gray-50">
                       <td className={`px-4 py-3 font-bold text-center ${rankColor}`}>{idx + 1}</td>
                       <td className="px-4 py-3 max-w-md">
-                        <div className="text-gray-900 line-clamp-2">{it.title}</div>
-                        {it.variation && (
-                          <div className="text-xs text-primary-700 bg-primary-50 border border-primary-100 rounded px-1.5 py-0.5 inline-block mt-1">
-                            {it.variation}
-                          </div>
-                        )}
+                        <ProductLabel title={it.title} variation={it.variation} hideMlb />
                       </td>
                       <td className="px-4 py-3 font-mono text-xs text-gray-600 whitespace-nowrap">
                         {it.listingId}
