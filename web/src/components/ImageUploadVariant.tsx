@@ -37,8 +37,8 @@ export default function ImageUploadVariant({
       const res = await fetch(`/api/variants/${variantId}/images`)
       const data = await res.json()
 
-      if (data.success) {
-        setImages(data.data || [])
+      if (res.ok && Array.isArray(data)) {
+        setImages(data)
       }
     } catch (err) {
       console.error('Erro ao carregar imagens:', err)
@@ -87,24 +87,26 @@ export default function ImageUploadVariant({
     setUploading(true)
 
     try {
-      const formData = new FormData()
-      files.forEach((file) => {
+      // Fazer upload de cada arquivo sequencialmente
+      for (const file of files) {
+        const formData = new FormData()
         formData.append('file', file)
-      })
 
-      const res = await fetch(`/api/variants/${variantId}/images`, {
-        method: 'POST',
-        body: formData,
-      })
+        const res = await fetch(`/api/variants/${variantId}/images`, {
+          method: 'POST',
+          body: formData,
+        })
 
-      const data = await res.json()
+        const data = await res.json()
 
-      if (!res.ok) {
-        setError(data.error || 'Erro ao fazer upload')
-        return
+        if (!res.ok) {
+          setError(data.error || `Erro ao fazer upload de ${file.name}`)
+          // Continua com os próximos arquivos mesmo se um falhar
+          continue
+        }
       }
 
-      // Recarregar imagens
+      // Recarregar imagens após todos os uploads
       await loadImages()
       onImagesChange?.(images)
 
@@ -126,7 +128,7 @@ export default function ImageUploadVariant({
     }
 
     try {
-      const res = await fetch(`/api/variants/${variantId}/images?imageId=${imageId}`, {
+      const res = await fetch(`/api/variants/${variantId}/images/${imageId}`, {
         method: 'DELETE',
       })
 

@@ -445,7 +445,7 @@ export default function FinanceiroPage() {
               <button
                 type="submit"
                 disabled={loading}
-                className="flex-1 bg-primary-500 hover:bg-primary-600 text-white font-semibold py-2 rounded disabled:opacity-50"
+                className="flex-1 bg-primary-600 hover:bg-primary-700 text-white font-semibold py-2 rounded disabled:opacity-50"
               >
                 {loading ? 'Salvando...' : '✅ Criar'}
               </button>
@@ -475,7 +475,7 @@ export default function FinanceiroPage() {
               className="w-full border rounded px-3 py-2 text-sm"
             />
           </div>
-          <button type="submit" className="bg-primary-500 hover:bg-primary-600 text-white px-3 py-2 rounded text-sm">
+          <button type="submit" className="bg-primary-600 hover:bg-primary-700 text-white px-3 py-2 rounded text-sm">
             Buscar
           </button>
           {q && (
@@ -751,7 +751,7 @@ export default function FinanceiroPage() {
               <button
                 onClick={onUpdate}
                 disabled={loading}
-                className="bg-primary-500 hover:bg-primary-600 text-white font-semibold px-4 py-2 rounded"
+                className="bg-primary-600 hover:bg-primary-700 text-white font-semibold px-4 py-2 rounded"
               >
                 {loading ? 'Salvando...' : '✅ Salvar'}
               </button>
