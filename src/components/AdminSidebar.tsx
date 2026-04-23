@@ -1,154 +1,155 @@
-"use client";
+"use client"
 
-import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import Link from "next/link"
+import { usePathname, useRouter } from "next/navigation"
+import {
+  LayoutDashboard,
+  BarChart3,
+  DollarSign,
+  Package,
+  Tag,
+  Plug,
+  CreditCard,
+  LogOut,
+  X,
+  type LucideIcon,
+} from "lucide-react"
 
-export function AdminSidebar() {
-  const pathname = usePathname();
-  const router = useRouter();
+interface MenuItem {
+  label: string
+  href: string
+  icon: LucideIcon
+  /**
+   * Função opcional pra decidir se o item está ativo. Default: match exato.
+   */
+  isActive?: (pathname: string) => boolean
+}
 
-  const isActive = (href: string) => pathname === href;
+const MENU: MenuItem[] = [
+  { label: "Dashboard", href: "/admin/dashboard", icon: LayoutDashboard },
+  {
+    label: "Relatórios",
+    href: "/admin/relatorios",
+    icon: BarChart3,
+    isActive: (p) => p.startsWith("/admin/relatorios") || p === "/admin/previsao",
+  },
+  { label: "Financeiro", href: "/admin/financeiro", icon: DollarSign },
+  { label: "Produtos", href: "/admin/products", icon: Package, isActive: (p) => p.startsWith("/admin/products") },
+  { label: "Custos ML", href: "/admin/custos-ml", icon: Tag },
+  { label: "Integração ML", href: "/admin/integracao", icon: Plug },
+  {
+    label: "Assinatura",
+    href: "/admin/billing/assinatura",
+    icon: CreditCard,
+    isActive: (p) => p.startsWith("/admin/billing"),
+  },
+]
+
+interface AdminSidebarProps {
+  isOpen: boolean
+  onClose: () => void
+}
+
+export function AdminSidebar({ isOpen, onClose }: AdminSidebarProps) {
+  const pathname = usePathname()
+  const router = useRouter()
 
   const handleLogout = async () => {
     try {
-      await fetch('/api/auth/logout', {
-        method: 'POST',
-      })
-      // Limpar localStorage
-      localStorage.removeItem('adminToken')
-      router.push('/admin/login')
-    } catch (error) {
-      console.error('Erro ao fazer logout:', error)
-      // Mesmo com erro, limpar localStorage e redirecionar
-      localStorage.removeItem('adminToken')
-      router.push('/admin/login')
-    }
-  };
+      await fetch("/api/auth/logout", { method: "POST" })
+    } catch {}
+    localStorage.removeItem("adminToken")
+    router.push("/admin/login")
+  }
 
   return (
-    <aside className="w-64 bg-admin-800 text-white min-h-screen shadow-lg flex flex-col">
-      <div className="p-6 border-b border-admin-700">
-        <div className="flex items-center gap-2 mb-2">
-          <div className="w-10 h-10 bg-primary-500 rounded-full flex items-center justify-center shadow-lg shadow-primary-500/30">
-            <span className="font-bold text-white">aL</span>
+    <>
+      {/* Overlay mobile */}
+      {isOpen && (
+        <div
+          className="fixed inset-0 bg-black/50 z-40 lg:hidden"
+          onClick={onClose}
+          aria-hidden
+        />
+      )}
+
+      <aside
+        className={`
+          fixed inset-y-0 left-0 z-50 w-64 bg-white border-r border-gray-200
+          flex flex-col
+          transform transition-transform duration-300 ease-in-out
+          ${isOpen ? "translate-x-0" : "-translate-x-full"}
+          lg:static lg:translate-x-0
+        `}
+      >
+        {/* Logo */}
+        <div className="h-16 flex items-center justify-between px-4 border-b border-gray-200">
+          <Link href="/admin/dashboard" className="flex items-center gap-2" onClick={onClose}>
+            <div className="bg-primary-600 p-2 rounded-lg">
+              <span className="text-white font-bold text-sm">aL</span>
+            </div>
+            <span className="text-lg font-bold text-gray-900 tracking-tight">
+              ag<span className="text-primary-600">Livre</span>
+            </span>
+          </Link>
+          <button
+            onClick={onClose}
+            className="lg:hidden p-1.5 rounded-lg hover:bg-gray-100 text-gray-500"
+            aria-label="Fechar menu"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        {/* Menu items */}
+        <nav className="flex-1 overflow-y-auto p-4 space-y-1">
+          {MENU.map((item) => {
+            const Icon = item.icon
+            const active = item.isActive ? item.isActive(pathname) : pathname === item.href
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                onClick={onClose}
+                className={`
+                  relative flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all duration-200
+                  ${
+                    active
+                      ? "bg-primary-50 text-primary-700 font-medium"
+                      : "text-gray-700 hover:bg-gray-50 hover:text-gray-900"
+                  }
+                `}
+              >
+                <Icon className={`w-5 h-5 flex-shrink-0 ${active ? "text-primary-600" : "text-gray-400"}`} />
+                <span className="flex-1">{item.label}</span>
+                {active && (
+                  <span className="absolute right-2 top-1/2 -translate-y-1/2 w-1 h-6 bg-primary-600 rounded-full" />
+                )}
+              </Link>
+            )
+          })}
+        </nav>
+
+        {/* Logout */}
+        <div className="border-t border-gray-200 p-4">
+          <button
+            onClick={handleLogout}
+            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-red-600 hover:bg-red-50 hover:text-red-700 transition-colors"
+          >
+            <LogOut className="w-5 h-5" />
+            <span>Sair</span>
+          </button>
+        </div>
+
+        {/* Status */}
+        <div className="border-t border-gray-200 p-4">
+          <div className="flex items-center gap-2">
+            <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+            <span className="text-xs text-gray-500">Sistema online</span>
           </div>
-          <h1 className="text-xl font-bold tracking-tight">
-            ag<span className="text-primary-300">Livre</span>
-          </h1>
+          <p className="text-xs text-gray-400 mt-1">v0.1.0</p>
         </div>
-        <p className="text-xs text-admin-400">Gestão ML + Mercado Pago</p>
-      </div>
-
-      <nav className="flex-1 p-6 space-y-4">
-        <div>
-          <p className="text-admin-400 text-xs font-semibold uppercase mb-3">
-            Menu
-          </p>
-          <ul className="space-y-2">
-            <li>
-              <Link
-                href="/admin/dashboard"
-                className={`block px-4 py-2 rounded-lg transition ${
-                  isActive("/admin/dashboard")
-                    ? "bg-primary-500 text-white"
-                    : "text-admin-300 hover:bg-admin-700"
-                }`}
-              >
-                📊 Dashboard
-              </Link>
-            </li>
-            <li>
-              <Link
-                href="/admin/financeiro"
-                className={`block px-4 py-2 rounded-lg transition ${
-                  pathname.startsWith("/admin/financeiro")
-                    ? "bg-primary-500 text-white"
-                    : "text-admin-300 hover:bg-admin-700"
-                }`}
-              >
-                💳 Financeiro
-              </Link>
-            </li>
-            <li>
-              <Link
-                href="/admin/custos-ml"
-                className={`block px-4 py-2 rounded-lg transition ${
-                  isActive("/admin/custos-ml")
-                    ? "bg-primary-500 text-white"
-                    : "text-admin-300 hover:bg-admin-700"
-                }`}
-              >
-                💰 Custos ML
-              </Link>
-            </li>
-            <li>
-              <Link
-                href="/admin/relatorios"
-                className={`block px-4 py-2 rounded-lg transition ${
-                  pathname.startsWith("/admin/relatorios") ||
-                  pathname.startsWith("/admin/relatorios-v2") ||
-                  pathname.startsWith("/admin/previsao")
-                    ? "bg-primary-500 text-white"
-                    : "text-admin-300 hover:bg-admin-700"
-                }`}
-              >
-                📊 Relatórios
-              </Link>
-            </li>
-          </ul>
-        </div>
-
-
-
-        <div>
-          <p className="text-admin-400 text-xs font-semibold uppercase mb-3">
-            Integrações
-          </p>
-          <ul className="space-y-2">
-            <li>
-              <Link
-                href="/admin/integracao"
-                className={`block px-4 py-2 rounded-lg transition ${
-                  isActive("/admin/integracao")
-                    ? "bg-primary-500 text-white"
-                    : "text-admin-300 hover:bg-admin-700"
-                }`}
-              >
-                🔗 Mercado Livre
-              </Link>
-            </li>
-          </ul>
-        </div>
-
-        <div>
-          <p className="text-admin-400 text-xs font-semibold uppercase mb-3">
-            Conta
-          </p>
-          <ul className="space-y-2">
-            <li>
-              <Link
-                href="/admin/billing/assinatura"
-                className={`block px-4 py-2 rounded-lg transition ${
-                  pathname.startsWith("/admin/billing")
-                    ? "bg-primary-500 text-white"
-                    : "text-admin-300 hover:bg-admin-700"
-                }`}
-              >
-                💎 Assinatura
-              </Link>
-            </li>
-          </ul>
-        </div>
-      </nav>
-
-      <div className="p-6 border-t border-admin-700">
-        <button
-          onClick={handleLogout}
-          className="w-full bg-gradient-to-r from-rose-500 to-pink-600 hover:from-rose-600 hover:to-pink-700 text-white px-4 py-2 rounded-lg transition font-semibold shadow-lg hover:shadow-xl"
-        >
-          🚪 Sair
-        </button>
-      </div>
-    </aside>
-  );
+      </aside>
+    </>
+  )
 }
