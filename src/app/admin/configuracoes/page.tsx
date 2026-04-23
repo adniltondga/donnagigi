@@ -494,8 +494,6 @@ function MLPanel({ initialSuccess, initialError }: { initialSuccess: string | nu
         </CardContent>
       </Card>
 
-      {/* Token manual — avançado, pra quem já tem access_token */}
-      {!integration?.configured && <ManualTokenCard onSuccess={check} />}
     </div>
   )
 }
@@ -833,27 +831,10 @@ function ConnectionSection({
   }
 
   return (
-    <section className="space-y-4">
-      <div>
-        <h3 className="text-sm font-semibold text-gray-900">Conectar conta ML</h3>
-        <p className="text-xs text-gray-500">Autorize o acesso via OAuth — não compartilhamos sua senha.</p>
-      </div>
-
-      <div className="rounded-lg border border-gray-200 bg-gray-50 p-3 text-xs text-gray-600 space-y-1">
-        <p className="font-semibold text-gray-900">O que acontece:</p>
-        <ol className="list-decimal pl-4 space-y-0.5">
-          <li>Você é levado pro ML pra fazer login.</li>
-          <li>Autoriza o app (o seu, ou o padrão do agLivre).</li>
-          <li>Voltamos aqui com o token salvo no banco.</li>
-          <li>Começa a sincronizar automaticamente.</li>
-        </ol>
-      </div>
-
-      <Button onClick={onLogin} disabled={status === "loading"} className="w-full" size="lg">
-        {status === "loading" ? <Loader className="w-4 h-4 animate-spin mr-2" /> : <Plug className="w-4 h-4 mr-2" />}
-        {status === "loading" ? "Redirecionando..." : "Conectar Mercado Livre"}
-      </Button>
-    </section>
+    <Button onClick={onLogin} disabled={status === "loading"} className="w-full" size="lg">
+      {status === "loading" ? <Loader className="w-4 h-4 animate-spin mr-2" /> : <Plug className="w-4 h-4 mr-2" />}
+      {status === "loading" ? "Redirecionando..." : "Conectar Mercado Livre"}
+    </Button>
   )
 }
 
@@ -864,97 +845,6 @@ interface AppCredentialsResponse {
   clientSecretMasked: string | null
   redirectUri: string
   updatedAt?: string
-}
-
-function ManualTokenCard({ onSuccess }: { onSuccess: () => void }) {
-  const [open, setOpen] = useState(false)
-  const [token, setToken] = useState("")
-  const [submitting, setSubmitting] = useState(false)
-  const [err, setErr] = useState("")
-
-  const onSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!token.trim()) return
-    setSubmitting(true)
-    setErr("")
-    try {
-      const res = await fetch("/api/mercadolivre/authenticate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ accessToken: token.trim() }),
-      })
-      const d = await res.json()
-      if (!res.ok) {
-        setErr(d.error || d.details || "Token inválido")
-        return
-      }
-      setToken("")
-      setOpen(false)
-      onSuccess()
-    } catch {
-      setErr("Erro de conexão")
-    } finally {
-      setSubmitting(false)
-    }
-  }
-
-  return (
-    <Card>
-      <CardHeader>
-        <button
-          type="button"
-          onClick={() => setOpen((v) => !v)}
-          className="flex items-center justify-between w-full text-left"
-        >
-          <div>
-            <CardTitle className="text-base">Usar access_token manualmente</CardTitle>
-            <CardDescription>
-              Avançado: cole um token que você já tenha. Prefira OAuth sempre que possível.
-            </CardDescription>
-          </div>
-          <span className="text-sm text-gray-400">{open ? "▲" : "▼"}</span>
-        </button>
-      </CardHeader>
-      {open && (
-        <CardContent>
-          <form onSubmit={onSubmit} className="space-y-3">
-            {err && <StatusMessage status="error" message={err} />}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Access token do ML</label>
-              <input
-                type="password"
-                value={token}
-                onChange={(e) => setToken(e.target.value)}
-                placeholder="APP_USR-..."
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg font-mono text-sm focus:ring-2 focus:ring-primary-600 focus:border-transparent outline-none"
-              />
-              <p className="text-xs text-gray-500 mt-1">
-                Validamos o token em <code className="font-mono">/users/me</code> antes de salvar.
-              </p>
-            </div>
-            <div className="flex gap-2 justify-end">
-              <Button type="button" variant="outline" size="sm" onClick={() => setOpen(false)}>
-                Cancelar
-              </Button>
-              <Button type="submit" disabled={submitting || !token.trim()} size="sm">
-                {submitting && <Loader className="w-4 h-4 animate-spin mr-2" />}
-                Validar e salvar
-              </Button>
-            </div>
-          </form>
-        </CardContent>
-      )}
-    </Card>
-  )
-}
-
-function StatBox({ label, value, cls }: { label: string; value: number | string; cls?: string }) {
-  return (
-    <div className="bg-white rounded p-2 text-center">
-      <p className="text-xs text-gray-500">{label}</p>
-      <p className={`text-lg font-bold ${cls || "text-gray-900"}`}>{value}</p>
-    </div>
-  )
 }
 
 /* ------------------- ASSINATURA ------------------- */
@@ -1117,6 +1007,15 @@ function AssinaturaPanel() {
 }
 
 /* ------------------- HELPERS ------------------- */
+
+function StatBox({ label, value, cls }: { label: string; value: number | string; cls?: string }) {
+  return (
+    <div className="bg-white rounded p-2 text-center border border-gray-100">
+      <p className="text-xs text-gray-500">{label}</p>
+      <p className={`text-lg font-bold ${cls || "text-gray-900"}`}>{value}</p>
+    </div>
+  )
+}
 
 function LoadingBox() {
   return (

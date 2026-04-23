@@ -30,7 +30,9 @@
       "Bash(python3 -c \"import json,sys; d=json.load\\(sys.stdin\\); print\\(f'bills retornados: {len\\(d[\\\\\"data\\\\\"]\\)}, total: {d[\\\\\"total\\\\\"]}'\\)\")",
       "Bash(python3 -c \"import sys,json; raw=sys.stdin.read\\(\\); parts=raw.rsplit\\('[',1\\); d=json.loads\\(parts[0]\\); print\\(f'kpisAtual.vendas={d[\\\\\"kpisAtual\\\\\"][\\\\\"vendas\\\\\"]} cancelados={d[\\\\\"cancelamentos\\\\\"][\\\\\"vendas\\\\\"]}  [{parts[1]}'\\)\")",
       "Bash(npm install *)",
-      "Bash(python3 *)"
+      "Bash(python3 *)",
+      "Bash(awk ' /^function ManualTokenCard/ { skip=1 } skip==1 && /^\\\\/\\\\* ------------------- ASSINATURA -------------------/ { skip=0 } skip==0 { print } ' /Users/2480dtidigital/site/donnagigi/src/app/admin/configuracoes/page.tsx)",
+      "Bash(mv /tmp/cfg.tsx /Users/2480dtidigital/site/donnagigi/src/app/admin/configuracoes/page.tsx echo \"restantes:\" grep -c \"ManualTokenCard\" /Users/2480dtidigital/site/donnagigi/src/app/admin/configuracoes/page.tsx npx tsc --noEmit)"
     ]
   }
 }
