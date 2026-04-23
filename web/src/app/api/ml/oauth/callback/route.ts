@@ -78,9 +78,9 @@ export async function GET(request: NextRequest) {
     console.log("[PKCE/CALLBACK] ✅ code_verifier recuperado do banco")
 
     // 2️⃣ Obter credenciais (do tenant do state, com fallback pro .env)
-    // Redirect URI deriva do próprio request — precisa bater com o que
-    // foi enviado no login (o ML valida exatamente).
-    const redirectUri = getMLRedirectUri(request)
+    // Redirect URI: usa a do tenant (se cadastrada), senão .env, senão
+    // deriva. Precisa bater EXATAMENTE com o que foi enviado no login.
+    const redirectUri = await getMLRedirectUri(request, tenantIdFromState)
 
     let clientId: string
     let clientSecret: string

@@ -28,7 +28,6 @@ function generateCodeChallenge(codeVerifier: string): string {
 
 export async function GET(request: NextRequest) {
   try {
-    const redirectUri = getMLRedirectUri(request)
 
     // Precisa estar logado — associamos a MLIntegration ao tenant do usuário
     let tenantId: string
@@ -53,6 +52,7 @@ export async function GET(request: NextRequest) {
       )
     }
     const clientId = cred.clientId
+    const redirectUri = await getMLRedirectUri(request, tenantId)
 
     // 1️⃣ Gerar PKCE code_verifier (43-128 caracteres)
     const codeVerifier = crypto.randomBytes(32).toString("base64url")
