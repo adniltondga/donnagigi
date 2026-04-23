@@ -9,7 +9,7 @@ export const dynamic = "force-dynamic"
 const INVITE_EXPIRY_DAYS = 7
 
 function appBaseUrl(req: NextRequest): string {
-  const envUrl = process.env.APP_URL?.replace(/\/$/, "")
+  const envUrl = (process.env.APP_URL || process.env.NEXT_PUBLIC_APP_URL)?.replace(/\/$/, "")
   if (envUrl) return envUrl
   // Fallback: reconstrói pela origem do request
   const proto = req.headers.get("x-forwarded-proto") || "http"
