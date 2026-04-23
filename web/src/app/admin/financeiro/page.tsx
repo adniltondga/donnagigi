@@ -1,6 +1,24 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { Suspense, useEffect, useMemo, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import {
+  CalendarClock,
+  AlertTriangle,
+  Wallet,
+  FileText,
+  TrendingDown,
+  TrendingUp,
+  FolderTree,
+  Plus,
+  ChevronRight,
+  ChevronDown,
+  Trash2,
+  Pencil,
+  Check,
+  X as XIcon,
+  Loader,
+} from 'lucide-react';
 import { formatCurrency } from '@/lib/calculations';
 import { Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
@@ -8,37 +26,43 @@ import { PageHeader } from '@/components/ui/page-header';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { StatCard } from '@/components/ui/stat-card';
 import { EmptyState } from '@/components/ui/empty-state';
-import { CalendarClock, AlertTriangle, Wallet, FileText } from 'lucide-react';
 import { useUserRole } from '@/lib/useUserRole';
+
+type BillType = 'payable' | 'receivable';
+type Tab = 'pagar' | 'receber' | 'categorias';
 
 interface Supplier {
   id: string;
   name: string;
 }
-
+interface BillCategory {
+  id: string;
+  name: string;
+  parent: { id: string; name: string } | null;
+}
 interface Bill {
   id: string;
-  type: 'payable' | 'receivable';
+  type: BillType;
   description: string;
   amount: number;
   dueDate: string;
   paidDate: string | null;
   status: 'pending' | 'paid' | 'overdue' | 'cancelled';
   category: string;
+  billCategoryId: string | null;
+  billCategory: BillCategory | null;
   supplierId: string | null;
   supplier: Supplier | null;
   notes: string | null;
 }
 
-interface FormData {
-  type: 'payable' | 'receivable';
-  description: string;
-  amount: string;
-  dueDate: string;
-  category: string;
-  supplierId: string;
-  notes: string;
-  status?: string;
+interface CategoryNode {
+  id: string;
+  name: string;
+  type: BillType;
+  parentId: string | null;
+  children: CategoryNode[];
+  _count: { bills: number; children: number };
 }
 
 const statusLabel: Record<string, string> = {
@@ -48,28 +72,77 @@ const statusLabel: Record<string, string> = {
   cancelled: 'Cancelado',
 };
 
-const categoryLabel: Record<string, string> = {
-  fornecedor: 'Fornecedor',
-  marketplace_fee: 'Taxa Marketplace',
-  outro: 'Outro',
-};
-
 function formatDate(date: string | Date): string {
   return new Date(date).toLocaleDateString('pt-BR');
 }
 
-function daysUntil(date: string | Date): number {
-  const d = new Date(date);
-  const now = new Date();
-  now.setHours(0, 0, 0, 0);
-  d.setHours(0, 0, 0, 0);
-  return Math.round((d.getTime() - now.getTime()) / 86400000);
-}
+/* ============================================================
+   ROOT PAGE
+   ============================================================ */
 
 export default function FinanceiroPage() {
+  return (
+    <Suspense fallback={null}>
+      <FinanceiroInner />
+    </Suspense>
+  );
+}
+
+function FinanceiroInner() {
+  const router = useRouter();
+  const params = useSearchParams();
+  const tabParam = params.get('tab') as Tab | null;
+  const [tab, setTab] = useState<Tab>(tabParam && ['pagar', 'receber', 'categorias'].includes(tabParam) ? tabParam : 'pagar');
+
+  const switchTab = (t: Tab) => {
+    setTab(t);
+    router.replace(`/admin/financeiro?tab=${t}`, { scroll: false });
+  };
+
+  const TABS: Array<{ key: Tab; label: string; icon: typeof TrendingDown }> = [
+    { key: 'pagar', label: 'Contas a pagar', icon: TrendingDown },
+    { key: 'receber', label: 'Contas a receber', icon: TrendingUp },
+    { key: 'categorias', label: 'Categorias', icon: FolderTree },
+  ];
+
+  return (
+    <div className="space-y-6">
+      <PageHeader title="💳 Financeiro" description="Gerencie contas, lance despesas e organize por categoria." />
+
+      <div className="border-b border-gray-200 flex flex-wrap gap-1">
+        {TABS.map((t) => {
+          const Icon = t.icon;
+          const active = tab === t.key;
+          return (
+            <button
+              key={t.key}
+              onClick={() => switchTab(t.key)}
+              className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 ${
+                active ? 'border-primary-600 text-primary-600' : 'border-transparent text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              <Icon className="w-4 h-4" />
+              {t.label}
+            </button>
+          );
+        })}
+      </div>
+
+      {tab === 'pagar' && <BillsTab type="payable" />}
+      {tab === 'receber' && <BillsTab type="receivable" />}
+      {tab === 'categorias' && <CategoriasTab />}
+    </div>
+  );
+}
+
+/* ============================================================
+   TAB: Contas a pagar / Contas a receber
+   ============================================================ */
+
+function BillsTab({ type }: { type: BillType }) {
   const { canWrite } = useUserRole();
   const [bills, setBills] = useState<Bill[]>([]);
-  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
+  const [categories, setCategories] = useState<CategoryNode[]>([]);
   const [total, setTotal] = useState(0);
   const [pages, setPages] = useState(1);
   const [page, setPage] = useState(1);
@@ -78,245 +151,102 @@ export default function FinanceiroPage() {
   const [editBill, setEditBill] = useState<Bill | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
-
-  const [typeFilter, setTypeFilter] = useState<'' | 'payable' | 'receivable'>('');
   const [statusFilter, setStatusFilter] = useState<string>('');
-  const [qInput, setQInput] = useState('');
-  const [q, setQ] = useState('');
 
-  const [formData, setFormData] = useState<FormData>({
-    type: 'payable',
-    description: '',
-    amount: '',
-    dueDate: new Date().toISOString().split('T')[0],
-    category: 'outro',
-    supplierId: '',
-    notes: '',
-  });
-  const [editData, setEditData] = useState<FormData | null>(null);
-
-  // Carregar suppliers 1x
-  useEffect(() => {
-    fetch('/api/suppliers')
-      .then((r) => r.ok && r.json())
-      .then((d) => d && setSuppliers(d.data || []))
-      .catch(() => {});
-  }, []);
-
-  // Carregar bills
   const fetchBills = async () => {
     setLoading(true);
-    setMessage(null);
     try {
       const params = new URLSearchParams({
-        excludeCategory: 'venda',
+        type,
+        excludeCategory: 'venda', // vendas ML ficam em /relatorios/vendas-ml
         page: String(page),
         limit: '20',
         orderBy: 'dueDate_asc',
       });
-      if (typeFilter) params.set('type', typeFilter);
       if (statusFilter) params.set('status', statusFilter);
-      if (q) params.set('q', q);
       const res = await fetch(`/api/bills?${params}`);
       const data = await res.json();
       setBills(data.data || []);
       setTotal(data.total || 0);
       setPages(data.pages || 1);
-    } catch {
-      setMessage({ type: 'error', text: 'Erro ao carregar contas' });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadCategories = async () => {
+    const res = await fetch(`/api/bill-categories?type=${type}`);
+    if (res.ok) {
+      const d = await res.json();
+      setCategories(d.categories || []);
     }
   };
 
   useEffect(() => {
+    loadCategories();
+  }, [type]);
+  useEffect(() => {
     fetchBills();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [page, typeFilter, statusFilter, q]);
-
-  const onSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    setPage(1);
-    setQ(qInput.trim());
-  };
-
-  const onSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    try {
-      const res = await fetch('/api/bills', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ...formData,
-          amount: parseFloat(formData.amount),
-          supplierId: formData.supplierId || null,
-        }),
-      });
-      if (res.ok) {
-        setMessage({ type: 'success', text: 'Conta criada!' });
-        setFormData({
-          type: 'payable',
-          description: '',
-          amount: '',
-          dueDate: new Date().toISOString().split('T')[0],
-          category: 'outro',
-          supplierId: '',
-          notes: '',
-        });
-        setShowNewForm(false);
-        setPage(1);
-        fetchBills();
-      } else {
-        const d = await res.json();
-        setMessage({ type: 'error', text: d.error || 'Erro ao criar' });
-      }
-    } catch {
-      setMessage({ type: 'error', text: 'Erro de conexão' });
-    } finally {
-      setLoading(false);
-    }
-  };
+  }, [page, statusFilter, type]);
 
   const onMarkPaid = async (id: string) => {
-    setLoading(true);
-    try {
-      const res = await fetch(`/api/bills/${id}/pay`, { method: 'PATCH' });
-      if (res.ok) {
-        setMessage({ type: 'success', text: 'Conta paga!' });
-        fetchBills();
-      } else {
-        setMessage({ type: 'error', text: 'Erro ao pagar' });
-      }
-    } catch {
-      setMessage({ type: 'error', text: 'Erro de conexão' });
-    } finally {
-      setLoading(false);
+    const res = await fetch(`/api/bills/${id}/pay`, { method: 'PATCH' });
+    if (res.ok) {
+      setMessage({ type: 'success', text: 'Conta paga!' });
+      fetchBills();
     }
   };
 
   const onDelete = async (id: string) => {
-    setLoading(true);
-    try {
-      const res = await fetch(`/api/bills/${id}`, { method: 'DELETE' });
-      if (res.ok) {
-        setMessage({ type: 'success', text: 'Conta deletada' });
-        setDeleteConfirm(null);
-        fetchBills();
-      }
-    } catch {
-      setMessage({ type: 'error', text: 'Erro' });
-    } finally {
-      setLoading(false);
+    const res = await fetch(`/api/bills/${id}`, { method: 'DELETE' });
+    if (res.ok) {
+      setMessage({ type: 'success', text: 'Conta deletada' });
+      setDeleteConfirm(null);
+      fetchBills();
     }
   };
 
-  const openEdit = (bill: Bill) => {
-    setEditBill(bill);
-    setEditData({
-      type: bill.type,
-      description: bill.description,
-      amount: String(bill.amount),
-      dueDate: bill.dueDate.split('T')[0],
-      category: bill.category,
-      supplierId: bill.supplierId || '',
-      notes: bill.notes || '',
-      status: bill.status,
-    });
-  };
+  const summary = useMemo(() => {
+    const now = new Date();
+    now.setHours(0, 0, 0, 0);
+    const in7 = new Date(now);
+    in7.setDate(in7.getDate() + 7);
 
-  const onUpdate = async () => {
-    if (!editBill || !editData) return;
-    setLoading(true);
-    try {
-      const res = await fetch(`/api/bills/${editBill.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ...editData,
-          amount: parseFloat(editData.amount),
-          supplierId: editData.supplierId || null,
-        }),
-      });
-      if (res.ok) {
-        setMessage({ type: 'success', text: 'Atualizado' });
-        setEditBill(null);
-        setEditData(null);
-        fetchBills();
+    let proximasCount = 0, proximasAmount = 0;
+    let vencidasCount = 0, vencidasAmount = 0;
+    let pendentesCount = 0, pendentesAmount = 0;
+
+    for (const b of bills) {
+      if (b.status !== 'pending') continue;
+      const due = new Date(b.dueDate);
+      due.setHours(0, 0, 0, 0);
+      pendentesCount++;
+      pendentesAmount += b.amount;
+      if (due < now) {
+        vencidasCount++;
+        vencidasAmount += b.amount;
+      } else if (due <= in7) {
+        proximasCount++;
+        proximasAmount += b.amount;
       }
-    } catch {
-      setMessage({ type: 'error', text: 'Erro' });
-    } finally {
-      setLoading(false);
     }
-  };
-
-  // Stats em cima (apenas das bills carregadas da página atual + filtros atuais)
-  // Para stats globais de vencimento, faz query separada quando não tem filtro
-  const [summary, setSummary] = useState<{
-    payableVencendo7d: { count: number; amount: number };
-    payableVencidas: { count: number; amount: number };
-    receivablePendente: { count: number; amount: number };
-  } | null>(null);
-
-  useEffect(() => {
-    (async () => {
-      try {
-        // Busca sem paginação pra calcular stats de manuais
-        const res = await fetch('/api/bills?excludeCategory=venda&limit=1000');
-        const data = await res.json();
-        const all: Bill[] = data.data || [];
-        const now = new Date();
-        now.setHours(0, 0, 0, 0);
-        const in7d = new Date(now);
-        in7d.setDate(in7d.getDate() + 7);
-
-        const p7 = all.filter(
-          (b) =>
-            b.type === 'payable' &&
-            b.status === 'pending' &&
-            new Date(b.dueDate) >= now &&
-            new Date(b.dueDate) <= in7d
-        );
-        const vencidas = all.filter(
-          (b) =>
-            b.type === 'payable' &&
-            (b.status === 'pending' || b.status === 'overdue') &&
-            new Date(b.dueDate) < now
-        );
-        const rPend = all.filter((b) => b.type === 'receivable' && b.status === 'pending');
-
-        setSummary({
-          payableVencendo7d: { count: p7.length, amount: p7.reduce((s, b) => s + b.amount, 0) },
-          payableVencidas: {
-            count: vencidas.length,
-            amount: vencidas.reduce((s, b) => s + b.amount, 0),
-          },
-          receivablePendente: {
-            count: rPend.length,
-            amount: rPend.reduce((s, b) => s + b.amount, 0),
-          },
-        });
-      } catch {}
-    })();
+    return { proximasCount, proximasAmount, vencidasCount, vencidasAmount, pendentesCount, pendentesAmount };
   }, [bills]);
+
+  const emptyLabel = type === 'payable' ? 'Nenhuma conta a pagar' : 'Nenhuma conta a receber';
+  const newLabel = type === 'payable' ? 'Nova conta a pagar' : 'Nova conta a receber';
 
   return (
     <div className="space-y-6">
-      <PageHeader
-        title="💳 Financeiro"
-        description="Contas a pagar e a receber manuais."
-        actions={
-          canWrite ? (
-            <button
-              onClick={() => setShowNewForm(!showNewForm)}
-              className="bg-gradient-to-r from-primary-500 to-primary-600 hover:from-primary-600 hover:to-primary-700 text-white font-semibold py-2 px-4 rounded-lg transition"
-            >
-              + Nova Conta
-            </button>
-          ) : null
-        }
-      />
+      {canWrite && (
+        <div className="flex justify-end">
+          <Button onClick={() => setShowNewForm(!showNewForm)}>
+            <Plus className="w-4 h-4 mr-1" />
+            {newLabel}
+          </Button>
+        </div>
+      )}
 
       {message && (
         <div
@@ -328,190 +258,61 @@ export default function FinanceiroPage() {
         </div>
       )}
 
-      {/* Cards resumo */}
-      {summary && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-          <StatCard
-            label="A pagar · 7 dias"
-            value={formatCurrency(summary.payableVencendo7d.amount)}
-            sub={`${summary.payableVencendo7d.count} conta(s)`}
-            icon={CalendarClock}
-            accent="amber"
-          />
-          <StatCard
-            label="Vencidas"
-            value={formatCurrency(summary.payableVencidas.amount)}
-            sub={`${summary.payableVencidas.count} conta(s)`}
-            icon={AlertTriangle}
-            accent="rose"
-          />
-          <StatCard
-            label="A receber"
-            value={formatCurrency(summary.receivablePendente.amount)}
-            sub={`${summary.receivablePendente.count} conta(s)`}
-            icon={Wallet}
-            accent="emerald"
-          />
-        </div>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+        <StatCard
+          label={type === 'payable' ? 'A pagar · 7 dias' : 'A receber · 7 dias'}
+          value={formatCurrency(summary.proximasAmount)}
+          sub={`${summary.proximasCount} conta(s)`}
+          icon={CalendarClock}
+          accent="amber"
+        />
+        <StatCard
+          label="Vencidas"
+          value={formatCurrency(summary.vencidasAmount)}
+          sub={`${summary.vencidasCount} conta(s)`}
+          icon={AlertTriangle}
+          accent="rose"
+        />
+        <StatCard
+          label={type === 'payable' ? 'Total pendente' : 'Total a receber'}
+          value={formatCurrency(summary.pendentesAmount)}
+          sub={`${summary.pendentesCount} conta(s)`}
+          icon={Wallet}
+          accent="emerald"
+        />
+      </div>
+
+      {showNewForm && canWrite && (
+        <BillForm
+          type={type}
+          categories={categories}
+          onCancel={() => setShowNewForm(false)}
+          onSaved={() => {
+            setShowNewForm(false);
+            setPage(1);
+            fetchBills();
+            setMessage({ type: 'success', text: 'Conta criada' });
+          }}
+        />
       )}
 
-      {/* Formulário Novo */}
-      {showNewForm && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Nova Conta</CardTitle>
-          </CardHeader>
-          <CardContent className="pt-0">
-          <form onSubmit={onSubmit} className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium mb-1">Tipo *</label>
-              <select
-                value={formData.type}
-                onChange={(e) =>
-                  setFormData({ ...formData, type: e.target.value as 'payable' | 'receivable' })
-                }
-                className="w-full border rounded px-3 py-2"
-              >
-                <option value="payable">A Pagar</option>
-                <option value="receivable">A Receber</option>
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">Categoria *</label>
-              <select
-                value={formData.category}
-                onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                className="w-full border rounded px-3 py-2"
-              >
-                <option value="outro">Outro</option>
-                <option value="fornecedor">Fornecedor</option>
-                <option value="marketplace_fee">Taxa Marketplace</option>
-              </select>
-            </div>
-            <div className="col-span-2">
-              <label className="block text-sm font-medium mb-1">Descrição *</label>
-              <input
-                type="text"
-                required
-                value={formData.description}
-                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                className="w-full border rounded px-3 py-2"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">Valor (R$) *</label>
-              <input
-                type="number"
-                step="0.01"
-                required
-                value={formData.amount}
-                onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
-                className="w-full border rounded px-3 py-2"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">Vencimento *</label>
-              <input
-                type="date"
-                required
-                value={formData.dueDate}
-                onChange={(e) => setFormData({ ...formData, dueDate: e.target.value })}
-                className="w-full border rounded px-3 py-2"
-              />
-            </div>
-            {formData.category === 'fornecedor' && (
-              <div className="col-span-2">
-                <label className="block text-sm font-medium mb-1">Fornecedor</label>
-                <select
-                  value={formData.supplierId}
-                  onChange={(e) => setFormData({ ...formData, supplierId: e.target.value })}
-                  className="w-full border rounded px-3 py-2"
-                >
-                  <option value="">Nenhum</option>
-                  {suppliers.map((s) => (
-                    <option key={s.id} value={s.id}>
-                      {s.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            )}
-            <div className="col-span-2">
-              <label className="block text-sm font-medium mb-1">Notas</label>
-              <textarea
-                rows={2}
-                value={formData.notes}
-                onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                className="w-full border rounded px-3 py-2"
-              />
-            </div>
-            <div className="col-span-2 flex gap-2">
-              <button
-                type="submit"
-                disabled={loading}
-                className="flex-1 bg-primary-600 hover:bg-primary-700 text-white font-semibold py-2 rounded disabled:opacity-50"
-              >
-                {loading ? 'Salvando...' : '✅ Criar'}
-              </button>
-              <button
-                type="button"
-                onClick={() => setShowNewForm(false)}
-                className="flex-1 bg-gray-200 hover:bg-gray-300 font-semibold py-2 rounded"
-              >
-                Cancelar
-              </button>
-            </div>
-          </form>
-          </CardContent>
-        </Card>
+      {editBill && canWrite && (
+        <BillForm
+          type={type}
+          bill={editBill}
+          categories={categories}
+          onCancel={() => setEditBill(null)}
+          onSaved={() => {
+            setEditBill(null);
+            fetchBills();
+            setMessage({ type: 'success', text: 'Conta atualizada' });
+          }}
+        />
       )}
 
-      {/* Filtros */}
-      <Card className="p-4 flex flex-wrap gap-3 items-end">
-        <form onSubmit={onSearch} className="flex-1 min-w-[260px] flex gap-2 items-end">
-          <div className="flex-1">
-            <label className="block text-xs font-medium text-gray-600 mb-1">Busca</label>
-            <input
-              type="text"
-              placeholder="Descrição, notas..."
-              value={qInput}
-              onChange={(e) => setQInput(e.target.value)}
-              className="w-full border rounded px-3 py-2 text-sm"
-            />
-          </div>
-          <button type="submit" className="bg-primary-600 hover:bg-primary-700 text-white px-3 py-2 rounded text-sm">
-            Buscar
-          </button>
-          {q && (
-            <button
-              type="button"
-              onClick={() => {
-                setQInput('');
-                setQ('');
-              }}
-              className="bg-gray-200 px-3 py-2 rounded text-sm"
-            >
-              Limpar
-            </button>
-          )}
-        </form>
+      <div className="flex gap-2 items-end">
         <div>
-          <label className="block text-xs font-medium text-gray-600 mb-1">Tipo</label>
-          <select
-            value={typeFilter}
-            onChange={(e) => {
-              setPage(1);
-              setTypeFilter(e.target.value as any);
-            }}
-            className="border rounded px-3 py-2 text-sm"
-          >
-            <option value="">Todos</option>
-            <option value="payable">A Pagar</option>
-            <option value="receivable">A Receber</option>
-          </select>
-        </div>
-        <div>
-          <label className="block text-xs font-medium text-gray-600 mb-1">Status</label>
+          <label className="block text-xs font-medium text-gray-500 mb-1">Status</label>
           <select
             value={statusFilter}
             onChange={(e) => {
@@ -521,22 +322,21 @@ export default function FinanceiroPage() {
             className="border rounded px-3 py-2 text-sm"
           >
             <option value="">Todos</option>
-            <option value="pending">Pendente</option>
-            <option value="paid">Pago</option>
-            <option value="overdue">Vencido</option>
-            <option value="cancelled">Cancelado</option>
+            <option value="pending">Pendentes</option>
+            <option value="paid">Pagos</option>
+            <option value="cancelled">Cancelados</option>
           </select>
         </div>
-      </Card>
-
-      <div className="text-xs text-gray-500">
-        {loading ? 'Carregando...' : `${total} conta${total === 1 ? '' : 's'}`}
       </div>
 
-      {/* Tabela */}
       <Card className="overflow-hidden">
-        {bills.length === 0 && !loading ? (
-          <EmptyState icon={FileText} title="Nenhuma conta encontrada" />
+        {loading ? (
+          <div className="flex items-center justify-center py-12 text-gray-500">
+            <Loader className="w-5 h-5 animate-spin mr-2" />
+            Carregando...
+          </div>
+        ) : bills.length === 0 ? (
+          <EmptyState icon={FileText} title={emptyLabel} />
         ) : (
           <Table>
             <TableHeader>
@@ -546,41 +346,30 @@ export default function FinanceiroPage() {
                 <TableHead>Categoria</TableHead>
                 <TableHead className="text-right">Valor</TableHead>
                 <TableHead>Status</TableHead>
-                <TableHead>Ações</TableHead>
+                <TableHead className="text-right">Ações</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {bills.map((b) => {
-                const diff = daysUntil(b.dueDate);
-                const isOverdue = diff < 0 && b.status === 'pending';
-                const isSoon = diff >= 0 && diff <= 7 && b.status === 'pending';
+                const isOverdue =
+                  b.status === 'pending' && new Date(b.dueDate) < new Date(new Date().toDateString());
+                const catLabel = b.billCategory
+                  ? b.billCategory.parent
+                    ? `${b.billCategory.parent.name} · ${b.billCategory.name}`
+                    : b.billCategory.name
+                  : b.category || '—';
                 return (
                   <TableRow key={b.id}>
-                    <TableCell className="text-sm whitespace-nowrap">
-                      <div
-                        className={
-                          isOverdue ? 'text-red-600 font-semibold' : isSoon ? 'text-amber-600' : ''
-                        }
-                      >
-                        {formatDate(b.dueDate)}
-                      </div>
-                      {b.status === 'pending' && (
-                        <div className="text-xs text-gray-500">
-                          {diff === 0 ? 'hoje' : diff < 0 ? `${-diff}d atrasado` : `em ${diff}d`}
-                        </div>
-                      )}
-                    </TableCell>
-                    <TableCell className="text-sm">
-                      <div className={b.type === 'payable' ? 'text-red-700' : 'text-emerald-700'}>
-                        {b.type === 'payable' ? '↙ ' : '↗ '}
-                        {b.description}
-                      </div>
-                      {b.supplier && (
-                        <div className="text-xs text-gray-500 mt-0.5">{b.supplier.name}</div>
-                      )}
-                    </TableCell>
+                    <TableCell className="text-sm whitespace-nowrap">{formatDate(b.dueDate)}</TableCell>
+                    <TableCell className="text-sm">{b.description}</TableCell>
                     <TableCell className="text-sm text-gray-600">
-                      {categoryLabel[b.category] || b.category}
+                      {b.billCategory ? (
+                        <span className="inline-block text-xs text-primary-700 bg-primary-50 border border-primary-100 rounded px-1.5 py-0.5">
+                          {catLabel}
+                        </span>
+                      ) : (
+                        catLabel
+                      )}
                     </TableCell>
                     <TableCell
                       className={`text-sm font-semibold text-right whitespace-nowrap ${
@@ -605,30 +394,29 @@ export default function FinanceiroPage() {
                       </span>
                     </TableCell>
                     <TableCell>
-                      <div className="flex gap-1">
+                      <div className="flex gap-1 justify-end">
                         {canWrite && (
-                          <Button onClick={() => openEdit(b)} size="sm" variant="ghost" title="Editar">
-                            ✏️
+                          <Button onClick={() => setEditBill(b)} size="sm" variant="ghost" title="Editar">
+                            <Pencil className="w-4 h-4" />
                           </Button>
                         )}
                         {canWrite && b.status !== 'paid' && b.status !== 'cancelled' && (
                           <Button
                             onClick={() => onMarkPaid(b.id)}
-                            disabled={loading}
                             size="sm"
                             variant="ghost"
-                            title="Marcar como paga"
+                            title={type === 'payable' ? 'Marcar como paga' : 'Marcar como recebida'}
                           >
-                            ✓
+                            <Check className="w-4 h-4 text-emerald-600" />
                           </Button>
                         )}
                         {canWrite && deleteConfirm === b.id ? (
                           <>
-                            <Button onClick={() => onDelete(b.id)} size="sm" variant="ghost">
-                              Confirmar
+                            <Button onClick={() => onDelete(b.id)} size="sm" variant="ghost" title="Confirmar">
+                              <Check className="w-4 h-4 text-red-600" />
                             </Button>
-                            <Button onClick={() => setDeleteConfirm(null)} size="sm" variant="ghost">
-                              ✕
+                            <Button onClick={() => setDeleteConfirm(null)} size="sm" variant="ghost" title="Cancelar">
+                              <XIcon className="w-4 h-4" />
                             </Button>
                           </>
                         ) : canWrite ? (
@@ -638,7 +426,7 @@ export default function FinanceiroPage() {
                             variant="ghost"
                             title="Deletar"
                           >
-                            🗑️
+                            <Trash2 className="w-4 h-4 text-red-500" />
                           </Button>
                         ) : null}
                       </div>
@@ -651,129 +439,609 @@ export default function FinanceiroPage() {
         )}
       </Card>
 
-      {/* Paginação */}
       {pages > 1 && (
-        <div className="flex justify-center gap-2">
-          <button
-            onClick={() => setPage(Math.max(1, page - 1))}
-            disabled={page === 1}
-            className="px-4 py-2 border rounded disabled:opacity-50 hover:bg-gray-50"
-          >
+        <div className="flex justify-center gap-2 text-sm">
+          <Button onClick={() => setPage(Math.max(1, page - 1))} disabled={page === 1} variant="outline" size="sm">
             ← Anterior
-          </button>
+          </Button>
           <span className="px-4 py-2 text-gray-700">
-            Página {page} de {pages}
+            Página {page} de {pages} · {total} conta(s)
           </span>
-          <button
+          <Button
             onClick={() => setPage(Math.min(pages, page + 1))}
             disabled={page === pages}
-            className="px-4 py-2 border rounded disabled:opacity-50 hover:bg-gray-50"
+            variant="outline"
+            size="sm"
           >
             Próxima →
-          </button>
-        </div>
-      )}
-
-      {/* Modal Edit */}
-      {editBill && editData && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg shadow-xl max-w-xl w-full p-6 space-y-4">
-            <div className="flex justify-between items-center">
-              <h2 className="text-xl font-bold">✏️ Editar Conta</h2>
-              <button
-                onClick={() => {
-                  setEditBill(null);
-                  setEditData(null);
-                }}
-                className="text-gray-500 text-2xl"
-              >
-                ×
-              </button>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="col-span-2">
-                <label className="block text-sm font-medium mb-1">Descrição</label>
-                <input
-                  type="text"
-                  value={editData.description}
-                  onChange={(e) => setEditData({ ...editData, description: e.target.value })}
-                  className="w-full border rounded px-3 py-2"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">Valor (R$)</label>
-                <input
-                  type="number"
-                  step="0.01"
-                  value={editData.amount}
-                  onChange={(e) => setEditData({ ...editData, amount: e.target.value })}
-                  className="w-full border rounded px-3 py-2"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">Vencimento</label>
-                <input
-                  type="date"
-                  value={editData.dueDate}
-                  onChange={(e) => setEditData({ ...editData, dueDate: e.target.value })}
-                  className="w-full border rounded px-3 py-2"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">Status</label>
-                <select
-                  value={editData.status}
-                  onChange={(e) => setEditData({ ...editData, status: e.target.value })}
-                  className="w-full border rounded px-3 py-2"
-                >
-                  <option value="pending">Pendente</option>
-                  <option value="paid">Pago</option>
-                  <option value="cancelled">Cancelado</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">Categoria</label>
-                <select
-                  value={editData.category}
-                  onChange={(e) => setEditData({ ...editData, category: e.target.value })}
-                  className="w-full border rounded px-3 py-2"
-                >
-                  <option value="outro">Outro</option>
-                  <option value="fornecedor">Fornecedor</option>
-                  <option value="marketplace_fee">Taxa Marketplace</option>
-                </select>
-              </div>
-              <div className="col-span-2">
-                <label className="block text-sm font-medium mb-1">Notas</label>
-                <textarea
-                  rows={3}
-                  value={editData.notes}
-                  onChange={(e) => setEditData({ ...editData, notes: e.target.value })}
-                  className="w-full border rounded px-3 py-2"
-                />
-              </div>
-            </div>
-            <div className="flex gap-2 justify-end">
-              <button
-                onClick={onUpdate}
-                disabled={loading}
-                className="bg-primary-600 hover:bg-primary-700 text-white font-semibold px-4 py-2 rounded"
-              >
-                {loading ? 'Salvando...' : '✅ Salvar'}
-              </button>
-              <button
-                onClick={() => {
-                  setEditBill(null);
-                  setEditData(null);
-                }}
-                className="bg-gray-200 hover:bg-gray-300 px-4 py-2 rounded"
-              >
-                Cancelar
-              </button>
-            </div>
-          </div>
+          </Button>
         </div>
       )}
     </div>
+  );
+}
+
+/* ============================================================
+   Form de Bill (criar e editar) — campos mínimos, cascata de cat
+   ============================================================ */
+
+function BillForm({
+  type,
+  bill,
+  categories,
+  onSaved,
+  onCancel,
+}: {
+  type: BillType;
+  bill?: Bill;
+  categories: CategoryNode[];
+  onSaved: () => void;
+  onCancel: () => void;
+}) {
+  const editing = !!bill;
+  const [rootId, setRootId] = useState<string>(() => {
+    if (bill?.billCategory?.parent) return bill.billCategory.parent.id;
+    if (bill?.billCategory && !bill.billCategory.parent) return bill.billCategory.id;
+    return categories[0]?.id || '';
+  });
+  const [subId, setSubId] = useState<string>(() => {
+    if (bill?.billCategory?.parent) return bill.billCategory.id;
+    return '';
+  });
+  const [amount, setAmount] = useState<string>(bill ? String(bill.amount) : '');
+  const [dueDate, setDueDate] = useState<string>(
+    bill ? bill.dueDate.split('T')[0] : new Date().toISOString().split('T')[0]
+  );
+  const [status, setStatus] = useState<string>(bill?.status || 'pending');
+  const [saving, setSaving] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  const rootCat = categories.find((c) => c.id === rootId);
+  const subs = rootCat?.children || [];
+
+  // Se a root trocar, reseta sub
+  useEffect(() => {
+    if (!bill) setSubId('');
+  }, [rootId, bill]);
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setErr(null);
+
+    if (!rootId) {
+      setErr('Selecione uma categoria');
+      return;
+    }
+    const categoryId = subId || rootId; // se tem sub, usa sub; senão raiz
+    const parsedAmount = parseFloat(amount);
+    if (!Number.isFinite(parsedAmount) || parsedAmount <= 0) {
+      setErr('Valor inválido');
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const url = editing ? `/api/bills/${bill!.id}` : '/api/bills';
+      const method = editing ? 'PUT' : 'POST';
+      const res = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type,
+          billCategoryId: categoryId,
+          amount: parsedAmount,
+          dueDate,
+          ...(editing ? { status } : {}),
+        }),
+      });
+      if (res.ok) {
+        onSaved();
+      } else {
+        const d = await res.json().catch(() => ({}));
+        setErr(d.error || 'Erro ao salvar');
+      }
+    } catch {
+      setErr('Erro de conexão');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>{editing ? 'Editar conta' : type === 'payable' ? 'Nova conta a pagar' : 'Nova conta a receber'}</CardTitle>
+      </CardHeader>
+      <CardContent>
+        {categories.length === 0 ? (
+          <div className="text-sm text-gray-500">
+            Nenhuma categoria cadastrada. Vá na aba <strong>Categorias</strong> e crie uma primeiro.
+          </div>
+        ) : (
+          <form onSubmit={submit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Categoria</label>
+              <select
+                value={rootId}
+                onChange={(e) => setRootId(e.target.value)}
+                required
+                className="w-full border rounded-lg px-3 py-2"
+              >
+                <option value="">Selecione...</option>
+                {categories.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Subcategoria <span className="text-gray-400 font-normal">(opcional se a categoria é simples)</span>
+              </label>
+              <select
+                value={subId}
+                onChange={(e) => setSubId(e.target.value)}
+                disabled={subs.length === 0}
+                className="w-full border rounded-lg px-3 py-2 disabled:bg-gray-50 disabled:text-gray-400"
+              >
+                <option value="">{subs.length === 0 ? 'Sem subcategorias' : 'Selecione...'}</option>
+                {subs.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Valor (R$)</label>
+              <input
+                type="number"
+                step="0.01"
+                min="0.01"
+                value={amount}
+                onChange={(e) => setAmount(e.target.value)}
+                required
+                className="w-full border rounded-lg px-3 py-2"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Vencimento</label>
+              <input
+                type="date"
+                value={dueDate}
+                onChange={(e) => setDueDate(e.target.value)}
+                required
+                className="w-full border rounded-lg px-3 py-2"
+              />
+            </div>
+
+            {editing && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                <select value={status} onChange={(e) => setStatus(e.target.value)} className="w-full border rounded-lg px-3 py-2">
+                  <option value="pending">Pendente</option>
+                  <option value="paid">{type === 'payable' ? 'Pago' : 'Recebido'}</option>
+                  <option value="cancelled">Cancelado</option>
+                </select>
+              </div>
+            )}
+
+            {err && <div className="md:col-span-2 text-sm text-red-600">{err}</div>}
+
+            <div className="md:col-span-2 flex gap-2 justify-end pt-2 border-t">
+              <Button type="button" variant="outline" onClick={onCancel} disabled={saving}>
+                Cancelar
+              </Button>
+              <Button type="submit" disabled={saving}>
+                {saving && <Loader className="w-4 h-4 animate-spin mr-2" />}
+                {editing ? 'Salvar' : 'Criar'}
+              </Button>
+            </div>
+          </form>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+/* ============================================================
+   TAB: Categorias (gerenciar)
+   ============================================================ */
+
+function CategoriasTab() {
+  const { canWrite } = useUserRole();
+  const [payable, setPayable] = useState<CategoryNode[]>([]);
+  const [receivable, setReceivable] = useState<CategoryNode[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+  const reload = async () => {
+    setLoading(true);
+    try {
+      const [p, r] = await Promise.all([
+        fetch('/api/bill-categories?type=payable').then((res) => res.json()),
+        fetch('/api/bill-categories?type=receivable').then((res) => res.json()),
+      ]);
+      setPayable(p.categories || []);
+      setReceivable(r.categories || []);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    reload();
+  }, []);
+
+  const flash = (type: 'success' | 'error', text: string) => {
+    setMessage({ type, text });
+    setTimeout(() => setMessage(null), 4000);
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-12 text-gray-500">
+        <Loader className="w-5 h-5 animate-spin mr-2" />
+        Carregando categorias...
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      {message && (
+        <div
+          className={`p-3 rounded text-sm ${
+            message.type === 'success' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+          }`}
+        >
+          {message.text}
+        </div>
+      )}
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <CategoryTree
+          title="💸 Contas a pagar"
+          type="payable"
+          nodes={payable}
+          canWrite={canWrite}
+          onChange={reload}
+          onFlash={flash}
+        />
+        <CategoryTree
+          title="💰 Contas a receber"
+          type="receivable"
+          nodes={receivable}
+          canWrite={canWrite}
+          onChange={reload}
+          onFlash={flash}
+        />
+      </div>
+    </div>
+  );
+}
+
+function CategoryTree({
+  title,
+  type,
+  nodes,
+  canWrite,
+  onChange,
+  onFlash,
+}: {
+  title: string;
+  type: BillType;
+  nodes: CategoryNode[];
+  canWrite: boolean;
+  onChange: () => void;
+  onFlash: (t: 'success' | 'error', msg: string) => void;
+}) {
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const [addingRoot, setAddingRoot] = useState(false);
+  const [rootDraft, setRootDraft] = useState('');
+  const [addingSubFor, setAddingSubFor] = useState<string | null>(null);
+  const [subDraft, setSubDraft] = useState('');
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editDraft, setEditDraft] = useState('');
+
+  const toggle = (id: string) => {
+    setExpanded((prev) => {
+      const n = new Set(prev);
+      if (n.has(id)) n.delete(id);
+      else n.add(id);
+      return n;
+    });
+  };
+
+  const createCategory = async (name: string, parentId: string | null) => {
+    const res = await fetch('/api/bill-categories', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, type, parentId }),
+    });
+    if (res.ok) {
+      onFlash('success', 'Categoria criada');
+      if (parentId) setExpanded((prev) => new Set(prev).add(parentId));
+      onChange();
+    } else {
+      const d = await res.json().catch(() => ({}));
+      onFlash('error', d.error || 'Erro ao criar');
+    }
+  };
+
+  const renameCategory = async (id: string, name: string) => {
+    const res = await fetch(`/api/bill-categories/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name }),
+    });
+    if (res.ok) {
+      onFlash('success', 'Renomeado');
+      onChange();
+    } else {
+      const d = await res.json().catch(() => ({}));
+      onFlash('error', d.error || 'Erro');
+    }
+  };
+
+  const deleteCategory = async (id: string, label: string) => {
+    if (!confirm(`Remover a categoria "${label}"?\n\nSe tiver contas vinculadas, a remoção é bloqueada.`)) return;
+    const res = await fetch(`/api/bill-categories/${id}`, { method: 'DELETE' });
+    if (res.ok) {
+      onFlash('success', 'Categoria removida');
+      onChange();
+    } else {
+      const d = await res.json().catch(() => ({}));
+      onFlash('error', d.error || 'Erro');
+    }
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-base">{title}</CardTitle>
+          {canWrite && !addingRoot && (
+            <Button size="sm" variant="outline" onClick={() => setAddingRoot(true)}>
+              <Plus className="w-4 h-4 mr-1" />
+              Nova categoria
+            </Button>
+          )}
+        </div>
+      </CardHeader>
+      <CardContent>
+        {addingRoot && canWrite && (
+          <div className="flex gap-2 mb-4">
+            <input
+              autoFocus
+              value={rootDraft}
+              onChange={(e) => setRootDraft(e.target.value)}
+              placeholder="Nome da categoria"
+              className="flex-1 border rounded-lg px-3 py-2 text-sm"
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && rootDraft.trim()) {
+                  createCategory(rootDraft.trim(), null);
+                  setRootDraft('');
+                  setAddingRoot(false);
+                } else if (e.key === 'Escape') {
+                  setAddingRoot(false);
+                  setRootDraft('');
+                }
+              }}
+            />
+            <Button
+              size="sm"
+              onClick={() => {
+                if (rootDraft.trim()) {
+                  createCategory(rootDraft.trim(), null);
+                  setRootDraft('');
+                  setAddingRoot(false);
+                }
+              }}
+              disabled={!rootDraft.trim()}
+            >
+              Criar
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => {
+                setAddingRoot(false);
+                setRootDraft('');
+              }}
+            >
+              Cancelar
+            </Button>
+          </div>
+        )}
+
+        {nodes.length === 0 ? (
+          <div className="text-sm text-gray-500 py-4 text-center">Sem categorias ainda.</div>
+        ) : (
+          <ul className="divide-y divide-gray-100">
+            {nodes.map((root) => {
+              const isExp = expanded.has(root.id);
+              const totalBills = root._count.bills + root.children.reduce((s, c) => s + c._count.bills, 0);
+              return (
+                <li key={root.id} className="py-2">
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => toggle(root.id)}
+                      className="p-1 hover:bg-gray-100 rounded"
+                      disabled={root.children.length === 0}
+                    >
+                      {root.children.length > 0 ? (
+                        isExp ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />
+                      ) : (
+                        <span className="w-4 h-4 inline-block" />
+                      )}
+                    </button>
+
+                    {editingId === root.id ? (
+                      <input
+                        autoFocus
+                        value={editDraft}
+                        onChange={(e) => setEditDraft(e.target.value)}
+                        onBlur={() => {
+                          if (editDraft.trim() && editDraft !== root.name) renameCategory(root.id, editDraft.trim());
+                          setEditingId(null);
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            if (editDraft.trim() && editDraft !== root.name) renameCategory(root.id, editDraft.trim());
+                            setEditingId(null);
+                          } else if (e.key === 'Escape') setEditingId(null);
+                        }}
+                        className="flex-1 border rounded px-2 py-1 text-sm"
+                      />
+                    ) : (
+                      <span className="flex-1 font-medium text-gray-900">{root.name}</span>
+                    )}
+
+                    <span className="text-xs text-gray-400">
+                      {totalBills} conta{totalBills === 1 ? '' : 's'}
+                    </span>
+
+                    {canWrite && editingId !== root.id && (
+                      <>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => {
+                            setAddingSubFor(root.id);
+                            setSubDraft('');
+                            setExpanded((prev) => new Set(prev).add(root.id));
+                          }}
+                          title="Adicionar subcategoria"
+                        >
+                          <Plus className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => {
+                            setEditingId(root.id);
+                            setEditDraft(root.name);
+                          }}
+                          title="Renomear"
+                        >
+                          <Pencil className="w-4 h-4" />
+                        </Button>
+                        <Button size="sm" variant="ghost" onClick={() => deleteCategory(root.id, root.name)} title="Remover">
+                          <Trash2 className="w-4 h-4 text-red-500" />
+                        </Button>
+                      </>
+                    )}
+                  </div>
+
+                  {isExp && (
+                    <ul className="ml-8 mt-2 space-y-1 border-l border-gray-200 pl-4">
+                      {root.children.map((sub) => (
+                        <li key={sub.id} className="flex items-center gap-2 py-1">
+                          {editingId === sub.id ? (
+                            <input
+                              autoFocus
+                              value={editDraft}
+                              onChange={(e) => setEditDraft(e.target.value)}
+                              onBlur={() => {
+                                if (editDraft.trim() && editDraft !== sub.name) renameCategory(sub.id, editDraft.trim());
+                                setEditingId(null);
+                              }}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                  if (editDraft.trim() && editDraft !== sub.name) renameCategory(sub.id, editDraft.trim());
+                                  setEditingId(null);
+                                } else if (e.key === 'Escape') setEditingId(null);
+                              }}
+                              className="flex-1 border rounded px-2 py-1 text-sm"
+                            />
+                          ) : (
+                            <span className="flex-1 text-sm text-gray-800">{sub.name}</span>
+                          )}
+                          <span className="text-xs text-gray-400">
+                            {sub._count.bills} conta{sub._count.bills === 1 ? '' : 's'}
+                          </span>
+                          {canWrite && editingId !== sub.id && (
+                            <>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => {
+                                  setEditingId(sub.id);
+                                  setEditDraft(sub.name);
+                                }}
+                                title="Renomear"
+                              >
+                                <Pencil className="w-4 h-4" />
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => deleteCategory(sub.id, sub.name)}
+                                title="Remover"
+                              >
+                                <Trash2 className="w-4 h-4 text-red-500" />
+                              </Button>
+                            </>
+                          )}
+                        </li>
+                      ))}
+                      {addingSubFor === root.id && canWrite && (
+                        <li className="flex items-center gap-2 py-1">
+                          <input
+                            autoFocus
+                            value={subDraft}
+                            onChange={(e) => setSubDraft(e.target.value)}
+                            placeholder="Nome da subcategoria"
+                            className="flex-1 border rounded px-2 py-1 text-sm"
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter' && subDraft.trim()) {
+                                createCategory(subDraft.trim(), root.id);
+                                setSubDraft('');
+                                setAddingSubFor(null);
+                              } else if (e.key === 'Escape') {
+                                setAddingSubFor(null);
+                                setSubDraft('');
+                              }
+                            }}
+                          />
+                          <Button
+                            size="sm"
+                            onClick={() => {
+                              if (subDraft.trim()) {
+                                createCategory(subDraft.trim(), root.id);
+                                setSubDraft('');
+                                setAddingSubFor(null);
+                              }
+                            }}
+                            disabled={!subDraft.trim()}
+                          >
+                            OK
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => {
+                              setAddingSubFor(null);
+                              setSubDraft('');
+                            }}
+                          >
+                            <XIcon className="w-4 h-4" />
+                          </Button>
+                        </li>
+                      )}
+                    </ul>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </CardContent>
+    </Card>
   );
 }

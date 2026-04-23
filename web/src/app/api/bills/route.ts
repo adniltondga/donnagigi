@@ -38,7 +38,11 @@ export async function GET(req: NextRequest) {
     const [bills, total] = await Promise.all([
       prisma.bill.findMany({
         where,
-        include: { supplier: true, product: true },
+        include: {
+          supplier: true,
+          product: true,
+          billCategory: { include: { parent: true } },
+        },
         orderBy: orderClause,
         skip,
         take: limit,
@@ -64,14 +68,34 @@ export async function POST(req: NextRequest) {
   try {
     await requireRole(['OWNER', 'ADMIN']);
     const body = await req.json();
-    const { type, description, amount, dueDate, category, supplierId, notes, mlOrderId, productId, productCost } = body;
+    const { type, description, amount, dueDate, category, billCategoryId, supplierId, notes, mlOrderId, productId, productCost } = body;
 
-    // Validação básica
-    if (!type || !description || !amount || !dueDate) {
+    // Validação básica (description opcional agora — auto-preenche com nome da subcategoria)
+    if (!type || !amount || !dueDate) {
       return NextResponse.json(
         { error: 'Missing required fields' },
         { status: 400 }
       );
+    }
+
+    // Resolve descrição auto a partir da subcategoria se não vier explícita
+    const tenantId = await getTenantIdOrDefault();
+    let resolvedDescription = (description || '').trim();
+    let resolvedCategoryName: string | null = null;
+
+    if (billCategoryId) {
+      const cat = await prisma.billCategory.findUnique({
+        where: { id: billCategoryId },
+        select: { id: true, name: true, tenantId: true, parent: { select: { name: true } } },
+      });
+      if (!cat || cat.tenantId !== tenantId) {
+        return NextResponse.json({ error: 'Categoria não encontrada' }, { status: 404 });
+      }
+      resolvedCategoryName = cat.parent ? `${cat.parent.name} · ${cat.name}` : cat.name;
+      if (!resolvedDescription) resolvedDescription = resolvedCategoryName;
+    }
+    if (!resolvedDescription) {
+      return NextResponse.json({ error: 'Informe uma categoria ou uma descrição' }, { status: 400 });
     }
 
     // Verificar se mlOrderId já existe
@@ -101,14 +125,14 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    const tenantId = await getTenantIdOrDefault();
     const bill = await prisma.bill.create({
       data: {
         type,
-        description,
+        description: resolvedDescription,
         amount: parseFloat(amount),
         dueDate: new Date(dueDate),
-        category,
+        category: category || resolvedCategoryName || 'outro',
+        billCategoryId: billCategoryId || null,
         supplierId: supplierId || null,
         productId: productId || null,
         notes: notes || null,
@@ -116,7 +140,7 @@ export async function POST(req: NextRequest) {
         mlOrderId: mlOrderId || null,
         tenantId,
       },
-      include: { supplier: true, product: true },
+      include: { supplier: true, product: true, billCategory: { include: { parent: true } } },
     });
 
     return NextResponse.json(bill, { status: 201 });

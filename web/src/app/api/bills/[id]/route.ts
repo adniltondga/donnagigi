@@ -38,7 +38,7 @@ export async function PUT(
   try {
     await requireRole(['OWNER', 'ADMIN']);
     const body = await req.json();
-    const { description, amount, dueDate, category, supplierId, notes, productCost, productId, status, type } = body;
+    const { description, amount, dueDate, category, billCategoryId, supplierId, notes, productCost, productId, status, type } = body;
 
     const tenantId = await getTenantIdOrDefault();
 
@@ -70,6 +70,7 @@ export async function PUT(
       ...(amount && { amount: parseFloat(amount) }),
       ...(dueDate && { dueDate: new Date(dueDate) }),
       ...(category && { category }),
+      ...(billCategoryId !== undefined && { billCategoryId: billCategoryId || null }),
       ...(status && { status }),
       ...(type && { type }),
       ...(supplierId !== undefined && { supplierId: supplierId || null }),
@@ -81,7 +82,7 @@ export async function PUT(
     const bill = await prisma.bill.update({
       where: { id: params.id },
       data: updateData,
-      include: { supplier: true, product: true },
+      include: { supplier: true, product: true, billCategory: { include: { parent: true } } },
     });
 
     // Se a bill é uma venda ML e o usuário informou productCost,
