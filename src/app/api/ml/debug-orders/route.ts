@@ -1,12 +1,14 @@
-import prisma from '@/lib/prisma';
 import { NextRequest, NextResponse } from 'next/server';
+import { getTenantIdOrDefault } from '@/lib/tenant';
+import { getMLIntegrationForTenant } from '@/lib/ml';
 
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = req.nextUrl;
     const orderId = searchParams.get('orderId');
 
-    const integration = await prisma.mLIntegration.findFirst();
+    const tenantId = await getTenantIdOrDefault();
+    const integration = await getMLIntegrationForTenant(tenantId);
 
     if (!integration || !integration.accessToken) {
       return NextResponse.json(

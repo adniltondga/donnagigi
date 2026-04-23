@@ -13,10 +13,8 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
-import { PrismaClient } from '@prisma/client'
 import { syncAllMLProducts } from '@/lib/auto-sync-ml'
-
-const prisma = new PrismaClient()
+import { forEachMLTenant } from '@/lib/ml'
 
 export const dynamic = 'force-dynamic'
 
@@ -37,38 +35,25 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    console.log('[POLLING] iniciando sincronização automática...')
+    console.log('[POLLING] iniciando sincronização automática multi-tenant...')
 
-    // Buscar integração
-    const integration = await prisma.mLIntegration.findFirst()
-
-    if (!integration) {
-      return NextResponse.json(
-        { error: 'Integração com ML não configurada' },
-        { status: 400 }
+    // Sincronizar produtos de todos os tenants com integração ML
+    const perTenantResults: Array<{ tenantId: string; result: unknown }> = []
+    const summary = await forEachMLTenant(async (integration, tenantId) => {
+      const result = await syncAllMLProducts(
+        integration.accessToken,
+        integration.sellerID
       )
-    }
+      perTenantResults.push({ tenantId, result })
+    })
 
-    // Verificar se token não expirou
-    if (new Date() > integration.expiresAt) {
-      return NextResponse.json(
-        { error: 'Token de integração expirado' },
-        { status: 401 }
-      )
-    }
-
-    // Sincronizar todos os produtos
-    const result = await syncAllMLProducts(
-      integration.accessToken,
-      integration.sellerID
-    )
-
-    console.log('[POLLING] Resultado da sincronização:', result)
+    console.log('[POLLING] Resultado da sincronização:', summary)
 
     return NextResponse.json({
       status: 'success',
       timestamp: new Date().toISOString(),
-      sync_result: result,
+      sync_result: summary,
+      per_tenant: perTenantResults,
       next_run: 'Configure seu cron job para próxima execução',
       instructions: {
         recommended_interval: '15 minutos',

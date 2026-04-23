@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
-import { PrismaClient } from "@prisma/client"
-
-const prisma = new PrismaClient()
+import prisma from "@/lib/prisma"
+import { getTenantIdOrDefault } from "@/lib/tenant"
 
 export const dynamic = "force-dynamic"
 
@@ -52,20 +51,14 @@ export async function POST(request: NextRequest) {
 
     console.log(`[ML Auth] ✅ Token validado para vendedor: ${sellerId}`)
 
-    // Deletar integração anterior se existir
-    const existing = await prisma.mLIntegration.findFirst()
-    if (existing) {
-      console.log("[ML Auth] Removendo integração anterior...")
-      await prisma.mLIntegration.delete({
-        where: { id: existing.id },
-      })
-    }
+    const tenantId = await getTenantIdOrDefault()
+
+    // Deletar integração anterior do mesmo tenant
+    await prisma.mLIntegration.deleteMany({ where: { tenantId } })
 
     // Criar nova integração
-    const expiresAt = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000) // 1 ano (token não expira normalmente)
+    const expiresAt = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000) // 1 ano
 
-    const { getDefaultTenantId } = await import("@/lib/tenant")
-    const tenantId = await getDefaultTenantId()
     const integration = await prisma.mLIntegration.create({
       data: {
         accessToken,
