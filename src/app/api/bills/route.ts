@@ -1,5 +1,5 @@
 import prisma from '@/lib/prisma';
-import { getDefaultTenantId } from '@/lib/tenant';
+import { getTenantIdOrDefault } from '@/lib/tenant';
 import { NextRequest, NextResponse } from 'next/server';
 
 export async function GET(req: NextRequest) {
@@ -16,7 +16,8 @@ export async function GET(req: NextRequest) {
     const q = searchParams.get('q')?.trim();
     const orderBy = searchParams.get('orderBy') || 'dueDate_desc';
 
-    const where: any = {};
+    const tenantId = await getTenantIdOrDefault();
+    const where: any = { tenantId };
     if (category) where.category = category;
     if (excludeCategory) where.category = { not: excludeCategory };
     if (type) where.type = type;
@@ -98,7 +99,7 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    const tenantId = await getDefaultTenantId();
+    const tenantId = await getTenantIdOrDefault();
     const bill = await prisma.bill.create({
       data: {
         type,

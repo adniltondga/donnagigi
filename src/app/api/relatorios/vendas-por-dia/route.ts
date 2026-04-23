@@ -1,4 +1,5 @@
 import prisma from '@/lib/prisma';
+import { getTenantIdOrDefault } from '@/lib/tenant';
 import { NextRequest, NextResponse } from 'next/server';
 
 export const dynamic = 'force-dynamic';
@@ -28,8 +29,10 @@ export async function GET(req: NextRequest) {
       ? new Date(`${toParam}T23:59:59.999`)
       : new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
 
+    const tenantId = await getTenantIdOrDefault();
     const bills = await prisma.bill.findMany({
       where: {
+        tenantId,
         type: 'receivable',
         category: 'venda',
         status: { not: 'cancelled' },

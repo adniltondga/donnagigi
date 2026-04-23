@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/prisma'
-import { getDefaultTenantId } from '@/lib/tenant'
+import { getTenantIdOrDefault } from '@/lib/tenant'
 
 export async function GET(req: NextRequest) {
   try {
@@ -10,9 +10,14 @@ export async function GET(req: NextRequest) {
     const skip = (page - 1) * limit
     const search = searchParams.get('search')
 
-    const whereClause = search
-      ? { OR: [{ mlListingId: search }, { name: { contains: search, mode: 'insensitive' as const } }] }
-      : {}
+    const tenantId = await getTenantIdOrDefault()
+    const whereClause: any = { tenantId }
+    if (search) {
+      whereClause.OR = [
+        { mlListingId: search },
+        { name: { contains: search, mode: 'insensitive' as const } },
+      ]
+    }
 
     const [products, total] = await Promise.all([
       prisma.product.findMany({
@@ -121,7 +126,7 @@ export async function POST(req: NextRequest) {
     }
 
     // 1. Criar Produto
-    const tenantId = await getDefaultTenantId();
+    const tenantId = await getTenantIdOrDefault()
     const product = await prisma.product.create({
       data: {
         name: body.name,

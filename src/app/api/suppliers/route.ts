@@ -1,10 +1,12 @@
 import prisma from '@/lib/prisma';
-import { getDefaultTenantId } from '@/lib/tenant';
+import { getTenantIdOrDefault } from '@/lib/tenant';
 import { NextRequest, NextResponse } from 'next/server';
 
 export async function GET(_req: NextRequest) {
   try {
+    const tenantId = await getTenantIdOrDefault();
     const suppliers = await prisma.supplier.findMany({
+      where: { tenantId },
       orderBy: { name: 'asc' },
     });
 
@@ -32,7 +34,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const tenantId = await getDefaultTenantId();
+    const tenantId = await getTenantIdOrDefault();
     const supplier = await prisma.supplier.create({
       data: { name, tenantId },
     });

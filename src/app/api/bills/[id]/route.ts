@@ -1,4 +1,5 @@
 import prisma from '@/lib/prisma';
+import { getTenantIdOrDefault } from '@/lib/tenant';
 import { NextRequest, NextResponse } from 'next/server';
 
 export async function GET(
@@ -6,8 +7,9 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
-    const bill = await prisma.bill.findUnique({
-      where: { id: params.id },
+    const tenantId = await getTenantIdOrDefault();
+    const bill = await prisma.bill.findFirst({
+      where: { id: params.id, tenantId },
       include: { supplier: true },
     });
 
@@ -36,11 +38,22 @@ export async function PUT(
     const body = await req.json();
     const { description, amount, dueDate, category, supplierId, notes, productCost, productId, status, type } = body;
 
+    const tenantId = await getTenantIdOrDefault();
+
+    // Verifica ownership: só atualiza se a bill pertencer ao tenant logado
+    const existing = await prisma.bill.findFirst({
+      where: { id: params.id, tenantId },
+      select: { id: true },
+    });
+    if (!existing) {
+      return NextResponse.json({ error: 'Bill not found' }, { status: 404 });
+    }
+
     // Se productId foi fornecido, buscar os custos do produto
     let finalProductCost = productCost;
     if (productId && !productCost) {
-      const product = await prisma.product.findUnique({
-        where: { id: productId },
+      const product = await prisma.product.findFirst({
+        where: { id: productId, tenantId },
         select: { productCost: true },
       });
       if (product) {
@@ -95,17 +108,16 @@ export async function PUT(
         const title = (tMatchNew?.[1] || tMatchOld?.[1] || '').trim() || null;
         const costNum = Number(finalProductCost);
 
-        const { getDefaultTenantId } = await import('@/lib/tenant');
-        const tenantIdForCost = await getDefaultTenantId();
         await prisma.mLProductCost.upsert({
           where: { mlListingId: listingId },
-          create: { mlListingId: listingId, productCost: costNum, title, tenantId: tenantIdForCost },
+          create: { mlListingId: listingId, productCost: costNum, title, tenantId },
           update: { productCost: costNum, ...(title ? { title } : {}) },
         });
 
         const res = await prisma.bill.updateMany({
           where: {
             id: { not: bill.id },
+            tenantId,
             type: 'receivable',
             category: 'venda',
             productCost: null,
@@ -135,11 +147,16 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
-    const bill = await prisma.bill.delete({
-      where: { id: params.id },
+    const tenantId = await getTenantIdOrDefault();
+    const res = await prisma.bill.deleteMany({
+      where: { id: params.id, tenantId },
     });
 
-    return NextResponse.json(bill);
+    if (res.count === 0) {
+      return NextResponse.json({ error: 'Bill not found' }, { status: 404 });
+    }
+
+    return NextResponse.json({ success: true, deleted: res.count });
   } catch (error) {
     console.error('Error deleting bill:', error);
     return NextResponse.json(
