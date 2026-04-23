@@ -1,4 +1,5 @@
 import prisma from '@/lib/prisma';
+import { getTenantIdOrDefault } from '@/lib/tenant';
 import { NextRequest, NextResponse } from 'next/server';
 
 export const dynamic = 'force-dynamic';
@@ -124,9 +125,11 @@ export async function GET(req: NextRequest) {
     const prevTo = new Date(from.getTime() - 1);
     const prevFrom = new Date(prevTo.getTime() - windowMs);
 
+    const tenantId = await getTenantIdOrDefault();
     const [currentBills, prevBills, cancelledBills] = await Promise.all([
       prisma.bill.findMany({
         where: {
+          tenantId,
           type: 'receivable',
           category: 'venda',
           status: { not: 'cancelled' },
@@ -145,6 +148,7 @@ export async function GET(req: NextRequest) {
       }),
       prisma.bill.findMany({
         where: {
+          tenantId,
           type: 'receivable',
           category: 'venda',
           status: { not: 'cancelled' },
@@ -163,6 +167,7 @@ export async function GET(req: NextRequest) {
       }),
       prisma.bill.findMany({
         where: {
+          tenantId,
           type: 'receivable',
           category: 'venda',
           status: 'cancelled',
@@ -230,7 +235,7 @@ export async function GET(req: NextRequest) {
     }
     const produtosFallback = mlbsSemNome.size > 0
       ? await prisma.product.findMany({
-          where: { mlListingId: { in: Array.from(mlbsSemNome) } },
+          where: { tenantId, mlListingId: { in: Array.from(mlbsSemNome) } },
           select: { id: true, name: true, mlListingId: true },
         })
       : [];

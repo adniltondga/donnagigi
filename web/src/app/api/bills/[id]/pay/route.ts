@@ -1,4 +1,5 @@
 import prisma from '@/lib/prisma';
+import { getTenantIdOrDefault } from '@/lib/tenant';
 import { NextRequest, NextResponse } from 'next/server';
 
 export async function PATCH(
@@ -6,9 +7,10 @@ export async function PATCH(
   { params }: { params: { id: string } }
 ) {
   try {
-    const existing = await prisma.bill.findUnique({
-      where: { id: params.id },
-      select: { paidDate: true },
+    const tenantId = await getTenantIdOrDefault();
+    const existing = await prisma.bill.findFirst({
+      where: { id: params.id, tenantId },
+      select: { id: true, paidDate: true },
     });
     if (!existing) {
       return NextResponse.json({ error: 'Bill not found' }, { status: 404 });
@@ -17,7 +19,7 @@ export async function PATCH(
     // Só preenche paidDate se estiver vazio — bills de venda ML já nascem com
     // paidDate = data_closed do pedido, e não devem ser sobrescritas.
     const bill = await prisma.bill.update({
-      where: { id: params.id },
+      where: { id: existing.id },
       data: {
         status: 'paid',
         ...(existing.paidDate ? {} : { paidDate: new Date() }),
