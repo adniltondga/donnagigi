@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
-import { PrismaClient } from "@prisma/client"
+import prisma from "@/lib/prisma"
 import { getMLAppCredentials } from "@/lib/ml-credentials"
-
-const prisma = new PrismaClient()
+import { getMLRedirectUri } from "@/lib/ml-url"
 
 export const dynamic = "force-dynamic"
 
@@ -79,7 +78,9 @@ export async function GET(request: NextRequest) {
     console.log("[PKCE/CALLBACK] ✅ code_verifier recuperado do banco")
 
     // 2️⃣ Obter credenciais (do tenant do state, com fallback pro .env)
-    const redirectUri = process.env.ML_REDIRECT_URI || "https://www.aglivre.com.br/api/ml/oauth/callback"
+    // Redirect URI deriva do próprio request — precisa bater com o que
+    // foi enviado no login (o ML valida exatamente).
+    const redirectUri = getMLRedirectUri(request)
 
     let clientId: string
     let clientSecret: string
@@ -173,33 +174,40 @@ export async function GET(request: NextRequest) {
 
     // Tenant do usuário que iniciou o fluxo (salvo no state). Se o state
     // é antigo/null, cai pro default pra não quebrar integrações legadas.
-    let tenantId: string | null = tenantIdFromState
+    let tenantId: string | null | undefined = tenantIdFromState
+    console.log(`[PKCE/CALLBACK] tenantIdFromState: ${JSON.stringify(tenantIdFromState)}`)
+
     if (!tenantId) {
       const { getDefaultTenantId } = await import("@/lib/tenant")
       tenantId = await getDefaultTenantId()
+      console.log(`[PKCE/CALLBACK] Usando tenant default: ${tenantId}`)
     }
-    if (!tenantId || typeof tenantId !== "string") {
-      console.error("[PKCE/CALLBACK] ❌ tenantId indefinido — abortando create")
+
+    if (typeof tenantId !== "string" || tenantId.length === 0) {
+      console.error(`[PKCE/CALLBACK] ❌ tenantId inválido: ${JSON.stringify(tenantId)}`)
       return NextResponse.json(
         { erro: "Não foi possível determinar o tenant — faça login antes de conectar o ML" },
         { status: 400 }
       )
     }
 
-    console.log(`[PKCE/CALLBACK] Salvando integração no tenant ${tenantId}`)
+    const finalTenantId = tenantId
+    console.log(`[PKCE/CALLBACK] Salvando integração no tenant ${finalTenantId}`)
 
     // Deletar integração anterior do MESMO tenant se existir (não todas)
-    await prisma.mLIntegration.deleteMany({ where: { tenantId } })
+    const delRes = await prisma.mLIntegration.deleteMany({ where: { tenantId: finalTenantId } })
+    console.log(`[PKCE/CALLBACK] deleteMany removeu ${delRes.count} registro(s)`)
 
-    await prisma.mLIntegration.create({
+    const created = await prisma.mLIntegration.create({
       data: {
         sellerID: sellerID.toString(),
         accessToken: tokenData.access_token,
         refreshToken: tokenData.refresh_token || null,
         expiresAt: expiresAt,
-        tenantId,
+        tenantId: finalTenantId,
       },
     })
+    console.log(`[PKCE/CALLBACK] Integration criada: id=${created.id} tenantId=${created.tenantId}`)
 
     console.log("[PKCE/CALLBACK] ✅ Integração salva no banco")
 

@@ -1,10 +1,9 @@
 import { NextRequest, NextResponse } from "next/server"
 import crypto from "crypto"
-import { PrismaClient } from "@prisma/client"
+import prisma from "@/lib/prisma"
 import { getCurrentTenantId } from "@/lib/tenant"
 import { getMLClientId } from "@/lib/ml-credentials"
-
-const prisma = new PrismaClient()
+import { getMLRedirectUri } from "@/lib/ml-url"
 
 export const dynamic = "force-dynamic"
 
@@ -27,9 +26,9 @@ function generateCodeChallenge(codeVerifier: string): string {
     .replace(/=/g, "")
 }
 
-export async function GET(_request: NextRequest) {
+export async function GET(request: NextRequest) {
   try {
-    const redirectUri = process.env.ML_REDIRECT_URI || "https://www.aglivre.com.br/api/ml/oauth/callback"
+    const redirectUri = getMLRedirectUri(request)
 
     // Precisa estar logado — associamos a MLIntegration ao tenant do usuário
     let tenantId: string

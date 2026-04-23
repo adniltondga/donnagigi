@@ -32,7 +32,9 @@
       "Bash(npm install *)",
       "Bash(python3 *)",
       "Bash(awk ' /^function ManualTokenCard/ { skip=1 } skip==1 && /^\\\\/\\\\* ------------------- ASSINATURA -------------------/ { skip=0 } skip==0 { print } ' /Users/2480dtidigital/site/donnagigi/src/app/admin/configuracoes/page.tsx)",
-      "Bash(mv /tmp/cfg.tsx /Users/2480dtidigital/site/donnagigi/src/app/admin/configuracoes/page.tsx echo \"restantes:\" grep -c \"ManualTokenCard\" /Users/2480dtidigital/site/donnagigi/src/app/admin/configuracoes/page.tsx npx tsc --noEmit)"
+      "Bash(mv /tmp/cfg.tsx /Users/2480dtidigital/site/donnagigi/src/app/admin/configuracoes/page.tsx echo \"restantes:\" grep -c \"ManualTokenCard\" /Users/2480dtidigital/site/donnagigi/src/app/admin/configuracoes/page.tsx npx tsc --noEmit)",
+      "Bash(ps -p 858,80945 -o pid,command)",
+      "Bash(grep -n \"mLIntegration.create\" /Users/2480dtidigital/site/donnagigi/src/app/api -r echo \"---\" find /Users/2480dtidigital/site/donnagigi/src/app/api -name \"*.ts\" -path \"*callback*\" echo \"---processos---\" lsof -ti tcp:3000 echo \"---build cache---\" ls /Users/2480dtidigital/site/donnagigi/.next)"
     ]
   }
 }
