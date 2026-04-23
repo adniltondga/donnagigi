@@ -436,11 +436,7 @@ function MLPanel({ initialSuccess, initialError }: { initialSuccess: string | nu
     <div className="space-y-4">
       {message && <StatusMessage status={status === "success" ? "success" : "error"} message={message} />}
 
-      {/* Credenciais do app ML do tenant */}
-      <AppCredentialsCard />
-
-
-      {/* Card principal de status */}
+      {/* Card unificado: credenciais + conexão */}
       <Card>
         <CardHeader>
           <div className="flex items-start justify-between gap-4">
@@ -451,125 +447,69 @@ function MLPanel({ initialSuccess, initialError }: { initialSuccess: string | nu
               <div>
                 <CardTitle>Mercado Livre</CardTitle>
                 <CardDescription>
-                  Conecte sua conta do ML via OAuth pra sincronizar produtos e vendas.
+                  Registre seu app no ML DevCenter, cadastre aqui e conecte sua conta.
                 </CardDescription>
               </div>
             </div>
             {!loading && (
-              <Badge variant={integration?.configured ? (integration.isExpired ? "destructive" : "default") : "secondary"}>
-                {loading ? "..." : integration?.configured ? (integration.isExpired ? "Expirado" : "Conectado") : "Não conectado"}
+              <Badge
+                variant={
+                  integration?.configured
+                    ? integration.isExpired
+                      ? "destructive"
+                      : "default"
+                    : "secondary"
+                }
+              >
+                {loading
+                  ? "..."
+                  : integration?.configured
+                  ? integration.isExpired
+                    ? "Token expirado"
+                    : "Conectado"
+                  : "Não conectado"}
               </Badge>
             )}
           </div>
         </CardHeader>
 
-        <CardContent>
-          {loading ? (
-            <LoadingBox />
-          ) : integration?.configured ? (
-            <div className="space-y-5">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pb-4 border-b border-gray-100">
-                <div>
-                  <div className="text-xs text-gray-500 uppercase tracking-wide">Seller ID</div>
-                  <div className="text-sm font-mono font-semibold text-gray-900 mt-1">{integration.sellerID}</div>
-                </div>
-                <div>
-                  <div className="text-xs text-gray-500 uppercase tracking-wide">
-                    {integration.isExpired ? "Token expirou em" : "Token válido até"}
-                  </div>
-                  <div className="text-sm font-medium text-gray-900 mt-1">
-                    {integration.expiresAt ? new Date(integration.expiresAt).toLocaleString("pt-BR") : "—"}
-                  </div>
-                </div>
-              </div>
+        <CardContent className="space-y-6">
+          {/* Seção 1: Credenciais do app */}
+          <CredentialsSection />
 
-              {integration.isExpired && (
-                <div className="flex items-start gap-3 bg-amber-50 border border-amber-200 rounded-lg p-3 text-sm text-amber-900">
-                  <AlertCircle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
-                  <div>
-                    <p className="font-semibold">Token expirado</p>
-                    <p>Reconecte pra voltar a sincronizar.</p>
-                  </div>
-                </div>
-              )}
+          {/* Divider */}
+          <div className="border-t border-gray-100" />
 
-              <div className="flex flex-wrap gap-2">
-                <Button onClick={syncProducts} disabled={status === "syncing"} variant="default" size="sm">
-                  {status === "syncing" ? <Loader className="w-4 h-4 animate-spin mr-2" /> : <RefreshCw className="w-4 h-4 mr-2" />}
-                  Sincronizar produtos
-                </Button>
-                <Button onClick={syncOrders} disabled={status === "syncing"} variant="outline" size="sm">
-                  {status === "syncing" ? <Loader className="w-4 h-4 animate-spin mr-2" /> : <RefreshCw className="w-4 h-4 mr-2" />}
-                  Sincronizar vendas
-                </Button>
-                {integration.isExpired ? (
-                  <Button onClick={handleLogin} variant="default" size="sm">
-                    <Plug className="w-4 h-4 mr-2" />
-                    Reconectar
-                  </Button>
-                ) : (
-                  <Button onClick={handleDisconnect} variant="destructive" size="sm" className="ml-auto">
-                    <LogOut className="w-4 h-4 mr-2" />
-                    Desconectar
-                  </Button>
-                )}
-              </div>
-
-              {syncResult && syncResult.stats && (
-                <div className="rounded-lg border border-gray-200 p-4 text-sm bg-gray-50">
-                  <p className="font-semibold text-gray-900 mb-2 text-xs uppercase tracking-wide">Último resultado</p>
-                  <div className="grid grid-cols-3 gap-2">
-                    <StatBox label="Total" value={syncResult.stats.total} />
-                    <StatBox label="Sincronizados" value={syncResult.stats.synced ?? syncResult.stats.created} cls="text-emerald-600" />
-                    <StatBox label="Erros" value={syncResult.stats.failed ?? 0} cls="text-red-600" />
-                  </div>
-                </div>
-              )}
-            </div>
-          ) : (
-            <div className="space-y-5">
-              <div className="rounded-lg border border-gray-200 p-4 bg-gray-50 text-sm text-gray-700 space-y-2">
-                <p className="font-semibold text-gray-900">Como funciona a conexão?</p>
-                <ul className="space-y-1 text-xs text-gray-600 list-disc pl-4">
-                  <li>Você é redirecionado pro site do Mercado Livre.</li>
-                  <li>Faz login na sua conta ML e autoriza o agLivre.</li>
-                  <li>Voltamos aqui com o token — nunca vemos sua senha.</li>
-                  <li>A sincronização começa automaticamente.</li>
-                </ul>
-              </div>
-
-              <Button onClick={handleLogin} disabled={status === "loading"} className="w-full" size="lg">
-                {status === "loading" ? <Loader className="w-4 h-4 animate-spin mr-2" /> : <Plug className="w-4 h-4 mr-2" />}
-                {status === "loading" ? "Redirecionando..." : "Conectar Mercado Livre"}
-              </Button>
-            </div>
-          )}
+          {/* Seção 2: Conexão OAuth */}
+          <ConnectionSection
+            loading={loading}
+            integration={integration}
+            status={status}
+            syncResult={syncResult}
+            onLogin={handleLogin}
+            onDisconnect={handleDisconnect}
+            onSyncProducts={syncProducts}
+            onSyncOrders={syncOrders}
+          />
         </CardContent>
       </Card>
 
-      {/* Método avançado — token manual */}
+      {/* Token manual — avançado, pra quem já tem access_token */}
       {!integration?.configured && <ManualTokenCard onSuccess={check} />}
     </div>
   )
 }
 
-interface AppCredentialsResponse {
-  configured: boolean
-  source: "tenant" | "env" | null
-  clientId: string | null
-  clientSecretMasked: string | null
-  redirectUri: string
-  updatedAt?: string
-}
+/* ------------------- Seção Credenciais ------------------- */
 
-function AppCredentialsCard() {
+function CredentialsSection() {
   const [data, setData] = useState<AppCredentialsResponse | null>(null)
   const [loading, setLoading] = useState(true)
   const [editing, setEditing] = useState(false)
   const [clientId, setClientId] = useState("")
   const [clientSecret, setClientSecret] = useState("")
-  const [submitting, setSubmitting] = useState(false)
   const [showSecret, setShowSecret] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
   const [msg, setMsg] = useState<{ type: "success" | "error"; text: string } | null>(null)
 
   const load = () => {
@@ -633,119 +573,98 @@ function AppCredentialsCard() {
 
   const copy = (text: string) => navigator.clipboard.writeText(text)
 
+  if (loading) return <LoadingBox />
+
+  const hasOwn = data?.configured && data.source === "tenant"
+
   return (
-    <Card>
-      <CardHeader>
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <CardTitle className="text-base">App Mercado Livre</CardTitle>
-            <CardDescription>
-              Credenciais do app registrado no{" "}
-              <a
-                href="https://developers.mercadolivre.com.br/devcenter"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-primary-600 hover:text-primary-700 underline"
-              >
-                ML DevCenter
-              </a>
-              .
-            </CardDescription>
-          </div>
-          {!loading && data?.configured && !editing && (
-            <Badge variant={data.source === "tenant" ? "default" : "secondary"}>
-              {data.source === "tenant" ? "App próprio" : "App padrão agLivre"}
-            </Badge>
-          )}
+    <section className="space-y-3">
+      <div className="flex items-center justify-between">
+        <div>
+          <h3 className="text-sm font-semibold text-gray-900">App Mercado Livre</h3>
+          <p className="text-xs text-gray-500">
+            Credenciais do app registrado no{" "}
+            <a
+              href="https://developers.mercadolivre.com.br/devcenter"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-primary-600 hover:text-primary-700 underline"
+            >
+              ML DevCenter
+            </a>
+            .
+          </p>
         </div>
-      </CardHeader>
+        {!editing && data?.configured && (
+          <Badge variant={hasOwn ? "default" : "secondary"} className="text-xs">
+            {hasOwn ? "App próprio" : "App padrão"}
+          </Badge>
+        )}
+      </div>
 
-      <CardContent>
-        {msg && <StatusMessage status={msg.type} message={msg.text} />}
+      {msg && <StatusMessage status={msg.type} message={msg.text} />}
 
-        {loading ? (
-          <LoadingBox />
-        ) : editing ? (
-          <form onSubmit={save} className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Client ID</label>
+      {editing ? (
+        <form onSubmit={save} className="space-y-3">
+          <div>
+            <label className="block text-xs font-medium text-gray-700 mb-1">Client ID</label>
+            <input
+              type="text"
+              value={clientId}
+              onChange={(e) => setClientId(e.target.value)}
+              required
+              placeholder="1234567890123456"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg font-mono text-sm focus:ring-2 focus:ring-primary-600 focus:border-transparent outline-none"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-700 mb-1">Client Secret</label>
+            <div className="relative">
               <input
-                type="text"
-                value={clientId}
-                onChange={(e) => setClientId(e.target.value)}
+                type={showSecret ? "text" : "password"}
+                value={clientSecret}
+                onChange={(e) => setClientSecret(e.target.value)}
                 required
-                placeholder="1234567890123456"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg font-mono text-sm focus:ring-2 focus:ring-primary-600 focus:border-transparent outline-none"
+                placeholder="••••••••••••••••"
+                className="w-full px-3 py-2 pr-10 border border-gray-300 rounded-lg font-mono text-sm focus:ring-2 focus:ring-primary-600 focus:border-transparent outline-none"
               />
+              <button
+                type="button"
+                onClick={() => setShowSecret((v) => !v)}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 p-1"
+              >
+                {showSecret ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Client Secret</label>
-              <div className="relative">
-                <input
-                  type={showSecret ? "text" : "password"}
-                  value={clientSecret}
-                  onChange={(e) => setClientSecret(e.target.value)}
-                  required
-                  placeholder="••••••••••••••••"
-                  className="w-full px-3 py-2 pr-10 border border-gray-300 rounded-lg font-mono text-sm focus:ring-2 focus:ring-primary-600 focus:border-transparent outline-none"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowSecret((v) => !v)}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 p-1"
+          </div>
+
+          <div className="rounded-lg border border-gray-200 bg-gray-50 p-3 text-xs text-gray-600 space-y-1">
+            <p className="font-semibold text-gray-900">Como obter:</p>
+            <ol className="list-decimal pl-4 space-y-0.5">
+              <li>
+                Acesse{" "}
+                <a
+                  href="https://developers.mercadolivre.com.br/devcenter"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-primary-600 underline"
                 >
-                  {showSecret ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                </button>
-              </div>
-            </div>
+                  ML DevCenter
+                </a>{" "}
+                → Criar aplicação
+              </li>
+              <li>Registre a Redirect URI mostrada abaixo</li>
+              <li>Copie Client ID e Client Secret e cole aqui</li>
+            </ol>
+          </div>
 
-            <div className="rounded-lg border border-gray-200 bg-gray-50 p-3 text-xs text-gray-600 space-y-1">
-              <p className="font-semibold text-gray-900">Como obter:</p>
-              <ol className="list-decimal pl-4 space-y-0.5">
-                <li>
-                  Acesse{" "}
-                  <a
-                    href="https://developers.mercadolivre.com.br/devcenter"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-primary-600 underline"
-                  >
-                    ML DevCenter
-                  </a>{" "}
-                  → Criar aplicação
-                </li>
-                <li>Registre a Redirect URI mostrada abaixo</li>
-                <li>Copie Client ID e Client Secret e cole aqui</li>
-              </ol>
-            </div>
-
-            <div className="flex gap-2 justify-end">
-              <Button type="button" variant="outline" size="sm" onClick={cancel}>
-                Cancelar
-              </Button>
-              <Button type="submit" disabled={submitting || !clientId.trim() || !clientSecret.trim()} size="sm">
-                {submitting && <Loader className="w-4 h-4 animate-spin mr-2" />}
-                Salvar credenciais
-              </Button>
-            </div>
-          </form>
-        ) : data?.configured && data.source === "tenant" ? (
-          <div className="space-y-4">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <div className="text-xs text-gray-500 uppercase tracking-wide">Client ID</div>
-                <div className="text-sm font-mono text-gray-900 mt-1">{data.clientId}</div>
-              </div>
-              <div>
-                <div className="text-xs text-gray-500 uppercase tracking-wide">Client Secret</div>
-                <div className="text-sm font-mono text-gray-900 mt-1">{data.clientSecretMasked}</div>
-              </div>
-            </div>
-            <div className="pt-3 border-t border-gray-100">
-              <div className="text-xs text-gray-500 uppercase tracking-wide mb-1">Redirect URI (cadastre no DevCenter)</div>
-              <div className="flex items-center gap-2 bg-gray-50 px-3 py-2 rounded-lg">
+          {data?.redirectUri && (
+            <div>
+              <div className="text-xs text-gray-500 mb-1">Redirect URI</div>
+              <div className="flex items-center gap-2 bg-gray-50 px-3 py-2 rounded-lg border border-gray-200">
                 <code className="flex-1 text-xs font-mono break-all">{data.redirectUri}</code>
                 <button
+                  type="button"
                   onClick={() => copy(data.redirectUri)}
                   className="text-xs text-primary-600 hover:text-primary-700 font-medium whitespace-nowrap"
                 >
@@ -753,40 +672,198 @@ function AppCredentialsCard() {
                 </button>
               </div>
             </div>
-            <div className="flex gap-2 justify-end">
-              <Button variant="destructive" size="sm" onClick={remove}>
-                Remover
-              </Button>
-              <Button size="sm" onClick={startEdit}>
-                Editar
-              </Button>
-            </div>
-          </div>
-        ) : (
-          <div className="space-y-4">
-            <div className="rounded-lg border border-gray-200 bg-gray-50 p-4 text-sm space-y-2">
-              <p className="text-gray-900 font-medium">
-                {data?.configured ? (
-                  <>Usando o app padrão do agLivre. Cadastre seu próprio app pra ter rate limit isolado e a autorização mostrar o nome da sua empresa.</>
-                ) : (
-                  <>Nenhum app ML configurado — cadastre o seu pra ativar a conexão.</>
-                )}
-              </p>
-              {data?.redirectUri && (
-                <div className="text-xs text-gray-600">
-                  Redirect URI a cadastrar no DevCenter:{" "}
-                  <code className="font-mono text-xs break-all">{data.redirectUri}</code>
-                </div>
-              )}
-            </div>
-            <Button size="sm" onClick={startEdit}>
-              Cadastrar meu app
+          )}
+
+          <div className="flex gap-2 justify-end">
+            <Button type="button" variant="outline" size="sm" onClick={cancel}>
+              Cancelar
+            </Button>
+            <Button type="submit" disabled={submitting || !clientId.trim() || !clientSecret.trim()} size="sm">
+              {submitting && <Loader className="w-4 h-4 animate-spin mr-2" />}
+              Salvar credenciais
             </Button>
           </div>
-        )}
-      </CardContent>
-    </Card>
+        </form>
+      ) : hasOwn ? (
+        <div className="space-y-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <div className="text-xs text-gray-500 uppercase tracking-wide">Client ID</div>
+              <div className="text-sm font-mono text-gray-900 mt-1">{data.clientId}</div>
+            </div>
+            <div>
+              <div className="text-xs text-gray-500 uppercase tracking-wide">Client Secret</div>
+              <div className="text-sm font-mono text-gray-900 mt-1">{data.clientSecretMasked}</div>
+            </div>
+          </div>
+          <div>
+            <div className="text-xs text-gray-500 mb-1">Redirect URI (cadastre no DevCenter)</div>
+            <div className="flex items-center gap-2 bg-gray-50 px-3 py-2 rounded-lg border border-gray-200">
+              <code className="flex-1 text-xs font-mono break-all">{data.redirectUri}</code>
+              <button
+                onClick={() => copy(data.redirectUri)}
+                className="text-xs text-primary-600 hover:text-primary-700 font-medium whitespace-nowrap"
+              >
+                Copiar
+              </button>
+            </div>
+          </div>
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" onClick={startEdit}>
+              Editar
+            </Button>
+            <Button variant="destructive" size="sm" onClick={remove}>
+              Remover
+            </Button>
+          </div>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          <div className="rounded-lg border border-gray-200 bg-gray-50 p-3 text-xs text-gray-600">
+            {data?.configured ? (
+              <>
+                Usando o app padrão do agLivre. Cadastre seu próprio app pra ter rate limit isolado
+                e a autorização mostrar sua marca.
+              </>
+            ) : (
+              <>
+                Nenhum app cadastrado. Registre um app no ML DevCenter e cole Client ID + Secret.
+              </>
+            )}
+          </div>
+          <Button size="sm" onClick={startEdit}>
+            Cadastrar app próprio
+          </Button>
+        </div>
+      )}
+    </section>
   )
+}
+
+/* ------------------- Seção Conexão OAuth ------------------- */
+
+function ConnectionSection({
+  loading,
+  integration,
+  status,
+  syncResult,
+  onLogin,
+  onDisconnect,
+  onSyncProducts,
+  onSyncOrders,
+}: {
+  loading: boolean
+  integration: { configured: boolean; sellerID?: string; expiresAt?: string; isExpired?: boolean } | null
+  status: "idle" | "loading" | "syncing" | "success" | "error"
+  syncResult: any
+  onLogin: () => void
+  onDisconnect: () => void
+  onSyncProducts: () => void
+  onSyncOrders: () => void
+}) {
+  if (loading) return <LoadingBox />
+
+  if (integration?.configured) {
+    return (
+      <section className="space-y-4">
+        <div>
+          <h3 className="text-sm font-semibold text-gray-900">Conexão ativa</h3>
+          <p className="text-xs text-gray-500">Sua conta ML está conectada.</p>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pb-4 border-b border-gray-100">
+          <div>
+            <div className="text-xs text-gray-500 uppercase tracking-wide">Seller ID</div>
+            <div className="text-sm font-mono font-semibold text-gray-900 mt-1">{integration.sellerID}</div>
+          </div>
+          <div>
+            <div className="text-xs text-gray-500 uppercase tracking-wide">
+              {integration.isExpired ? "Token expirou em" : "Token válido até"}
+            </div>
+            <div className="text-sm font-medium text-gray-900 mt-1">
+              {integration.expiresAt ? new Date(integration.expiresAt).toLocaleString("pt-BR") : "—"}
+            </div>
+          </div>
+        </div>
+
+        {integration.isExpired && (
+          <div className="flex items-start gap-3 bg-amber-50 border border-amber-200 rounded-lg p-3 text-sm text-amber-900">
+            <AlertCircle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+            <div>
+              <p className="font-semibold">Token expirado</p>
+              <p>Reconecte pra voltar a sincronizar.</p>
+            </div>
+          </div>
+        )}
+
+        <div className="flex flex-wrap gap-2">
+          <Button onClick={onSyncProducts} disabled={status === "syncing"} variant="default" size="sm">
+            {status === "syncing" ? <Loader className="w-4 h-4 animate-spin mr-2" /> : <RefreshCw className="w-4 h-4 mr-2" />}
+            Sincronizar produtos
+          </Button>
+          <Button onClick={onSyncOrders} disabled={status === "syncing"} variant="outline" size="sm">
+            {status === "syncing" ? <Loader className="w-4 h-4 animate-spin mr-2" /> : <RefreshCw className="w-4 h-4 mr-2" />}
+            Sincronizar vendas
+          </Button>
+          {integration.isExpired ? (
+            <Button onClick={onLogin} variant="default" size="sm">
+              <Plug className="w-4 h-4 mr-2" />
+              Reconectar
+            </Button>
+          ) : (
+            <Button onClick={onDisconnect} variant="destructive" size="sm" className="ml-auto">
+              <LogOut className="w-4 h-4 mr-2" />
+              Desconectar
+            </Button>
+          )}
+        </div>
+
+        {syncResult && syncResult.stats && (
+          <div className="rounded-lg border border-gray-200 p-4 text-sm bg-gray-50">
+            <p className="font-semibold text-gray-900 mb-2 text-xs uppercase tracking-wide">Último resultado</p>
+            <div className="grid grid-cols-3 gap-2">
+              <StatBox label="Total" value={syncResult.stats.total} />
+              <StatBox label="Sincronizados" value={syncResult.stats.synced ?? syncResult.stats.created} cls="text-emerald-600" />
+              <StatBox label="Erros" value={syncResult.stats.failed ?? 0} cls="text-red-600" />
+            </div>
+          </div>
+        )}
+      </section>
+    )
+  }
+
+  return (
+    <section className="space-y-4">
+      <div>
+        <h3 className="text-sm font-semibold text-gray-900">Conectar conta ML</h3>
+        <p className="text-xs text-gray-500">Autorize o acesso via OAuth — não compartilhamos sua senha.</p>
+      </div>
+
+      <div className="rounded-lg border border-gray-200 bg-gray-50 p-3 text-xs text-gray-600 space-y-1">
+        <p className="font-semibold text-gray-900">O que acontece:</p>
+        <ol className="list-decimal pl-4 space-y-0.5">
+          <li>Você é levado pro ML pra fazer login.</li>
+          <li>Autoriza o app (o seu, ou o padrão do agLivre).</li>
+          <li>Voltamos aqui com o token salvo no banco.</li>
+          <li>Começa a sincronizar automaticamente.</li>
+        </ol>
+      </div>
+
+      <Button onClick={onLogin} disabled={status === "loading"} className="w-full" size="lg">
+        {status === "loading" ? <Loader className="w-4 h-4 animate-spin mr-2" /> : <Plug className="w-4 h-4 mr-2" />}
+        {status === "loading" ? "Redirecionando..." : "Conectar Mercado Livre"}
+      </Button>
+    </section>
+  )
+}
+
+interface AppCredentialsResponse {
+  configured: boolean
+  source: "tenant" | "env" | null
+  clientId: string | null
+  clientSecretMasked: string | null
+  redirectUri: string
+  updatedAt?: string
 }
 
 function ManualTokenCard({ onSuccess }: { onSuccess: () => void }) {

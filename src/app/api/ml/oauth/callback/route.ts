@@ -171,16 +171,22 @@ export async function GET(request: NextRequest) {
 
     console.log("[PKCE/CALLBACK] 💾 Salvando integração no banco...")
 
-    // Tenant do usuário que iniciou o fluxo (salvo no state). Se o state é
-    // antigo/null, cai pro default — só pra não quebrar integrações legadas
-    // enquanto o SaaS tem um único tenant.
-    let tenantId: string
-    if (tenantIdFromState) {
-      tenantId = tenantIdFromState
-    } else {
+    // Tenant do usuário que iniciou o fluxo (salvo no state). Se o state
+    // é antigo/null, cai pro default pra não quebrar integrações legadas.
+    let tenantId: string | null = tenantIdFromState
+    if (!tenantId) {
       const { getDefaultTenantId } = await import("@/lib/tenant")
       tenantId = await getDefaultTenantId()
     }
+    if (!tenantId || typeof tenantId !== "string") {
+      console.error("[PKCE/CALLBACK] ❌ tenantId indefinido — abortando create")
+      return NextResponse.json(
+        { erro: "Não foi possível determinar o tenant — faça login antes de conectar o ML" },
+        { status: 400 }
+      )
+    }
+
+    console.log(`[PKCE/CALLBACK] Salvando integração no tenant ${tenantId}`)
 
     // Deletar integração anterior do MESMO tenant se existir (não todas)
     await prisma.mLIntegration.deleteMany({ where: { tenantId } })
@@ -191,8 +197,8 @@ export async function GET(request: NextRequest) {
         accessToken: tokenData.access_token,
         refreshToken: tokenData.refresh_token || null,
         expiresAt: expiresAt,
-        tenantId
-      }
+        tenantId,
+      },
     })
 
     console.log("[PKCE/CALLBACK] ✅ Integração salva no banco")
