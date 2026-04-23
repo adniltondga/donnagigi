@@ -8,8 +8,7 @@ import {
   DollarSign,
   Package,
   Tag,
-  Plug,
-  CreditCard,
+  Settings,
   LogOut,
   X,
   type LucideIcon,
@@ -36,12 +35,18 @@ const MENU: MenuItem[] = [
   { label: "Financeiro", href: "/admin/financeiro", icon: DollarSign },
   { label: "Produtos", href: "/admin/products", icon: Package, isActive: (p) => p.startsWith("/admin/products") },
   { label: "Custos ML", href: "/admin/custos-ml", icon: Tag },
-  { label: "Integração ML", href: "/admin/integracao", icon: Plug },
+]
+
+// Itens no rodapé (acima do Sair): configurações gerais.
+const FOOTER_MENU: MenuItem[] = [
   {
-    label: "Assinatura",
-    href: "/admin/billing/assinatura",
-    icon: CreditCard,
-    isActive: (p) => p.startsWith("/admin/billing"),
+    label: "Configurações",
+    href: "/admin/configuracoes",
+    icon: Settings,
+    isActive: (p) =>
+      p.startsWith("/admin/configuracoes") ||
+      p.startsWith("/admin/integracao") ||
+      p.startsWith("/admin/billing"),
   },
 ]
 
@@ -130,8 +135,33 @@ export function AdminSidebar({ isOpen, onClose }: AdminSidebarProps) {
           })}
         </nav>
 
-        {/* Logout */}
-        <div className="border-t border-gray-200 p-4">
+        {/* Footer menu (Configurações) */}
+        <div className="border-t border-gray-200 p-4 space-y-1">
+          {FOOTER_MENU.map((item) => {
+            const Icon = item.icon
+            const active = item.isActive ? item.isActive(pathname) : pathname === item.href
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                onClick={onClose}
+                className={`
+                  relative flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all duration-200
+                  ${
+                    active
+                      ? "bg-primary-50 text-primary-700 font-medium"
+                      : "text-gray-700 hover:bg-gray-50 hover:text-gray-900"
+                  }
+                `}
+              >
+                <Icon className={`w-5 h-5 flex-shrink-0 ${active ? "text-primary-600" : "text-gray-400"}`} />
+                <span className="flex-1">{item.label}</span>
+                {active && (
+                  <span className="absolute right-2 top-1/2 -translate-y-1/2 w-1 h-6 bg-primary-600 rounded-full" />
+                )}
+              </Link>
+            )
+          })}
           <button
             onClick={handleLogout}
             className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-red-600 hover:bg-red-50 hover:text-red-700 transition-colors"
