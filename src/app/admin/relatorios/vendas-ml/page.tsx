@@ -104,9 +104,9 @@ export default function VendasMLPage() {
         setBackfillMsg(`❌ ${data.error || 'Erro no backfill'}`);
       } else {
         const s = data.stats;
-        const pend = s?.pendentes ? ' (ainda há mais vendas antigas — rode de novo pra continuar)' : '';
+        const pend = s?.pendentes ? ' (ainda há mais vendas — rode de novo pra continuar)' : '';
         setBackfillMsg(
-          `✅ ${s.updated} atualizada(s), ${s.semVariacao} sem variação no ML, ${s.erros} erro(s)${pend}`
+          `✅ ${s.updated} atualizada(s), ${s.jaOk ?? 0} já consistente(s), ${s.semVariacao} sem variação, ${s.erros} erro(s)${pend}`
         );
         fetchBills();
       }
