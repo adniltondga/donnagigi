@@ -4,10 +4,8 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
-import { PrismaClient } from '@prisma/client'
+import prisma from '@/lib/prisma'
 import { syncMLProductToDB } from '@/lib/auto-sync-ml'
-
-const prisma = new PrismaClient()
 
 export const dynamic = 'force-dynamic'
 
@@ -41,10 +39,12 @@ export async function POST(request: NextRequest) {
       timestamp: new Date(body.timestamp).toISOString(),
     })
 
-    // Validar que é nosso usuário
-    const integration = await prisma.mLIntegration.findFirst()
-    if (!integration || integration.sellerID !== body.user_id.toString()) {
-      console.warn('[WEBHOOK] Notificação de seller desconhecido')
+    // Localizar tenant dono do sellerID (multi-tenant safe)
+    const integration = await prisma.mLIntegration.findFirst({
+      where: { sellerID: body.user_id.toString() },
+    })
+    if (!integration) {
+      console.warn('[WEBHOOK] Notificação de seller desconhecido:', body.user_id)
       return NextResponse.json({ error: 'Seller não reconhecido' }, { status: 403 })
     }
 

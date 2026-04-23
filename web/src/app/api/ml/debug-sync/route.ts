@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server"
-import { PrismaClient } from "@prisma/client"
-
-const prisma = new PrismaClient()
+import { getTenantIdOrDefault } from "@/lib/tenant"
+import { getMLIntegrationForTenant } from "@/lib/ml"
 
 export const dynamic = "force-dynamic"
 
@@ -11,9 +10,10 @@ export const dynamic = "force-dynamic"
  */
 export async function GET() {
   try {
-    const integration = await prisma.mLIntegration.findFirst()
+    const tenantId = await getTenantIdOrDefault()
+    const integration = await getMLIntegrationForTenant(tenantId)
     if (!integration) {
-      return NextResponse.json({ error: "Sem integração" })
+      return NextResponse.json({ error: "Sem integração" }, { status: 400 })
     }
 
     const token = integration.accessToken

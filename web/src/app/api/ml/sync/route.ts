@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server"
 import { PrismaClient } from "@prisma/client"
 import { put } from "@vercel/blob"
-import { getDefaultTenantId } from "@/lib/tenant"
+import { getTenantIdOrDefault } from "@/lib/tenant"
+import { getMLIntegrationForTenant } from "@/lib/ml"
 
 const prisma = new PrismaClient()
 
@@ -37,8 +38,8 @@ interface MLProduct {
 
 export async function GET() {
   try {
-    // 1. Verificar se tem integração OAuth2
-    const integration = await prisma.mLIntegration.findFirst()
+    const tenantId = await getTenantIdOrDefault()
+    const integration = await getMLIntegrationForTenant(tenantId)
     if (!integration) {
       return NextResponse.json(
         {
@@ -46,17 +47,6 @@ export async function GET() {
           stats: { total: 0, synced: 0, failed: 0 },
         },
         { status: 400 }
-      )
-    }
-
-    // 2. Checar se token não expirou
-    if (new Date() > integration.expiresAt) {
-      return NextResponse.json(
-        {
-          error: "Token de integração expirado. Reconecte sua conta.",
-          stats: { total: 0, synced: 0, failed: 0 },
-        },
-        { status: 401 }
       )
     }
 
@@ -153,9 +143,8 @@ export async function GET() {
           where: { mlListingId: mlProduct.id },
         })
 
-        // Se não existe, criar
+        // Se não existe, criar (tenantId vem do escopo do endpoint)
         if (!product) {
-          const tenantId = await getDefaultTenantId()
           product = await prisma.product.create({
             data: {
               name: productTitle,

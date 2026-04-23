@@ -1,17 +1,17 @@
 import { NextResponse } from "next/server"
-import { PrismaClient } from "@prisma/client"
-
-const prisma = new PrismaClient()
+import prisma from "@/lib/prisma"
+import { getTenantIdOrDefault } from "@/lib/tenant"
 
 export const dynamic = "force-dynamic"
 
 /**
  * DELETE /api/mercadolivre/reset
- * Remove a integração e força o usuário a reconectar com os scopes corretos
+ * Remove a integração do tenant logado e força reconexão.
  */
 export async function DELETE() {
   try {
-    const integration = await prisma.mLIntegration.findFirst()
+    const tenantId = await getTenantIdOrDefault()
+    const integration = await prisma.mLIntegration.findFirst({ where: { tenantId } })
 
     if (!integration) {
       return NextResponse.json({
@@ -22,9 +22,7 @@ export async function DELETE() {
 
     // Deletar produtos sincronizados
     await prisma.mLProduct.deleteMany({
-      where: {
-        integrationId: integration.id,
-      },
+      where: { integrationId: integration.id },
     })
 
     // Deletar integração

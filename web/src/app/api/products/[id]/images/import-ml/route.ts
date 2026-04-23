@@ -1,17 +1,19 @@
 import { NextRequest, NextResponse } from "next/server"
-import { PrismaClient } from "@prisma/client"
+import prisma from "@/lib/prisma"
 import { put } from "@vercel/blob"
-
-const prisma = new PrismaClient()
+import { getTenantIdOrDefault } from "@/lib/tenant"
+import { getMLIntegrationForTenant } from "@/lib/ml"
 
 export async function POST(
   _request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
-    // Buscar produto
-    const product = await prisma.product.findUnique({
-      where: { id: params.id }
+    const tenantId = await getTenantIdOrDefault()
+
+    // Buscar produto (escopo tenant)
+    const product = await prisma.product.findFirst({
+      where: { id: params.id, tenantId }
     })
 
     if (!product) {
@@ -28,21 +30,13 @@ export async function POST(
       )
     }
 
-    // Buscar integração ML
-    const integration = await prisma.mLIntegration.findFirst()
+    // Buscar integração ML (escopo tenant)
+    const integration = await getMLIntegrationForTenant(tenantId)
 
     if (!integration) {
       return NextResponse.json(
         { error: "Integração com ML não configurada" },
         { status: 400 }
-      )
-    }
-
-    // Validar token
-    if (new Date() > integration.expiresAt) {
-      return NextResponse.json(
-        { error: "Token ML expirado" },
-        { status: 401 }
       )
     }
 

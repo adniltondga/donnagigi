@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server"
-import { PrismaClient } from "@prisma/client"
-
-const prisma = new PrismaClient()
+import { getTenantIdOrDefault } from "@/lib/tenant"
+import { getMLIntegrationForTenant } from "@/lib/ml"
 
 export const dynamic = "force-dynamic"
 
@@ -29,24 +28,17 @@ export async function GET(
       }, { status: 400 })
     }
 
-    // 1️⃣ Buscar integração ML
-    const mlIntegration = await prisma.mLIntegration.findFirst()
+    // 1️⃣ Buscar integração ML (escopo tenant)
+    const tenantId = await getTenantIdOrDefault()
+    const mlIntegration = await getMLIntegrationForTenant(tenantId)
 
     if (!mlIntegration) {
       return NextResponse.json({
         error: "MLIntegration não configurada"
-      }, { status: 401 })
+      }, { status: 400 })
     }
 
-    // 2️⃣ Validar token
-    const now = new Date()
-    if (now > mlIntegration.expiresAt) {
-      return NextResponse.json({
-        error: "Token expirado"
-      }, { status: 401 })
-    }
-
-    // 3️⃣ Chamar API do ML para buscar detalhes
+    // 2️⃣ Chamar API do ML para buscar detalhes
     const mlUrl = `https://api.mercadolibre.com/items/${listingId}`
 
     console.log("📡 Buscando detalhes do produto:", mlUrl)
