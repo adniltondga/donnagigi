@@ -12,6 +12,8 @@ import {
   XCircle,
 } from "lucide-react"
 import { formatCurrency } from "@/lib/calculations"
+import { PageHeader } from "@/components/ui/page-header"
+import { Card } from "@/components/ui/card"
 
 type Status = "TRIAL" | "ACTIVE" | "PENDING" | "OVERDUE" | "CANCELED" | "EXPIRED"
 type Plan = "FREE" | "PRO"
@@ -119,11 +121,8 @@ export default function AssinaturaPage() {
     isPaid && (subscription.status === "ACTIVE" || subscription.status === "PENDING")
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold text-gray-900">Assinatura</h1>
-        <p className="text-gray-600 mt-1">Seu plano e informações de pagamento.</p>
-      </div>
+    <div className="space-y-6">
+      <PageHeader title="Assinatura" description="Seu plano e informações de pagamento." />
 
       {message && (
         <div
@@ -138,7 +137,7 @@ export default function AssinaturaPage() {
       )}
 
       {/* Card principal */}
-      <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-4">
+      <Card className="p-6 space-y-4">
         <div className="flex items-start justify-between flex-wrap gap-4">
           <div>
             <div className="text-sm text-gray-500">Plano atual</div>
@@ -222,7 +221,7 @@ export default function AssinaturaPage() {
             </div>
           </div>
         </div>
-      </div>
+      </Card>
 
       {/* Ações */}
       <div className="flex flex-wrap gap-3">

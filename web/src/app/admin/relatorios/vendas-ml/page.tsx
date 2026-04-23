@@ -2,8 +2,11 @@
 
 import { useEffect, useState } from 'react';
 import { formatCurrency } from '@/lib/calculations';
-import { Info } from 'lucide-react';
+import { Info, ShoppingCart } from 'lucide-react';
 import { Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from '@/components/ui/table';
+import { PageHeader } from '@/components/ui/page-header';
+import { Card } from '@/components/ui/card';
+import { EmptyState } from '@/components/ui/empty-state';
 
 interface Bill {
   id: string;
@@ -103,16 +106,14 @@ export default function VendasMLPage() {
   };
 
   return (
-    <div className="max-w-7xl mx-auto">
-      <div className="flex items-center gap-3 mb-2">
-        <h1 className="text-3xl font-bold">🛒 Vendas Mercado Livre</h1>
-      </div>
-      <p className="text-gray-600 mb-6">
-        Listagem de todas as vendas importadas do ML. Clique no ícone ℹ️ para ver o detalhamento de taxas.
-      </p>
+    <div className="space-y-6">
+      <PageHeader
+        title="🛒 Vendas Mercado Livre"
+        description="Listagem de todas as vendas importadas do ML. Clique no ícone ℹ️ para ver o detalhamento de taxas."
+      />
 
       {/* Filtros */}
-      <div className="bg-white rounded-lg shadow p-4 mb-6 flex flex-wrap gap-4 items-end">
+      <Card className="p-4 flex flex-wrap gap-4 items-end">
         <form onSubmit={onSearch} className="flex-1 min-w-[280px] flex gap-2 items-end">
           <div className="flex-1">
             <label className="block text-sm font-medium text-gray-700 mb-1">Busca</label>
@@ -156,16 +157,16 @@ export default function VendasMLPage() {
             <option value="cancelled">Cancelado</option>
           </select>
         </div>
-      </div>
+      </Card>
 
-      <div className="mb-3 text-sm text-gray-600">
+      <div className="text-sm text-gray-600">
         {loading ? 'Carregando...' : `${total} venda${total === 1 ? '' : 's'} encontrada${total === 1 ? '' : 's'}`}
       </div>
 
       {/* Tabela */}
-      <div className="bg-white rounded-lg shadow overflow-hidden">
+      <Card className="overflow-hidden">
         {bills.length === 0 && !loading ? (
-          <div className="p-8 text-center text-gray-500">Nenhuma venda encontrada</div>
+          <EmptyState icon={ShoppingCart} title="Nenhuma venda encontrada" />
         ) : (
           <Table>
             <TableHeader>
@@ -237,11 +238,11 @@ export default function VendasMLPage() {
             </TableBody>
           </Table>
         )}
-      </div>
+      </Card>
 
       {/* Paginação */}
       {pages > 1 && (
-        <div className="mt-6 flex justify-center gap-2">
+        <div className="flex justify-center gap-2">
           <button
             onClick={() => setPage(Math.max(1, page - 1))}
             disabled={page === 1}

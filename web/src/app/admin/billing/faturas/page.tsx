@@ -5,6 +5,9 @@ import Link from "next/link"
 import { ExternalLink, FileText, Loader2 } from "lucide-react"
 import { formatCurrency } from "@/lib/calculations"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { PageHeader } from "@/components/ui/page-header"
+import { Card } from "@/components/ui/card"
+import { EmptyState } from "@/components/ui/empty-state"
 
 interface Invoice {
   id: string
@@ -51,34 +54,32 @@ export default function FaturasPage() {
   }, [])
 
   return (
-    <div className="max-w-5xl mx-auto space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">Faturas</h1>
-          <p className="text-gray-600 mt-1">Histórico de cobranças da sua assinatura.</p>
-        </div>
-        <Link
-          href="/admin/billing/assinatura"
-          className="text-sm text-primary-600 hover:text-primary-700 font-medium"
-        >
-          ← Voltar
-        </Link>
-      </div>
+    <div className="space-y-6">
+      <PageHeader
+        title="Faturas"
+        description="Histórico de cobranças da sua assinatura."
+        actions={
+          <Link
+            href="/admin/billing/assinatura"
+            className="text-sm text-primary-600 hover:text-primary-700 font-medium"
+          >
+            ← Voltar
+          </Link>
+        }
+      />
 
-      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+      <Card className="overflow-hidden">
         {loading ? (
           <div className="flex items-center justify-center py-12 text-gray-500">
             <Loader2 className="w-5 h-5 animate-spin mr-2" />
             Carregando...
           </div>
         ) : invoices.length === 0 ? (
-          <div className="text-center py-12">
-            <FileText className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-            <p className="text-gray-500 text-sm">Nenhuma fatura ainda</p>
-            <p className="text-gray-400 text-xs mt-1">
-              Assine o plano Pro pra começar a ver seus pagamentos aqui.
-            </p>
-          </div>
+          <EmptyState
+            icon={FileText}
+            title="Nenhuma fatura ainda"
+            description="Assine o plano Pro pra começar a ver seus pagamentos aqui."
+          />
         ) : (
           <Table>
             <TableHeader>
@@ -128,7 +129,7 @@ export default function FaturasPage() {
             </TableBody>
           </Table>
         )}
-      </div>
+      </Card>
     </div>
   )
 }

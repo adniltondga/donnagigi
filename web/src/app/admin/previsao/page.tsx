@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import { formatCurrency } from '@/lib/calculations';
+import { PageHeader } from '@/components/ui/page-header';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 interface DiaRow {
   dia: number;
@@ -61,14 +63,13 @@ export default function PrevisaoPage() {
   };
 
   return (
-    <div className="max-w-5xl mx-auto">
-      <h1 className="text-3xl font-bold mb-2">💸 Previsão de Recebimentos</h1>
-      <p className="text-gray-600 mb-6">
-        Quanto vai cair na conta em cada dia do mês, considerando ~30 dias entre a venda e o
-        repasse do Mercado Livre.
-      </p>
+    <div className="space-y-6">
+      <PageHeader
+        title="💸 Previsão de Recebimentos"
+        description="Quanto vai cair na conta em cada dia do mês, considerando ~30 dias entre a venda e o repasse do Mercado Livre."
+      />
 
-      <div className="bg-white rounded-lg shadow p-4 mb-6 flex flex-wrap gap-4 items-end">
+      <Card className="p-4 flex flex-wrap gap-4 items-end">
         <button
           onClick={() => mudarMes(-1)}
           className="px-3 py-2 border rounded-lg hover:bg-gray-50"
@@ -115,23 +116,23 @@ export default function PrevisaoPage() {
         >
           {loading ? 'Carregando...' : 'Atualizar'}
         </button>
-      </div>
+      </Card>
 
       {data && (
         <>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-            <div className="bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg shadow p-5 text-white">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl shadow-sm p-5 text-white">
               <p className="text-xs uppercase opacity-90">🛒 Total a receber em {MESES[month - 1]}</p>
               <p className="text-3xl font-bold mt-1">{formatCurrency(data.total)}</p>
               <p className="text-xs opacity-90 mt-1">{data.totalVendas} venda(s)</p>
             </div>
-            <div className="bg-white rounded-lg shadow p-5">
+            <Card className="p-5">
               <p className="text-xs uppercase text-gray-500">📅 Dias com recebimento</p>
               <p className="text-3xl font-bold text-gray-800 mt-1">
                 {data.dias.filter((d) => d.totalVenda > 0).length}
               </p>
-            </div>
-            <div className="bg-white rounded-lg shadow p-5">
+            </Card>
+            <Card className="p-5">
               <p className="text-xs uppercase text-gray-500">🏆 Melhor dia</p>
               <p className="text-3xl font-bold text-gray-800 mt-1">
                 {data.melhorDia.dia > 0 ? `Dia ${data.melhorDia.dia}` : '—'}
@@ -139,14 +140,14 @@ export default function PrevisaoPage() {
               <p className="text-sm text-gray-600">
                 {formatCurrency(data.melhorDia.totalVenda)}
               </p>
-            </div>
+            </Card>
           </div>
 
-          <div className="bg-white rounded-lg shadow overflow-hidden">
-            <div className="p-4 border-b font-semibold">
-              Recebimentos por dia — {MESES[month - 1]} {year}
-            </div>
-            <div className="p-4 space-y-2">
+          <Card className="overflow-hidden">
+            <CardHeader className="border-b border-gray-100">
+              <CardTitle>Recebimentos por dia — {MESES[month - 1]} {year}</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2">
               {data.dias.map((d) => {
                 const isBest = data.melhorDia.dia === d.dia && d.totalVenda > 0;
                 const pct = (d.totalVenda / maxValor) * 100;
@@ -170,8 +171,8 @@ export default function PrevisaoPage() {
                   </div>
                 );
               })}
-            </div>
-          </div>
+            </CardContent>
+          </Card>
         </>
       )}
     </div>

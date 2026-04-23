@@ -2,6 +2,10 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { formatCurrency } from '@/lib/calculations';
+import { PageHeader } from '@/components/ui/page-header';
+import { Card } from '@/components/ui/card';
+import { EmptyState } from '@/components/ui/empty-state';
+import { Package } from 'lucide-react';
 
 interface Item {
   mlListingId: string;
@@ -115,12 +119,11 @@ export default function CustosMLPage() {
   );
 
   return (
-    <div className="max-w-6xl mx-auto">
-      <h1 className="text-3xl font-bold mb-2">💰 Custos ML</h1>
-      <p className="text-gray-600 mb-6">
-        Cadastre o custo da mercadoria por anúncio. Toda venda futura desse anúncio já entra no
-        financeiro com o custo abatido, e as vendas anteriores sem custo são atualizadas automaticamente.
-      </p>
+    <div className="space-y-6">
+      <PageHeader
+        title="💰 Custos ML"
+        description="Cadastre o custo da mercadoria por anúncio. Toda venda futura desse anúncio já entra no financeiro com o custo abatido, e as vendas anteriores sem custo são atualizadas automaticamente."
+      />
 
       {toast && (
         <div className="fixed top-4 right-4 z-50 bg-gray-900 text-white px-4 py-2 rounded shadow-lg">
@@ -128,8 +131,8 @@ export default function CustosMLPage() {
         </div>
       )}
 
-      <div className="bg-white rounded-lg shadow overflow-hidden">
-        <div className="p-4 border-b flex items-center justify-between flex-wrap gap-3">
+      <Card className="overflow-hidden">
+        <div className="p-4 border-b border-gray-100 flex items-center justify-between flex-wrap gap-3">
           <div className="flex items-center gap-2 flex-wrap">
             {filtroBtn('todos', 'Todos', counts.total)}
             {filtroBtn('sem', '⚠ Sem custo', counts.sem)}
@@ -209,17 +212,19 @@ export default function CustosMLPage() {
               })}
               {!loading && visibleItems.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="px-4 py-8 text-center text-gray-500">
-                    {items.length === 0
-                      ? 'Nenhum anúncio com venda encontrado. Sincronize pedidos do ML primeiro.'
-                      : 'Nenhum item nesse filtro.'}
+                  <td colSpan={6} className="px-0 py-0">
+                    <EmptyState
+                      icon={Package}
+                      title={items.length === 0 ? 'Nenhum anúncio com venda encontrado' : 'Nenhum item nesse filtro'}
+                      description={items.length === 0 ? 'Sincronize pedidos do ML primeiro.' : undefined}
+                    />
                   </td>
                 </tr>
               )}
             </tbody>
           </table>
         </div>
-      </div>
+      </Card>
     </div>
   );
 }

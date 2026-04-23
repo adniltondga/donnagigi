@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { PageHeader } from '@/components/ui/page-header';
 
 interface RelatorioCard {
   href: string;
@@ -43,9 +44,8 @@ const CARDS: RelatorioCard[] = [
 
 export default function RelatoriosIndexPage() {
   return (
-    <div className="max-w-7xl mx-auto">
-      <h1 className="text-3xl font-bold mb-2">📊 Relatórios</h1>
-      <p className="text-gray-600 mb-8">Escolha um relatório para analisar.</p>
+    <div className="space-y-6">
+      <PageHeader title="📊 Relatórios" description="Escolha um relatório para analisar." />
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {CARDS.map((card) => (

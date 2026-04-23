@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react"
 import { useSearchParams } from "next/navigation"
 import { AlertCircle, CheckCircle, Loader, LogOut, RefreshCw } from "lucide-react"
+import { PageHeader } from "@/components/ui/page-header"
+import { Card } from "@/components/ui/card"
 
 export default function IntegracaoContent() {
   const searchParams = useSearchParams()
@@ -150,11 +152,7 @@ export default function IntegracaoContent() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-admin-900">Integrações</h1>
-        <p className="text-admin-600 mt-2">Conecte sua loja com plataformas externas</p>
-      </div>
+      <PageHeader title="Integrações" description="Conecte sua loja com plataformas externas" />
 
       {/* Message */}
       {message && (
@@ -188,7 +186,7 @@ export default function IntegracaoContent() {
       )}
 
       {/* Mercado Livre Card */}
-      <div className="bg-white rounded-lg shadow-md p-6 border border-admin-200">
+      <Card className="p-6">
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-3">
             <div className="w-12 h-12 bg-yellow-100 rounded-lg flex items-center justify-center text-2xl">
@@ -353,11 +351,11 @@ export default function IntegracaoContent() {
             </div>
           </div>
         )}
-      </div>
+      </Card>
 
       {/* Coming Soon */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className="bg-white rounded-lg shadow-md p-6 border border-admin-200 opacity-50">
+        <Card className="p-6 opacity-50">
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center gap-3">
               <div className="w-12 h-12 bg-red-100 rounded-lg flex items-center justify-center text-2xl">
@@ -375,9 +373,9 @@ export default function IntegracaoContent() {
           >
             Indisponível no momento
           </button>
-        </div>
+        </Card>
 
-        <div className="bg-white rounded-lg shadow-md p-6 border border-admin-200 opacity-50">
+        <Card className="p-6 opacity-50">
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center gap-3">
               <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center text-2xl">
@@ -395,7 +393,7 @@ export default function IntegracaoContent() {
           >
             Indisponível no momento
           </button>
-        </div>
+        </Card>
       </div>
     </div>
   )
