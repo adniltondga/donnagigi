@@ -3,7 +3,7 @@ import prisma from "@/lib/prisma"
 import { getTenantIdOrDefault } from "@/lib/tenant"
 import { getMLIntegrationForTenant } from "@/lib/ml"
 import { AuthError, authErrorResponse, requireRole } from "@/lib/auth"
-import { formatVariationLabel } from "../sync-orders/route"
+import { formatVariationLabel } from "@/lib/ml-format"
 
 export const dynamic = "force-dynamic"
 export const maxDuration = 300

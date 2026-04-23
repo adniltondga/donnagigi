@@ -1,36 +1,45 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import {
   LayoutDashboard,
   BarChart3,
   DollarSign,
-  Package,
+  Trophy,
   Tag,
   Settings,
   Users,
   LogOut,
+  ChevronDown,
   X,
   type LucideIcon,
 } from "lucide-react"
 
 interface MenuItem {
   label: string
-  href: string
+  href?: string
   icon: LucideIcon
-  /**
-   * Função opcional pra decidir se o item está ativo. Default: match exato.
-   */
+  /** Subitens. Se presente, o item vira grupo expansível. */
+  children?: Array<{ label: string; href: string }>
+  /** Função opcional pra decidir se está ativo. Default: match exato do href. */
   isActive?: (pathname: string) => boolean
 }
 
 const MENU: MenuItem[] = [
   { label: "Dashboard", href: "/admin/dashboard", icon: LayoutDashboard },
   { label: "Financeiro", href: "/admin/financeiro", icon: DollarSign },
-  { label: "Produtos", href: "/admin/products", icon: Package, isActive: (p) => p.startsWith("/admin/products") },
   { label: "Custos ML", href: "/admin/custos-ml", icon: Tag },
+  {
+    label: "Top Produtos",
+    icon: Trophy,
+    isActive: (p) => p.startsWith("/admin/top-produtos"),
+    children: [
+      { label: "Mais vendidos", href: "/admin/top-produtos/mais-vendidos" },
+      { label: "Menos vendidos", href: "/admin/top-produtos/menos-vendidos" },
+    ],
+  },
   {
     label: "Relatórios",
     href: "/admin/relatorios",
@@ -82,6 +91,32 @@ export function AdminSidebar({ isOpen, onClose }: AdminSidebarProps) {
     if (item.href === "/admin/equipe") return role === "OWNER" || role === "ADMIN"
     return true
   })
+
+  // Estado de grupos expandidos. Auto-abre o grupo que contém a página atual.
+  const initialExpanded = useMemo(() => {
+    const set = new Set<string>()
+    for (const item of MENU) {
+      if (item.children && item.children.some((c) => pathname.startsWith(c.href))) {
+        set.add(item.label)
+      }
+    }
+    return set
+  }, [pathname])
+  const [expanded, setExpanded] = useState<Set<string>>(initialExpanded)
+  useEffect(() => {
+    setExpanded((prev) => {
+      const next = new Set(prev)
+      initialExpanded.forEach((v) => next.add(v))
+      return next
+    })
+  }, [initialExpanded])
+  const toggleGroup = (label: string) =>
+    setExpanded((prev) => {
+      const next = new Set(prev)
+      if (next.has(label)) next.delete(label)
+      else next.add(label)
+      return next
+    })
 
   const handleLogout = async () => {
     try {
@@ -135,10 +170,63 @@ export function AdminSidebar({ isOpen, onClose }: AdminSidebarProps) {
           {MENU.map((item) => {
             const Icon = item.icon
             const active = item.isActive ? item.isActive(pathname) : pathname === item.href
+
+            // Grupo expansível com subitens
+            if (item.children && item.children.length > 0) {
+              const isOpenGroup = expanded.has(item.label)
+              return (
+                <div key={item.label}>
+                  <button
+                    type="button"
+                    onClick={() => toggleGroup(item.label)}
+                    className={`
+                      w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all duration-200
+                      ${
+                        active
+                          ? "bg-primary-50 text-primary-700 font-medium"
+                          : "text-gray-700 hover:bg-gray-50 hover:text-gray-900"
+                      }
+                    `}
+                  >
+                    <Icon className={`w-5 h-5 flex-shrink-0 ${active ? "text-primary-600" : "text-gray-400"}`} />
+                    <span className="flex-1 text-left">{item.label}</span>
+                    <ChevronDown
+                      className={`w-4 h-4 text-gray-400 transition-transform ${isOpenGroup ? "rotate-180" : ""}`}
+                    />
+                  </button>
+                  {isOpenGroup && (
+                    <div className="mt-1 ml-4 pl-3 border-l border-gray-200 space-y-1">
+                      {item.children.map((child) => {
+                        const childActive = pathname.startsWith(child.href)
+                        return (
+                          <Link
+                            key={child.href}
+                            href={child.href}
+                            onClick={onClose}
+                            className={`
+                              block px-3 py-2 rounded-lg text-sm transition-colors
+                              ${
+                                childActive
+                                  ? "bg-primary-50 text-primary-700 font-medium"
+                                  : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+                              }
+                            `}
+                          >
+                            {child.label}
+                          </Link>
+                        )
+                      })}
+                    </div>
+                  )}
+                </div>
+              )
+            }
+
+            // Item simples (com href)
             return (
               <Link
                 key={item.href}
-                href={item.href}
+                href={item.href!}
                 onClick={onClose}
                 className={`
                   relative flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all duration-200
@@ -167,7 +255,7 @@ export function AdminSidebar({ isOpen, onClose }: AdminSidebarProps) {
             return (
               <Link
                 key={item.href}
-                href={item.href}
+                href={item.href!}
                 onClick={onClose}
                 className={`
                   relative flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all duration-200
