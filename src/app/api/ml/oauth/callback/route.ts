@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { PrismaClient } from "@prisma/client"
+import { getMLAppCredentials } from "@/lib/ml-credentials"
 
 const prisma = new PrismaClient()
 
@@ -77,16 +78,32 @@ export async function GET(request: NextRequest) {
     const tenantIdFromState = oauthState.tenantId
     console.log("[PKCE/CALLBACK] ✅ code_verifier recuperado do banco")
 
-    // 2️⃣ Obter credenciais
-    const clientId = process.env.ML_CLIENT_ID
-    const clientSecret = process.env.ML_CLIENT_SECRET
+    // 2️⃣ Obter credenciais (do tenant do state, com fallback pro .env)
     const redirectUri = process.env.ML_REDIRECT_URI || "https://www.aglivre.com.br/api/ml/oauth/callback"
 
-    if (!clientId || !clientSecret) {
-      console.error("[PKCE/CALLBACK] ❌ Credenciais ML não configuradas")
-      return NextResponse.json({
-        erro: "Credenciais ML não configuradas"
-      }, { status: 500 })
+    let clientId: string
+    let clientSecret: string
+    try {
+      // Se o state tem tenantId, usa as credenciais daquele tenant;
+      // senão, cai pro env (fluxo legacy)
+      const tenantForCreds = tenantIdFromState
+      if (tenantForCreds) {
+        const c = await getMLAppCredentials(tenantForCreds)
+        clientId = c.clientId
+        clientSecret = c.clientSecret
+      } else {
+        const envId = process.env.ML_CLIENT_ID
+        const envSecret = process.env.ML_CLIENT_SECRET
+        if (!envId || !envSecret) throw new Error("Credenciais ML não configuradas")
+        clientId = envId
+        clientSecret = envSecret
+      }
+    } catch (err) {
+      console.error("[PKCE/CALLBACK] ❌", err)
+      return NextResponse.json(
+        { erro: err instanceof Error ? err.message : "Credenciais ML não configuradas" },
+        { status: 500 }
+      )
     }
 
     // 3️⃣ Trocar código por token (com PKCE)
