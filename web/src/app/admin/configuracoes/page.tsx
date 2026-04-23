@@ -386,31 +386,6 @@ function MLPanel({ initialSuccess, initialError }: { initialSuccess: string | nu
     }
   }
 
-  const syncProducts = async () => {
-    setStatus("syncing")
-    setMessage("")
-    setSyncResult(null)
-    try {
-      const res = await fetch("/api/ml/sync", { method: "GET" })
-      const data = await res.json()
-      if (!res.ok) {
-        setStatus("error")
-        setMessage(data.error || "Erro ao sincronizar produtos")
-        return
-      }
-      setSyncResult(data)
-      setStatus("success")
-      setMessage(data.message)
-      setTimeout(() => {
-        setStatus("idle")
-        setMessage("")
-      }, 10000)
-    } catch (err) {
-      setStatus("error")
-      setMessage(`Erro: ${err instanceof Error ? err.message : "desconhecido"}`)
-    }
-  }
-
   const syncOrders = async () => {
     setStatus("syncing")
     setMessage("")
@@ -492,7 +467,6 @@ function MLPanel({ initialSuccess, initialError }: { initialSuccess: string | nu
             syncResult={syncResult}
             onLogin={handleLogin}
             onDisconnect={handleDisconnect}
-            onSyncProducts={syncProducts}
             onSyncOrders={syncOrders}
           />
         </CardContent>
@@ -759,7 +733,6 @@ function ConnectionSection({
   syncResult,
   onLogin,
   onDisconnect,
-  onSyncProducts,
   onSyncOrders,
 }: {
   loading: boolean
@@ -768,7 +741,6 @@ function ConnectionSection({
   syncResult: any
   onLogin: () => void
   onDisconnect: () => void
-  onSyncProducts: () => void
   onSyncOrders: () => void
 }) {
   if (loading) return <LoadingBox />
@@ -807,11 +779,7 @@ function ConnectionSection({
         )}
 
         <div className="flex flex-wrap gap-2">
-          <Button onClick={onSyncProducts} disabled={status === "syncing"} variant="default" size="sm">
-            {status === "syncing" ? <Loader className="w-4 h-4 animate-spin mr-2" /> : <RefreshCw className="w-4 h-4 mr-2" />}
-            Sincronizar produtos
-          </Button>
-          <Button onClick={onSyncOrders} disabled={status === "syncing"} variant="outline" size="sm">
+          <Button onClick={onSyncOrders} disabled={status === "syncing"} variant="default" size="sm">
             {status === "syncing" ? <Loader className="w-4 h-4 animate-spin mr-2" /> : <RefreshCw className="w-4 h-4 mr-2" />}
             Sincronizar vendas
           </Button>
