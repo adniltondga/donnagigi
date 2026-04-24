@@ -12,11 +12,13 @@ import {
   Loader,
   Settings,
   ArrowRight,
+  Info,
 } from "lucide-react"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { PageHeader } from "@/components/ui/page-header"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { StatCard } from "@/components/ui/stat-card"
+import { SummaryCard } from "@/components/ui/summary-card"
 import {
   Dialog,
   DialogContent,
@@ -151,42 +153,35 @@ export default function ProLaborePage() {
       ) : (
         <>
           {/* Fechamento do mês — ordem: entrada → custos → resultado. */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
-            <StatCard
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <SummaryCard
               label="Lucro real recebido"
               value={formatCurrency(data.receitaRecebida)}
-              sub={
+              tooltip={
                 data.cmvDoMes > 0
                   ? `recebido ${formatCurrency(data.receitaBruta)} − mercadoria ${formatCurrency(data.cmvDoMes)} (via Custos ML)`
                   : "recebido já sem taxas ML · sem custo cadastrado"
               }
               icon={TrendingUp}
-              accent="emerald"
+              tone="emerald"
             />
-            <StatCard
+            <SummaryCard
               label="Despesas pagas"
               value={formatCurrency(data.despesasPagas)}
-              sub="bills marcadas como pagas"
+              sub="faturas pagas"
               icon={Wallet}
-              accent="rose"
+              tone="rose"
             />
-            <StatCard
-              label="Aportes do mês"
-              value={formatCurrency(data.aportesNoMes)}
-              sub="dívida da loja com o sócio · não conta no lucro · vira amortização quando pago"
-              icon={PiggyBank}
-              accent="fuchsia"
-            />
-            <StatCard
+            <SummaryCard
               label="Lucro líquido do mês"
               value={formatCurrency(data.lucroLiquido)}
-              sub={
+              tooltip={
                 data.lucroLiquido >= 0
                   ? "lucro real − despesas pagas · o que sobrou"
                   : "prejuízo — despesas maiores que o lucro real"
               }
               icon={PiggyBank}
-              accent={data.lucroLiquido >= 0 ? "emerald" : "rose"}
+              tone={data.lucroLiquido >= 0 ? "emerald" : "rose"}
             />
           </div>
 
@@ -215,13 +210,61 @@ export default function ProLaborePage() {
                   <p className="text-4xl font-bold text-gray-900 mt-1 tabular-nums">
                     {formatCurrency(data.proLaboreSeguro)}
                   </p>
-                  <p className="text-sm text-gray-600 mt-1">
-                    <strong>Base: {formatCurrency(data.baseDisponivel)}</strong> — resultado acumulado do ano
-                    ({formatCurrency(data.lucroAcumuladoYTD)})
-                    {data.proLaboresYTD > 0 && ` − pró-labores já tirados (${formatCurrency(data.proLaboresYTD)})`}
-                    . Depois descontei amortização de aportes, reserva que falta e reinvestimento (
-                    {data.reinvestimento.pct}%).
-                  </p>
+                  <div className="flex items-center gap-1.5 mt-1">
+                    <span className="text-sm text-gray-600">
+                      lucro acumulado: <strong className="text-gray-900">{formatCurrency(data.lucroAcumuladoYTD)}</strong>
+                    </span>
+                    <TooltipProvider delayDuration={150}>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <button type="button" className="text-gray-400 hover:text-gray-600">
+                            <Info className="w-3.5 h-3.5" />
+                          </button>
+                        </TooltipTrigger>
+                        <TooltipContent className="text-xs space-y-1 max-w-xs p-3">
+                          <div className="flex justify-between gap-4 font-semibold">
+                            <span>Lucro acumulado</span>
+                            <span>{formatCurrency(data.lucroAcumuladoYTD)}</span>
+                          </div>
+                          {data.proLaboresYTD > 0 && (
+                            <>
+                              <div className="flex justify-between gap-4">
+                                <span className="text-gray-400">− Pró-labores tirados</span>
+                                <span className="font-medium">{formatCurrency(data.proLaboresYTD)}</span>
+                              </div>
+                              <div className="border-t border-gray-200 pt-1 flex justify-between gap-4 font-semibold">
+                                <span>= Base disponível</span>
+                                <span>{formatCurrency(data.baseDisponivel)}</span>
+                              </div>
+                            </>
+                          )}
+                          <div className="border-t border-gray-200 pt-1 space-y-1">
+                            <p className="text-gray-400 text-[11px] uppercase tracking-wide">deduzido para chegar no pró-labore</p>
+                            {data.aportesADevolver.amortizacaoSugerida > 0 && (
+                              <div className="flex justify-between gap-4">
+                                <span className="text-gray-400">− Amortização aportes</span>
+                                <span className="font-medium">{formatCurrency(data.aportesADevolver.amortizacaoSugerida)}</span>
+                              </div>
+                            )}
+                            {data.reserva.falta > 0 && (
+                              <div className="flex justify-between gap-4">
+                                <span className="text-gray-400">− Reserva pendente</span>
+                                <span className="font-medium">{formatCurrency(data.reserva.falta)}</span>
+                              </div>
+                            )}
+                            <div className="flex justify-between gap-4">
+                              <span className="text-gray-400">− Reinvestimento ({data.reinvestimento.pct}%)</span>
+                              <span className="font-medium">{formatCurrency(data.reinvestimento.sugerido)}</span>
+                            </div>
+                            <div className="flex justify-between gap-4 font-semibold text-primary-700">
+                              <span>= Pró-labore sugerido</span>
+                              <span>{formatCurrency(data.proLaboreSeguro)}</span>
+                            </div>
+                          </div>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  </div>
                   {data.baseDisponivel === 0 && data.lucroLiquido > 0 && (
                     <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded px-2 py-1 mt-2 inline-block">
                       ⚠️ Mês lucrativo, mas o ano ainda acumula prejuízo. O lucro deste mês está cobrindo
