@@ -73,7 +73,7 @@ export async function GET(req: NextRequest) {
     })
     const receitaRecebida = receitas.reduce((s, b) => s + b.amount, 0)
 
-    // Despesas operacionais pagas no mês (payable status=paid, exclui aporte — não é "despesa real")
+    // Despesas operacionais pagas no mês (status=paid, exclui aporte)
     const despesasPagas = await prisma.bill.findMany({
       where: {
         tenantId,
@@ -88,7 +88,27 @@ export async function GET(req: NextRequest) {
     })
     const despesasPagasTotal = despesasPagas.reduce((s, b) => s + b.amount, 0)
 
-    const lucroLiquido = receitaRecebida - despesasPagasTotal
+    // Aportes LANÇADOS no mês (bills da cat Aporte sócio com dueDate no mês).
+    // Conceitualmente são despesa operacional: a loja teve esse custo
+    // (mercadoria/embalagem/frete), quem adiantou o pagamento foi o sócio.
+    // Entra no cálculo do lucro mesmo que ainda não tenha sido devolvido.
+    const aportesNoMes =
+      aporteIds.length > 0
+        ? await prisma.bill.findMany({
+            where: {
+              tenantId,
+              type: "payable",
+              billCategoryId: { in: aporteIds },
+              NOT: { status: "cancelled" },
+              dueDate: { gte: start, lt: end },
+            },
+            select: { amount: true },
+          })
+        : []
+    const aportesNoMesTotal = aportesNoMes.reduce((s, b) => s + b.amount, 0)
+
+    const custoOperacionalTotal = despesasPagasTotal + aportesNoMesTotal
+    const lucroLiquido = receitaRecebida - custoOperacionalTotal
 
     // Contas a pagar pendentes com dueDate no mês (exclui aporte)
     const contasDoMes = await prisma.bill.findMany({
@@ -148,7 +168,10 @@ export async function GET(req: NextRequest) {
 
     const reservaMeta = Math.round(despesaFixaMedia * settings.reservaMeses * 100) / 100
     const reservaAtual = settings.saldoCaixaAtual ?? 0
-    const faltaParaReserva = Math.max(0, reservaMeta - reservaAtual)
+    // Se não há histórico de despesa (meta=0), nem "atingido" nem "falta" — é só
+    // não calculável. faltaParaReserva=0 nesse caso mas o front indica o estado.
+    const reservaSemHistorico = despesaFixaMedia === 0
+    const faltaParaReserva = reservaSemHistorico ? 0 : Math.max(0, reservaMeta - reservaAtual)
 
     const reinvestSugerido =
       lucroLiquido > 0 ? Math.round(((lucroLiquido * settings.reinvestPct) / 100) * 100) / 100 : 0
@@ -195,6 +218,8 @@ export async function GET(req: NextRequest) {
       // Fechamento do mês selecionado — base de competência do pró-labore
       receitaRecebida: Math.round(receitaRecebida * 100) / 100,
       despesasPagas: Math.round(despesasPagasTotal * 100) / 100,
+      aportesNoMes: Math.round(aportesNoMesTotal * 100) / 100,
+      custoOperacionalTotal: Math.round(custoOperacionalTotal * 100) / 100,
       lucroLiquido: Math.round(lucroLiquido * 100) / 100,
       contasAPagarDoMes: {
         total: Math.round(contasAPagarMesTotal * 100) / 100,
@@ -211,7 +236,14 @@ export async function GET(req: NextRequest) {
         atual: reservaAtual,
         despesaFixaMedia: Math.round(despesaFixaMedia * 100) / 100,
         meses: settings.reservaMeses,
-        pctAtingido: reservaMeta > 0 ? Math.min(100, (reservaAtual / reservaMeta) * 100) : 100,
+        // Se semHistorico=true, não dá pra calcular %. Front mostra estado
+        // "Pendente: sem histórico de despesas" em vez de "Atingido".
+        semHistorico: reservaSemHistorico,
+        pctAtingido: reservaSemHistorico
+          ? 0
+          : reservaMeta > 0
+          ? Math.min(100, (reservaAtual / reservaMeta) * 100)
+          : 100,
         falta: faltaParaReserva,
       },
       reinvestimento: {
