@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react"
 import { usePathname } from "next/navigation"
 import { Menu } from "lucide-react"
+import { NotificationBell } from "./NotificationBell"
 
 const TITLE_MAP: Array<{ prefix: string; title: string }> = [
   { prefix: "/admin/dashboard", title: "Dashboard" },
@@ -62,15 +63,18 @@ export function AppHeader({ onOpenSidebar }: { onOpenSidebar: () => void }) {
         <h1 className="hidden md:block text-xl font-semibold text-gray-900">{title}</h1>
       </div>
 
-      <div className="flex items-center gap-3 pl-4 border-l border-gray-200">
-        <div className="hidden sm:block text-right">
-          <p className="text-sm font-medium text-gray-900 leading-tight">{firstName}</p>
-          {me?.tenant?.name && (
-            <p className="text-xs text-gray-500 leading-tight">{me.tenant.name}</p>
-          )}
-        </div>
-        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary-600 to-fuchsia-700 flex items-center justify-center text-white font-semibold">
-          {firstLetter}
+      <div className="flex items-center gap-2">
+        <NotificationBell />
+        <div className="flex items-center gap-3 pl-3 border-l border-gray-200">
+          <div className="hidden sm:block text-right">
+            <p className="text-sm font-medium text-gray-900 leading-tight">{firstName}</p>
+            {me?.tenant?.name && (
+              <p className="text-xs text-gray-500 leading-tight">{me.tenant.name}</p>
+            )}
+          </div>
+          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary-600 to-fuchsia-700 flex items-center justify-center text-white font-semibold">
+            {firstLetter}
+          </div>
         </div>
       </div>
     </header>
