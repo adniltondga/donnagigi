@@ -40,9 +40,12 @@ interface Snapshot {
   configured: boolean
   unavailableBalance?: number
   pendingCount?: number
+  releasedTotal?: number
+  releasedCount?: number
   disputedTotal?: number
   disputedCount?: number
   pendingDays?: Day[]
+  releasedDays?: Day[]
   disputedPayments?: Payment[]
   cachedSyncedAt?: string | null
   error?: string
@@ -157,13 +160,12 @@ export function MercadoPagoClient() {
     })
   }, [cachedAt])
 
-  // Aplica filtros de período (from..to) e busca por texto.
-  const filteredDays = useMemo(() => {
-    if (!snap?.pendingDays) return [] as Day[]
+  // Filtra uma lista de dias por período + query (reutilizável pra pending e released).
+  const applyFilter = (source: Day[] | undefined) => {
+    if (!source) return [] as Day[]
     const q = searchQuery.trim().toLowerCase()
-
     const result: Day[] = []
-    for (const day of snap.pendingDays) {
+    for (const day of source) {
       if (day.date < periodFrom || day.date > periodTo) continue
 
       let payments = day.payments
@@ -184,19 +186,26 @@ export function MercadoPagoClient() {
       })
     }
     return result
-  }, [snap, periodFrom, periodTo, searchQuery])
+  }
 
-  const filteredTotal = useMemo(
-    () => filteredDays.reduce((s, d) => s + d.total, 0),
-    [filteredDays]
+  const filteredDays = useMemo(
+    () => applyFilter(snap?.pendingDays),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [snap, periodFrom, periodTo, searchQuery]
   )
-  const filteredCount = useMemo(
-    () => filteredDays.reduce((s, d) => s + d.count, 0),
-    [filteredDays]
+  const filteredReleased = useMemo(
+    () => applyFilter(snap?.releasedDays),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [snap, periodFrom, periodTo, searchQuery]
   )
-  const hasFilters = periodPreset !== "mes" || searchQuery.trim().length > 0
+
   const totalPendingCount = snap?.pendingCount ?? 0
   const disputedPaymentsList = snap?.disputedPayments ?? []
+
+  const filteredPendingTotal = filteredDays.reduce((s, d) => s + d.total, 0)
+  const filteredPendingCount = filteredDays.reduce((s, d) => s + d.count, 0)
+  const filteredReleasedTotal = filteredReleased.reduce((s, d) => s + d.total, 0)
+  const filteredReleasedCount = filteredReleased.reduce((s, d) => s + d.count, 0)
 
   // Caso especial: MP não conectado
   if (notConfigured) {
@@ -258,8 +267,16 @@ export function MercadoPagoClient() {
         </Card>
       )}
 
-      {/* Grid: A liberar · Retido */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      {/* Grid: Já liberado · A liberar · Retido */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <SummaryCard
+          tone="emerald"
+          icon={<Clock className="w-5 h-5" />}
+          label="Já liberado (180d)"
+          value={snap?.releasedTotal ?? 0}
+          sub={`${snap?.releasedCount ?? 0} pagamento${(snap?.releasedCount ?? 0) === 1 ? "" : "s"} já caíram no MP`}
+          loading={loading && !snap}
+        />
         <SummaryCard
           tone="sky"
           icon={<Clock className="w-5 h-5" />}
@@ -368,10 +385,11 @@ export function MercadoPagoClient() {
               <Calendar className="w-4 h-4 text-sky-600" />
               Liberações programadas
             </CardTitle>
-            {hasFilters && snap?.pendingDays && (
+            {snap?.pendingDays && (
               <span className="text-xs text-gray-500">
-                {filteredCount} de {totalPendingCount} pagamento{totalPendingCount === 1 ? "" : "s"} ·{" "}
-                <strong className="text-emerald-600">{formatCurrency(filteredTotal)}</strong>
+                No período: <strong className="text-gray-900">{filteredPendingCount}</strong> pagamento
+                {filteredPendingCount === 1 ? "" : "s"} ·{" "}
+                <strong className="text-emerald-600">{formatCurrency(filteredPendingTotal)}</strong>
               </span>
             )}
           </div>
@@ -506,6 +524,104 @@ export function MercadoPagoClient() {
           )}
         </CardContent>
       </Card>
+
+      {/* Já liberado (release_date passado) */}
+      {snap?.releasedDays && snap.releasedDays.length > 0 && (
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+              <CardTitle className="text-base flex items-center gap-2">
+                <Calendar className="w-4 h-4 text-emerald-600" />
+                Já liberado
+              </CardTitle>
+              <span className="text-xs text-gray-500">
+                No período: <strong className="text-gray-900">{filteredReleasedCount}</strong> pagamento
+                {filteredReleasedCount === 1 ? "" : "s"} ·{" "}
+                <strong className="text-emerald-600">{formatCurrency(filteredReleasedTotal)}</strong>
+              </span>
+            </div>
+          </CardHeader>
+          <CardContent className="p-0">
+            {filteredReleased.length === 0 ? (
+              <div className="px-5 py-8 text-center text-gray-500 text-sm">
+                Nenhuma liberação dentro dos filtros selecionados.
+              </div>
+            ) : (
+              <ul className="divide-y divide-gray-100">
+                {filteredReleased.map((day) => {
+                  const key = `released-${day.date}`
+                  const open = expandedDays.has(key)
+                  return (
+                    <li key={key}>
+                      <button
+                        onClick={() => toggleDay(key)}
+                        className="w-full flex items-center gap-3 px-5 py-3 hover:bg-gray-50 text-left"
+                      >
+                        {open ? (
+                          <ChevronDown className="w-4 h-4 text-gray-400 shrink-0" />
+                        ) : (
+                          <ChevronRight className="w-4 h-4 text-gray-400 shrink-0" />
+                        )}
+                        <Clock className="w-4 h-4 text-emerald-600 shrink-0" />
+                        <div className="flex-1 min-w-0">
+                          <div className="text-sm font-medium text-gray-900">
+                            {formatDayLabel(day.date)}
+                          </div>
+                          <div className="text-xs text-gray-500">
+                            {day.count} pagamento{day.count === 1 ? "" : "s"} caíram no MP
+                          </div>
+                        </div>
+                        <div className="text-sm font-bold text-emerald-600 tabular-nums whitespace-nowrap">
+                          {formatCurrency(day.total)}
+                        </div>
+                      </button>
+                      {open && (
+                        <ul className="bg-gray-50 divide-y divide-gray-100 border-t border-gray-100">
+                          {day.payments.map((p) => {
+                            const method = p.paymentMethodId
+                              ? METHOD_LABELS[p.paymentMethodId] || p.paymentMethodId
+                              : null
+                            return (
+                              <li
+                                key={p.id}
+                                className="px-12 py-2.5 flex items-center gap-3 flex-wrap"
+                              >
+                                <div className="flex-1 min-w-0">
+                                  <div className="text-sm text-gray-900 line-clamp-1">{p.description}</div>
+                                  <div className="text-xs text-gray-500 flex items-center gap-2 flex-wrap mt-0.5">
+                                    <span className="font-mono">#{p.id}</span>
+                                    {method && (
+                                      <>
+                                        <span className="text-gray-300">·</span>
+                                        <span>{method}</span>
+                                      </>
+                                    )}
+                                    {p.buyer && (
+                                      <>
+                                        <span className="text-gray-300">·</span>
+                                        <span>{p.buyer}</span>
+                                      </>
+                                    )}
+                                  </div>
+                                </div>
+                                <div className="text-right whitespace-nowrap">
+                                  <div className="text-sm font-semibold text-emerald-600 tabular-nums">
+                                    {formatCurrency(p.netAmount)}
+                                  </div>
+                                </div>
+                              </li>
+                            )
+                          })}
+                        </ul>
+                      )}
+                    </li>
+                  )
+                })}
+              </ul>
+            )}
+          </CardContent>
+        </Card>
+      )}
     </div>
   )
 }

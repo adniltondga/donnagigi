@@ -305,6 +305,83 @@ export async function fetchMPPendingPayments(params: {
 }
 
 /**
+ * Lista pagamentos aprovados cuja data de liberação JÁ PASSOU (money_release_date
+ * no passado). Usado pra mostrar "já liberado" — dinheiro que caiu no MP.
+ * Janela: últimos 180 dias.
+ */
+export async function fetchMPReleasedPayments(params: {
+  accessToken: string
+}): Promise<MPPendingPayment[]> {
+  const now = Date.now()
+  const out: MPPendingPayment[] = []
+  const LIMIT = 50
+  let offset = 0
+  const MAX_OFFSET = 500
+
+  while (offset < MAX_OFFSET) {
+    const q = new URLSearchParams({
+      status: "approved",
+      sort: "money_release_date",
+      criteria: "desc",
+      range: "money_release_date",
+      begin_date: "NOW-180DAYS",
+      end_date: "NOW",
+      limit: String(LIMIT),
+      offset: String(offset),
+    })
+    const url = `https://api.mercadopago.com/v1/payments/search?${q.toString()}`
+    const res = await fetch(url, {
+      headers: {
+        Authorization: `Bearer ${params.accessToken}`,
+        Accept: "application/json",
+      },
+      cache: "no-store",
+    })
+    if (!res.ok) {
+      const body = await res.text()
+      throw new Error(`MP payments/search (released) failed (${res.status}): ${body}`)
+    }
+    const data: MPPaymentSearchResult = await res.json()
+    const batch = data.results || []
+
+    for (const p of batch) {
+      if (!p.money_release_date) continue
+      const release = new Date(p.money_release_date).getTime()
+      if (release > now) continue // só os passados
+
+      const net = p.transaction_details?.net_received_amount
+      const gross = Number(p.transaction_amount) || 0
+      const fees = (p.fee_details || []).reduce(
+        (s, f) => s + (Number(f.amount) || 0),
+        0
+      )
+      const netAmount =
+        typeof net === "number" && Number.isFinite(net) ? net : gross - fees
+
+      const itemTitle = p.additional_info?.items?.[0]?.title
+      const description = (p.description || itemTitle || `Pagamento ${p.id}`).trim()
+
+      out.push({
+        id: p.id,
+        description,
+        releaseDate: p.money_release_date,
+        dateCreated: p.date_created || null,
+        netAmount: Math.round(netAmount * 100) / 100,
+        grossAmount: Math.round(gross * 100) / 100,
+        paymentMethodId: p.payment_method_id || null,
+        externalReference: p.external_reference || null,
+        buyer: p.payer?.nickname || p.payer?.email || null,
+      })
+    }
+
+    if (batch.length < LIMIT) break
+    offset += LIMIT
+  }
+
+  return out
+}
+
+/**
  * Resumo pro card de topo: soma dos pagamentos a liberar.
  */
 export async function fetchMPBalance(params: {
@@ -417,6 +494,8 @@ export async function syncAndCacheMP(tenantId: string): Promise<{
   cachedSyncedAt: Date
   unavailableBalance: number
   pendingCount: number
+  releasedTotal: number
+  releasedCount: number
   disputedTotal: number
   disputedCount: number
 }> {
@@ -427,36 +506,43 @@ export async function syncAndCacheMP(tenantId: string): Promise<{
   const fresh = await getMPIntegrationForTenant(tenantId)
   const accessToken = fresh?.accessToken || integration.accessToken
 
-  const [pending, disputed] = await Promise.all([
+  const [pending, released, disputed] = await Promise.all([
     fetchMPPendingPayments({ accessToken }),
+    fetchMPReleasedPayments({ accessToken }),
     fetchMPDisputedPayments({ accessToken }),
   ])
 
-  // Agrupa pending por dia (America/Sao_Paulo)
-  const byDay = new Map<
-    string,
-    { date: string; total: number; count: number; payments: MPPendingPayment[] }
-  >()
-  for (const p of pending) {
-    const d = new Date(p.releaseDate)
-    const dayKey = d.toLocaleDateString("en-CA", { timeZone: "America/Sao_Paulo" })
-    const slot = byDay.get(dayKey) || { date: dayKey, total: 0, count: 0, payments: [] }
-    slot.total += p.netAmount
-    slot.count += 1
-    slot.payments.push(p)
-    byDay.set(dayKey, slot)
+  // Agrupa payments por dia (America/Sao_Paulo) — reutilizável pra pending/released.
+  const groupByDay = (payments: MPPendingPayment[]) => {
+    const byDay = new Map<
+      string,
+      { date: string; total: number; count: number; payments: MPPendingPayment[] }
+    >()
+    for (const p of payments) {
+      const d = new Date(p.releaseDate)
+      const dayKey = d.toLocaleDateString("en-CA", { timeZone: "America/Sao_Paulo" })
+      const slot = byDay.get(dayKey) || { date: dayKey, total: 0, count: 0, payments: [] }
+      slot.total += p.netAmount
+      slot.count += 1
+      slot.payments.push(p)
+      byDay.set(dayKey, slot)
+    }
+    return Array.from(byDay.values())
+      .map((d) => ({
+        ...d,
+        total: Math.round(d.total * 100) / 100,
+        payments: d.payments.sort(
+          (a, b) => new Date(a.releaseDate).getTime() - new Date(b.releaseDate).getTime()
+        ),
+      }))
+      .sort((a, b) => a.date.localeCompare(b.date))
   }
-  const days = Array.from(byDay.values())
-    .map((d) => ({
-      ...d,
-      total: Math.round(d.total * 100) / 100,
-      payments: d.payments.sort(
-        (a, b) => new Date(a.releaseDate).getTime() - new Date(b.releaseDate).getTime()
-      ),
-    }))
-    .sort((a, b) => a.date.localeCompare(b.date))
+
+  const pendingDays = groupByDay(pending)
+  const releasedDays = groupByDay(released)
 
   const unavailableBalance = Math.round(pending.reduce((s, p) => s + p.netAmount, 0) * 100) / 100
+  const releasedTotal = Math.round(released.reduce((s, p) => s + p.netAmount, 0) * 100) / 100
   const disputedTotal = Math.round(disputed.reduce((s, p) => s + p.netAmount, 0) * 100) / 100
   const now = new Date()
 
@@ -465,9 +551,12 @@ export async function syncAndCacheMP(tenantId: string): Promise<{
     data: {
       cachedUnavailableBalance: unavailableBalance,
       cachedPendingCount: pending.length,
+      cachedReleasedTotal: releasedTotal,
+      cachedReleasedCount: released.length,
       cachedDisputedTotal: disputedTotal,
       cachedDisputedCount: disputed.length,
-      cachedPendingDays: days as unknown as object,
+      cachedPendingDays: pendingDays as unknown as object,
+      cachedReleasedDays: releasedDays as unknown as object,
       cachedDisputedPayments: disputed as unknown as object,
       cachedSyncedAt: now,
     },
@@ -477,6 +566,8 @@ export async function syncAndCacheMP(tenantId: string): Promise<{
     cachedSyncedAt: now,
     unavailableBalance,
     pendingCount: pending.length,
+    releasedTotal,
+    releasedCount: released.length,
     disputedTotal,
     disputedCount: disputed.length,
   }
