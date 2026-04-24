@@ -1,5 +1,5 @@
 import Link from "next/link"
-import { ArrowRight, TrendingUp, TrendingDown, FileText, Rocket, Scale, type LucideIcon } from "lucide-react"
+import { ArrowRight, TrendingUp, TrendingDown, FileText, Rocket, Scale, Landmark, BookOpen, type LucideIcon } from "lucide-react"
 import { PageHeader } from "@/components/ui/page-header"
 import { Card, CardContent } from "@/components/ui/card"
 
@@ -46,6 +46,20 @@ const CARDS: Item[] = [
     title: "Balancete gerencial",
     description: "Resultado + movimento de caixa + posição patrimonial em uma tela. Direitos, obrigações, lucro YTD e patrimônio estimado.",
     accent: "bg-indigo-50 text-indigo-700",
+  },
+  {
+    href: "/admin/financeiro/relatorios/balanco",
+    icon: Landmark,
+    title: "Balanço Patrimonial",
+    description: "Ativo × Passivo × Patrimônio Líquido. O que a loja tem, o que deve e quanto vale.",
+    accent: "bg-emerald-50 text-emerald-700",
+  },
+  {
+    href: "/admin/financeiro/relatorios/livro-caixa",
+    icon: BookOpen,
+    title: "Livro Caixa",
+    description: "Lançamentos cronológicos de entradas e saídas com saldo acumulado. Exporta em CSV pro contador.",
+    accent: "bg-sky-50 text-sky-700",
   },
 ]
 
