@@ -47,13 +47,19 @@ export async function GET(req: NextRequest) {
       (await prisma.financialSettings.findUnique({ where: { tenantId } })) ||
       ({ reservaMeses: 3, reinvestPct: 20, saldoCaixaAtual: null, saldoAtualizadoEm: null } as const)
 
-    // IDs das categorias "Aporte sócio" (raiz + filhas) e "Pró-labore"
+    // IDs das categorias "Aporte sócio" (raiz + filhas), "Pró-labore" e
+    // sub "Amortização" (que é um filho especial de Aporte sócio).
     const aporteRoot = await prisma.billCategory.findFirst({
       where: { tenantId, parentId: null, name: "Aporte sócio", type: "payable" },
-      select: { id: true, children: { select: { id: true } } },
+      select: { id: true, children: { select: { id: true, name: true } } },
     })
+    const amortizacaoSubId = aporteRoot?.children.find((c) => c.name === "Amortização")?.id ?? null
     const aporteIds = aporteRoot
       ? [aporteRoot.id, ...aporteRoot.children.map((c) => c.id)]
+      : []
+    // Pra contar como "aporte original" (custo do sócio), excluir a sub Amortização
+    const aporteOriginalIds = aporteRoot
+      ? [aporteRoot.id, ...aporteRoot.children.filter((c) => c.name !== "Amortização").map((c) => c.id)]
       : []
 
     const proLaboreSub = await prisma.billCategory.findFirst({
@@ -92,13 +98,14 @@ export async function GET(req: NextRequest) {
     // Conceitualmente são despesa operacional: a loja teve esse custo
     // (mercadoria/embalagem/frete), quem adiantou o pagamento foi o sócio.
     // Entra no cálculo do lucro mesmo que ainda não tenha sido devolvido.
+    // EXCLUI a sub "Amortização" — essa é devolução de dívida, não custo.
     const aportesNoMes =
-      aporteIds.length > 0
+      aporteOriginalIds.length > 0
         ? await prisma.bill.findMany({
             where: {
               tenantId,
               type: "payable",
-              billCategoryId: { in: aporteIds },
+              billCategoryId: { in: aporteOriginalIds },
               NOT: { status: "cancelled" },
               dueDate: { gte: start, lt: end },
             },
@@ -193,21 +200,36 @@ export async function GET(req: NextRequest) {
       (b) => b.dueDate >= now && b.dueDate <= in7
     ).length
 
-    // Aportes a devolver: todas as bills payable da categoria "Aporte sócio"
-    // que ainda estão pendentes (independente de dueDate, independente de mês).
-    const aportes =
-      aporteIds.length > 0
+    // Aportes a devolver = (aportes originais pendentes) − (amortizações pagas)
+    const aportesPending =
+      aporteOriginalIds.length > 0
         ? await prisma.bill.findMany({
             where: {
               tenantId,
               type: "payable",
               status: "pending",
-              billCategoryId: { in: aporteIds },
+              billCategoryId: { in: aporteOriginalIds },
             },
             select: { amount: true },
           })
         : []
-    const aportesADevolver = aportes.reduce((s, b) => s + b.amount, 0)
+    const aportesPendingTotal = aportesPending.reduce((s, b) => s + b.amount, 0)
+
+    const amortizacoesPagas = amortizacaoSubId
+      ? await prisma.bill.findMany({
+          where: {
+            tenantId,
+            type: "payable",
+            status: "paid",
+            billCategoryId: amortizacaoSubId,
+          },
+          select: { amount: true },
+        })
+      : []
+    const amortizadoTotal = amortizacoesPagas.reduce((s, b) => s + b.amount, 0)
+
+    const aportesADevolver = Math.max(0, aportesPendingTotal - amortizadoTotal)
+    const aportes = aportesPending // mantém compat pra contagem (linhas)
 
 
     // Despesa fixa média dos últimos 3 meses (pra cálculo da reserva)
@@ -295,6 +317,8 @@ export async function GET(req: NextRequest) {
         total: Math.round(aportesADevolver * 100) / 100,
         count: aportes.length,
         amortizacaoSugerida: aporteAmortizacaoSugerida,
+        totalOriginal: Math.round(aportesPendingTotal * 100) / 100,
+        totalAmortizado: Math.round(amortizadoTotal * 100) / 100,
       },
       reserva: {
         meta: reservaMeta,

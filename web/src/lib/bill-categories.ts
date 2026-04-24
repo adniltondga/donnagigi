@@ -18,7 +18,7 @@ const DEFAULT_CATEGORIES: Array<{
   // Aporte sócio = despesas que o sócio pagou do bolso pra loja. Saldo
   // vivo desse grupo é a "dívida" da loja com ele (vai sendo amortizada
   // quando a loja pagar de volta).
-  { type: "payable", name: "Aporte sócio", subs: ["Mercadoria", "Embalagem", "Frete", "Outros"] },
+  { type: "payable", name: "Aporte sócio", subs: ["Mercadoria", "Embalagem", "Frete", "Outros", "Amortização"] },
   { type: "payable", name: "Outros", subs: ["Outros"] },
   { type: "receivable", name: "Vendas", subs: ["Venda ML", "Venda Shopee", "Venda outros"] },
   { type: "receivable", name: "Outros", subs: ["Outros"] },

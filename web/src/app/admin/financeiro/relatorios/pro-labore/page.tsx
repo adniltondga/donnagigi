@@ -40,7 +40,13 @@ interface ProLaboreResponse {
   proLaboresYTD: number
   baseDisponivel: number
   contasAPagarDoMes: { total: number; count: number; vencendo7d: number }
-  aportesADevolver: { total: number; count: number; amortizacaoSugerida: number }
+  aportesADevolver: {
+    total: number
+    count: number
+    amortizacaoSugerida: number
+    totalOriginal: number
+    totalAmortizado: number
+  }
   reserva: {
     meta: number
     atual: number
@@ -235,8 +241,8 @@ export default function ProLaborePage() {
                   title="Aportes a devolver"
                   amount={data.aportesADevolver.total}
                   sub={
-                    data.aportesADevolver.total > 0
-                      ? `${data.aportesADevolver.count} lançamento(s) · sugestão amortizar ${formatCurrency(data.aportesADevolver.amortizacaoSugerida)}/mês (2 anos)`
+                    data.aportesADevolver.totalOriginal > 0
+                      ? `${data.aportesADevolver.count} aporte(s) pendente(s) · ${formatCurrency(data.aportesADevolver.totalAmortizado)} já amortizado · sugestão ${formatCurrency(data.aportesADevolver.amortizacaoSugerida)}/mês (2 anos)`
                       : "Sem aportes cadastrados"
                   }
                   action={
