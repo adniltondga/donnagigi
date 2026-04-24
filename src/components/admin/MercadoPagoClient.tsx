@@ -207,6 +207,26 @@ export function MercadoPagoClient() {
   const filteredReleasedTotal = filteredReleased.reduce((s, d) => s + d.total, 0)
   const filteredReleasedCount = filteredReleased.reduce((s, d) => s + d.count, 0)
 
+  // Já liberado no MÊS ATUAL (KPI do card fica fixo, não depende do filter).
+  const releasedMesAtual = useMemo(() => {
+    if (!snap?.releasedDays) return { total: 0, count: 0 }
+    const now = new Date()
+    const y = now.getFullYear()
+    const m = now.getMonth()
+    const monthStart = `${y}-${String(m + 1).padStart(2, "0")}-01`
+    const last = new Date(y, m + 1, 0)
+    const monthEnd = `${y}-${String(m + 1).padStart(2, "0")}-${String(last.getDate()).padStart(2, "0")}`
+    let total = 0
+    let count = 0
+    for (const d of snap.releasedDays) {
+      if (d.date >= monthStart && d.date <= monthEnd) {
+        total += d.total
+        count += d.count
+      }
+    }
+    return { total: Math.round(total * 100) / 100, count }
+  }, [snap?.releasedDays])
+
   // Caso especial: MP não conectado
   if (notConfigured) {
     return (
@@ -272,9 +292,9 @@ export function MercadoPagoClient() {
         <SummaryCard
           tone="emerald"
           icon={<Clock className="w-5 h-5" />}
-          label="Já liberado (180d)"
-          value={snap?.releasedTotal ?? 0}
-          sub={`${snap?.releasedCount ?? 0} pagamento${(snap?.releasedCount ?? 0) === 1 ? "" : "s"} já caíram no MP`}
+          label="Já liberado (este mês)"
+          value={releasedMesAtual.total}
+          sub={`${releasedMesAtual.count} pagamento${releasedMesAtual.count === 1 ? "" : "s"} caíram no MP este mês`}
           loading={loading && !snap}
         />
         <SummaryCard
