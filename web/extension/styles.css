@@ -411,3 +411,106 @@
   opacity: 0.6;
   cursor: not-allowed;
 }
+
+/* =============================================================
+ * Célula "Custo" dentro de sub-rows de variação (card expandido)
+ * ===========================================================*/
+.aglivre-sub-cell {
+  position: absolute;
+  right: 16px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 8px;
+  border-radius: 8px;
+  background: rgba(124, 58, 237, 0.06);
+  border: 1px solid rgba(124, 58, 237, 0.2);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-size: 13px;
+  z-index: 2;
+  pointer-events: auto;
+}
+
+.aglivre-sub-cell__label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #7c3aed;
+}
+
+.aglivre-sub-cost {
+  border: 1px dashed transparent;
+  background: transparent;
+  padding: 3px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 600;
+  color: #1f2937;
+  font-variant-numeric: tabular-nums;
+}
+
+.aglivre-sub-cost:hover {
+  border-color: rgba(124, 58, 237, 0.5);
+  background: rgba(124, 58, 237, 0.08);
+  color: #7c3aed;
+}
+
+.aglivre-sub-cost--empty {
+  color: #9ca3af;
+  font-style: italic;
+  font-weight: 500;
+}
+
+.aglivre-sub-cost--inherited {
+  color: #6b7280;
+}
+
+.aglivre-sub-cost--inherited::after {
+  content: " *";
+  color: #9ca3af;
+  font-weight: 400;
+}
+
+.aglivre-sub-input {
+  width: 90px;
+  padding: 3px 8px;
+  border: 1px solid #7c3aed;
+  border-radius: 6px;
+  font: inherit;
+  font-weight: 600;
+  text-align: right;
+  outline: none;
+  background: #fff;
+  color: #1f2937;
+  font-variant-numeric: tabular-nums;
+}
+
+.aglivre-sub-input:focus {
+  box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.2);
+}
+
+.aglivre-sub-cell__sep {
+  width: 1px;
+  height: 16px;
+  background: rgba(124, 58, 237, 0.25);
+  margin: 0 2px;
+}
+
+.aglivre-sub-profit {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: #1f2937;
+  padding: 3px 4px;
+}
+
+.aglivre-sub-profit--pos {
+  color: #059669;
+}
+
+.aglivre-sub-profit--neg {
+  color: #dc2626;
+}
