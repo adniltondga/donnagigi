@@ -240,11 +240,14 @@ export async function fetchMPPendingPayments(params: {
   while (offset < MAX_OFFSET) {
     const q = new URLSearchParams({
       status: "approved",
-      sort: "date_created",
-      criteria: "desc",
-      range: "date_created",
-      begin_date: "NOW-60DAYS",
-      end_date: "NOW",
+      sort: "money_release_date",
+      criteria: "asc",
+      // Filtra direto pelo money_release_date futuro — bate com o cálculo
+      // que o app do MP faz no "Total a liberar". Janela de 180 dias
+      // cobre cartões parcelados que liberam em 60-90d.
+      range: "money_release_date",
+      begin_date: "NOW",
+      end_date: "NOW+180DAYS",
       limit: String(LIMIT),
       offset: String(offset),
     })
@@ -265,6 +268,7 @@ export async function fetchMPPendingPayments(params: {
 
     for (const p of batch) {
       if (!p.money_release_date) continue
+      // Proteção adicional: se vier algum já liberado (edge da janela), pula.
       const release = new Date(p.money_release_date).getTime()
       if (release <= now) continue
 
