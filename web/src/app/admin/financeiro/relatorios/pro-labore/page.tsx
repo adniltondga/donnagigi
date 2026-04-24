@@ -144,19 +144,31 @@ export default function ProLaborePage() {
         </Card>
       ) : (
         <>
-          {/* Fechamento do mês — base do pró-labore */}
+          {/* Fechamento do mês — base do pró-labore. Lucro destaca, receita é só
+              referência (ainda não desconta custos). */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
             <StatCard
-              label="Receita recebida"
+              label="Lucro líquido do mês"
+              value={formatCurrency(data.lucroLiquido)}
+              sub={
+                data.lucroLiquido >= 0
+                  ? "receita − (despesas + aportes) · o que de fato sobrou"
+                  : "prejuízo — custo operacional maior que a receita"
+              }
+              icon={PiggyBank}
+              accent={data.lucroLiquido >= 0 ? "emerald" : "rose"}
+            />
+            <StatCard
+              label="Receita líquida"
               value={formatCurrency(data.receitaRecebida)}
-              sub="vendas fechadas no mês · já líquido de taxas ML"
+              sub="entrada do mês · já sem taxas ML · antes de custos"
               icon={TrendingUp}
-              accent="emerald"
+              accent="sky"
             />
             <StatCard
               label="Despesas pagas"
               value={formatCurrency(data.despesasPagas)}
-              sub="bills payable marcadas como pagas"
+              sub="bills marcadas como pagas"
               icon={Wallet}
               accent="rose"
             />
@@ -166,13 +178,6 @@ export default function ProLaborePage() {
               sub="o sócio pagou do bolso · entra como custo"
               icon={PiggyBank}
               accent="fuchsia"
-            />
-            <StatCard
-              label="Lucro líquido"
-              value={formatCurrency(data.lucroLiquido)}
-              sub="receita − (despesas + aportes)"
-              icon={PiggyBank}
-              accent={data.lucroLiquido >= 0 ? "emerald" : "rose"}
             />
           </div>
 
