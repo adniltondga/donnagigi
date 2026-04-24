@@ -173,6 +173,44 @@ export async function refreshMPToken(params: {
  * token estiver perto de expirar (< 5 min) e tiver refresh_token, renova
  * automaticamente.
  */
+export interface MPBalance {
+  availableBalance: number // saldo liquidado, disponível pra saque
+  unavailableBalance: number // "total a liberar" — dinheiro preso aguardando liberação
+  totalAmount: number
+  currencyId: string
+  lastUpdated: string | null
+}
+
+/**
+ * Consulta o saldo da conta MP do vendedor (usando access_token OAuth).
+ * Endpoint oficial: GET /users/{user_id}/mercadopago_account/balance
+ */
+export async function fetchMPBalance(params: {
+  accessToken: string
+  userId: string
+}): Promise<MPBalance> {
+  const url = `https://api.mercadopago.com/users/${params.userId}/mercadopago_account/balance`
+  const res = await fetch(url, {
+    headers: {
+      Authorization: `Bearer ${params.accessToken}`,
+      Accept: "application/json",
+    },
+    cache: "no-store",
+  })
+  if (!res.ok) {
+    const err = await res.text()
+    throw new Error(`MP balance failed (${res.status}): ${err}`)
+  }
+  const data = await res.json()
+  return {
+    availableBalance: Number(data.available_balance ?? 0),
+    unavailableBalance: Number(data.unavailable_balance ?? 0),
+    totalAmount: Number(data.total_amount ?? 0),
+    currencyId: String(data.currency_id ?? "BRL"),
+    lastUpdated: data.last_updated ?? null,
+  }
+}
+
 export async function getMPIntegrationForTenant(tenantId: string) {
   const integration = await prisma.mPIntegration.findUnique({ where: { tenantId } })
   if (!integration) return null
