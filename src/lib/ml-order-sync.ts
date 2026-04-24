@@ -1,6 +1,7 @@
 import prisma from "@/lib/prisma"
 import { formatVariationLabel } from "@/lib/ml-format"
 import { resolveCost } from "@/lib/cost-resolver"
+import { createNotification } from "@/lib/notifications"
 
 interface MLOrderItem {
   item: {
@@ -197,6 +198,20 @@ Bruto: R$ ${order.total_amount.toFixed(2)} | Taxas: ${taxBreakdown} (Total: R$ $
         tenantId,
       },
     })
+
+    if (!isCancelled) {
+      const formatBRL = new Intl.NumberFormat("pt-BR", {
+        style: "currency",
+        currency: "BRL",
+      }).format
+      await createNotification({
+        tenantId,
+        type: "sale",
+        title: `Venda nova: ${formatBRL(netAmount)}`,
+        body: `${displayTitle} · ${order.buyer.nickname}`,
+        link: `/admin/relatorios/vendas-ml`,
+      })
+    }
 
     return { ok: true, action: "created", billId: saleBill.id }
   } catch (err) {

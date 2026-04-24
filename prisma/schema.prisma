@@ -33,6 +33,7 @@ model Tenant {
   mpIntegration     MPIntegration?
   invitations       Invitation[]
   billCategories    BillCategory[]
+  notifications     Notification[]
   financialSettings FinancialSettings?
 }
 
@@ -493,4 +494,24 @@ model BillCategory {
   @@unique([tenantId, parentId, name])
   @@index([tenantId])
   @@index([parentId])
+}
+
+// Notificações in-app exibidas no sino do header. Per-tenant (se alguém
+// lê, todo mundo do tenant vê como lida — simplifica o modelo pra loja
+// pequena). Criadas pelo webhook ML quando uma venda nova chega.
+model Notification {
+  id        String   @id @default(cuid())
+  tenantId  String
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  type      String   // ex: "sale", "refund", "mp_release", "system"
+  title     String
+  body      String?  // texto secundário (ex: "Comprador X · R$ 250")
+  link      String?  // URL interna pra navegar ao clicar
+  read      Boolean  @default(false)
+
+  createdAt DateTime @default(now())
+
+  @@index([tenantId, read, createdAt(sort: Desc)])
+  @@index([tenantId, createdAt(sort: Desc)])
 }
