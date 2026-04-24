@@ -136,21 +136,21 @@ export default function ProLaborePage() {
             <StatCard
               label="Receita recebida"
               value={formatCurrency(data.receitaRecebida)}
-              sub="no mês selecionado"
+              sub="vendas fechadas no mês · já líquido de taxas ML"
               icon={TrendingUp}
               accent="emerald"
             />
             <StatCard
               label="Despesas pagas"
               value={formatCurrency(data.despesasPagas)}
-              sub="operação (sem aportes)"
+              sub="bills payable marcadas como pagas (exclui aportes)"
               icon={Wallet}
               accent="rose"
             />
             <StatCard
               label="Lucro líquido"
               value={formatCurrency(data.lucroLiquido)}
-              sub="receita − despesas"
+              sub="receita líquida − despesas pagas"
               icon={PiggyBank}
               accent={data.lucroLiquido >= 0 ? "emerald" : "rose"}
             />
