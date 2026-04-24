@@ -1,6 +1,7 @@
 import prisma from '@/lib/prisma';
 import { getTenantIdOrDefault } from '@/lib/tenant';
 import { getMLIntegrationForTenant } from '@/lib/ml';
+import { resolveCost } from '@/lib/cost-resolver';
 import { NextRequest, NextResponse } from 'next/server';
 
 export const dynamic = 'force-dynamic';
@@ -47,6 +48,7 @@ export async function GET(req: NextRequest) {
         mlOrderId: true,
         quantity: true,
         productCost: true,
+        mlVariationId: true,
       },
       orderBy: { paidDate: 'desc' },
       take: limit,
@@ -77,22 +79,32 @@ export async function GET(req: NextRequest) {
         }
         const order = await resp.json();
 
-        const items: Array<{ item?: { id?: string }; quantity?: number }> = order.order_items || [];
+        const items: Array<{
+          item?: { id?: string; variation_id?: string | number | null };
+          quantity?: number;
+        }> = order.order_items || [];
         const newQuantity = items.reduce((s, oi) => s + (Number(oi.quantity) || 1), 0) || 1;
 
+        // Custo resolvido via cascata: variant → listing (ver cost-resolver).
         let newProductCost: number | null = null;
         for (const oi of items) {
           const oiId = oi.item?.id;
           const oiQty = Number(oi.quantity) || 1;
           if (!oiId) continue;
-          const cost = await prisma.mLProductCost.findUnique({
-            where: { mlListingId: oiId },
-            select: { productCost: true },
+          const resolved = await resolveCost({
+            tenantId,
+            mlListingId: oiId,
+            variationId: oi.item?.variation_id ?? null,
           });
-          if (cost?.productCost) {
-            newProductCost = (newProductCost ?? 0) + cost.productCost * oiQty;
+          if (resolved.cost != null) {
+            newProductCost = (newProductCost ?? 0) + resolved.cost * oiQty;
           }
         }
+
+        // variation_id do primeiro item (mesma regra do sync-orders).
+        const firstVariationId = items[0]?.item?.variation_id
+          ? String(items[0].item.variation_id)
+          : null;
 
         // Só atualiza se mudou algo relevante
         const quantityChanged = newQuantity !== bill.quantity;
@@ -101,8 +113,10 @@ export async function GET(req: NextRequest) {
         const shouldUpdateCost =
           newProductCost !== null &&
           (bill.productCost === null || newProductCost > (bill.productCost ?? 0));
+        // Preenche mlVariationId só se ainda estiver vazio (bills antigas)
+        const shouldUpdateVariation = !bill.mlVariationId && !!firstVariationId;
 
-        if (!quantityChanged && !shouldUpdateCost) {
+        if (!quantityChanged && !shouldUpdateCost && !shouldUpdateVariation) {
           unchanged++;
           continue;
         }
@@ -125,6 +139,7 @@ export async function GET(req: NextRequest) {
             data: {
               quantity: newQuantity,
               ...(shouldUpdateCost ? { productCost: newProductCost } : {}),
+              ...(shouldUpdateVariation ? { mlVariationId: firstVariationId } : {}),
             },
           });
         }

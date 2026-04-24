@@ -26,6 +26,7 @@ model Tenant {
   suppliers         Supplier[]
   mlIntegrations    MLIntegration[]
   mlProductCosts    MLProductCost[]
+  mlProductVariantCosts MLProductVariantCost[]
   subscription      Subscription?
   mlAppCredentials  MLAppCredentials?
   mpAppCredentials  MPAppCredentials?
@@ -273,6 +274,7 @@ model ProductVariant {
 
 // Custo cadastrado por listing do Mercado Livre.
 // Usado pelo sync-orders para abater automaticamente em vendas recorrentes.
+// Fallback: quando não há custo específico por variação, usa este.
 model MLProductCost {
   mlListingId String   @id
   title       String?
@@ -283,6 +285,25 @@ model MLProductCost {
   updatedAt   DateTime @updatedAt
 
   @@index([tenantId])
+}
+
+// Custo por variação de um listing ML. Quando uma venda tem variation_id e
+// existe registro aqui, este custo tem precedência sobre MLProductCost.
+// variationId é o ID da variação retornado pela API do ML (ex: "191323520158").
+model MLProductVariantCost {
+  id            String   @id @default(cuid())
+  mlListingId   String
+  variationId   String
+  variationName String?
+  productCost   Float
+  tenantId      String
+  tenant        Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@unique([mlListingId, variationId])
+  @@index([tenantId])
+  @@index([mlListingId])
 }
 
 // Estado temporário do fluxo OAuth PKCE do Mercado Livre
@@ -429,6 +450,7 @@ model Bill {
   quantity        Int      @default(1) // unidades vendidas no pedido (soma de order_items[].quantity)
   mlOrderId       String?  @unique  // evita duplicatas de pedidos ML
   mlPackId        String?  // pack_id do ML (ID que aparece no painel "vendas" do seller)
+  mlVariationId   String?  // variation_id do ML no item vendido (usado pelo cost-resolver)
   tenantId        String
   tenant          Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   createdAt       DateTime @default(now())
