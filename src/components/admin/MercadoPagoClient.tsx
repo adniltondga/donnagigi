@@ -208,9 +208,9 @@ export function MercadoPagoClient() {
   const filteredReleasedTotal = filteredReleased.reduce((s, d) => s + d.total, 0)
   const filteredReleasedCount = filteredReleased.reduce((s, d) => s + d.count, 0)
 
-  // Já liberado no MÊS ATUAL (KPI do card fica fixo, não depende do filter).
-  const releasedMesAtual = useMemo(() => {
-    if (!snap?.releasedDays) return { total: 0, count: 0 }
+  // Totais do MÊS ATUAL (KPIs fixos, não dependem do filter).
+  const sumInCurrentMonth = (days: Day[] | undefined): { total: number; count: number } => {
+    if (!days) return { total: 0, count: 0 }
     const now = new Date()
     const y = now.getFullYear()
     const m = now.getMonth()
@@ -219,14 +219,24 @@ export function MercadoPagoClient() {
     const monthEnd = `${y}-${String(m + 1).padStart(2, "0")}-${String(last.getDate()).padStart(2, "0")}`
     let total = 0
     let count = 0
-    for (const d of snap.releasedDays) {
+    for (const d of days) {
       if (d.date >= monthStart && d.date <= monthEnd) {
         total += d.total
         count += d.count
       }
     }
     return { total: Math.round(total * 100) / 100, count }
-  }, [snap?.releasedDays])
+  }
+  const releasedMesAtual = useMemo(
+    () => sumInCurrentMonth(snap?.releasedDays),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [snap?.releasedDays]
+  )
+  const pendingMesAtual = useMemo(
+    () => sumInCurrentMonth(snap?.pendingDays),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [snap?.pendingDays]
+  )
 
   // Caso especial: MP não conectado
   if (notConfigured) {
@@ -288,8 +298,8 @@ export function MercadoPagoClient() {
         </Card>
       )}
 
-      {/* Grid: Já liberado · A liberar · Retido */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      {/* Grid: Já liberado · Ainda no mês · Total geral · Retido */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <SummaryCard
           tone="emerald"
           icon={<Clock className="w-5 h-5" />}
@@ -301,9 +311,17 @@ export function MercadoPagoClient() {
         <SummaryCard
           tone="sky"
           icon={<Clock className="w-5 h-5" />}
-          label="Total a liberar"
+          label="Ainda liberando (este mês)"
+          value={pendingMesAtual.total}
+          sub={`${pendingMesAtual.count} pagamento${pendingMesAtual.count === 1 ? "" : "s"} liberam até fim do mês`}
+          loading={loading && !snap}
+        />
+        <SummaryCard
+          tone="sky"
+          icon={<Clock className="w-5 h-5" />}
+          label="Total a liberar (geral)"
           value={snap?.unavailableBalance ?? 0}
-          sub={`${totalPendingCount} pagamento${totalPendingCount === 1 ? "" : "s"} aguardando liberação`}
+          sub={`${totalPendingCount} pagamento${totalPendingCount === 1 ? "" : "s"} no pipeline (até 180d)`}
           loading={loading && !snap}
         />
         <SummaryCard
