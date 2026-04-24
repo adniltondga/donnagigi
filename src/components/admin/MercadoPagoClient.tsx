@@ -100,7 +100,6 @@ export function MercadoPagoClient() {
   const [periodFrom, setPeriodFrom] = useState<string>(initialPeriod.from)
   const [periodTo, setPeriodTo] = useState<string>(initialPeriod.to)
   const [periodPreset, setPeriodPreset] = useState<PeriodPreset>("mes")
-  const [searchQuery, setSearchQuery] = useState("")
   const [activeTab, setActiveTab] = useState<"programadas" | "liberadas">("programadas")
 
   // Leitura do cache (instantâneo).
@@ -163,46 +162,23 @@ export function MercadoPagoClient() {
     })
   }, [cachedAt])
 
-  // Filtra uma lista de dias por período + query (reutilizável pra pending e released).
+  // Filtra uma lista de dias por período (reutilizável pra pending e released).
   const applyFilter = (source: Day[] | undefined) => {
     if (!source) return [] as Day[]
-    const q = searchQuery.trim().toLowerCase()
-    const result: Day[] = []
-    for (const day of source) {
-      if (day.date < periodFrom || day.date > periodTo) continue
-
-      let payments = day.payments
-      if (q) {
-        payments = payments.filter((p) =>
-          [p.description, String(p.id), p.buyer, p.externalReference, p.paymentMethodId]
-            .filter(Boolean)
-            .some((field) => String(field).toLowerCase().includes(q))
-        )
-        if (payments.length === 0) continue
-      }
-      const total = payments.reduce((s, p) => s + p.netAmount, 0)
-      result.push({
-        date: day.date,
-        total: Math.round(total * 100) / 100,
-        count: payments.length,
-        payments,
-      })
-    }
-    return result
+    return source.filter((day) => day.date >= periodFrom && day.date <= periodTo)
   }
 
   const filteredDays = useMemo(
     () => applyFilter(snap?.pendingDays),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [snap, periodFrom, periodTo, searchQuery]
+    [snap, periodFrom, periodTo]
   )
   const filteredReleased = useMemo(
     () => applyFilter(snap?.releasedDays),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [snap, periodFrom, periodTo, searchQuery]
+    [snap, periodFrom, periodTo]
   )
 
-  const totalPendingCount = snap?.pendingCount ?? 0
   const disputedPaymentsList = snap?.disputedPayments ?? []
 
   const filteredPendingTotal = filteredDays.reduce((s, d) => s + d.total, 0)
@@ -300,9 +276,9 @@ export function MercadoPagoClient() {
         </Card>
       )}
 
-      {/* Grid: Já liberado · Ainda no mês · Total geral · Retido */}
+      {/* Grid: Já liberado (mês) · A liberar (mês) · Em mediação */}
       <TooltipProvider delayDuration={150}>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <SummaryCard
             tone="emerald"
             icon={<Clock className="w-5 h-5" />}
@@ -315,19 +291,10 @@ export function MercadoPagoClient() {
           <SummaryCard
             tone="sky"
             icon={<Clock className="w-5 h-5" />}
-            label="Liberando no mês"
+            label="A liberar no mês"
             value={pendingMesAtual.total}
             sub={`${pendingMesAtual.count} pagamento${pendingMesAtual.count === 1 ? "" : "s"}`}
             tooltip={`${pendingMesAtual.count} pagamento${pendingMesAtual.count === 1 ? "" : "s"} com liberação prevista até o fim deste mês.`}
-            loading={loading && !snap}
-          />
-          <SummaryCard
-            tone="sky"
-            icon={<Clock className="w-5 h-5" />}
-            label="Total a liberar"
-            value={snap?.unavailableBalance ?? 0}
-            sub={`${totalPendingCount} pag. · próx. 180d`}
-            tooltip={`Pipeline inteiro — ${totalPendingCount} pagamento${totalPendingCount === 1 ? "" : "s"} com liberação agendada até 180 dias pra frente. Inclui o que vai cair ainda este mês.`}
             loading={loading && !snap}
           />
           <SummaryCard
@@ -493,24 +460,6 @@ export function MercadoPagoClient() {
               }}
             />
 
-            <div className="flex-1 min-w-[200px] relative">
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Buscar por id, comprador, descrição..."
-                className="w-full px-3 py-1.5 pr-8 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-600 focus:border-transparent outline-none"
-              />
-              {searchQuery && (
-                <button
-                  onClick={() => setSearchQuery("")}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 text-lg leading-none"
-                  title="Limpar"
-                >
-                  ×
-                </button>
-              )}
-            </div>
           </div>
         </CardHeader>
         <CardContent className="p-0">
