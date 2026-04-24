@@ -53,6 +53,7 @@ export async function GET(req: NextRequest) {
       clientSecret: creds.clientSecret,
       code,
       redirectUri,
+      codeVerifier: stateRow.codeVerifier,
     })
 
     await prisma.mPIntegration.upsert({
