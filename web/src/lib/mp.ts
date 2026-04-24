@@ -320,6 +320,92 @@ export async function fetchMPBalance(params: {
   }
 }
 
+export interface MPDisputedPayment {
+  id: number
+  description: string
+  netAmount: number
+  grossAmount: number
+  dateCreated: string | null
+  statusDetail: string | null
+  paymentMethodId: string | null
+  buyer: string | null
+  externalReference: string | null
+}
+
+/**
+ * Lista pagamentos em mediação — o MP segura o dinheiro enquanto a
+ * reclamação do comprador não é resolvida. Essa é a categoria "Retido
+ * por reclamação" que aparece no app do MP.
+ *
+ * Status: `in_mediation` = disputa aberta (retido). Não incluímos
+ * `charged_back` porque aí o dinheiro já saiu (perdeu a disputa).
+ */
+export async function fetchMPDisputedPayments(params: {
+  accessToken: string
+}): Promise<MPDisputedPayment[]> {
+  const out: MPDisputedPayment[] = []
+  const LIMIT = 50
+  let offset = 0
+  const MAX_OFFSET = 500
+
+  while (offset < MAX_OFFSET) {
+    const q = new URLSearchParams({
+      status: "in_mediation",
+      sort: "date_created",
+      criteria: "desc",
+      limit: String(LIMIT),
+      offset: String(offset),
+    })
+    const url = `https://api.mercadopago.com/v1/payments/search?${q.toString()}`
+    const res = await fetch(url, {
+      headers: {
+        Authorization: `Bearer ${params.accessToken}`,
+        Accept: "application/json",
+      },
+      cache: "no-store",
+    })
+    if (!res.ok) {
+      const body = await res.text()
+      throw new Error(`MP payments/search (mediation) failed (${res.status}): ${body}`)
+    }
+    const data: MPPaymentSearchResult & {
+      results?: Array<MPPaymentRaw & { status_detail?: string }>
+    } = await res.json()
+    const batch = data.results || []
+
+    for (const p of batch) {
+      const net = p.transaction_details?.net_received_amount
+      const gross = Number(p.transaction_amount) || 0
+      const fees = (p.fee_details || []).reduce(
+        (s, f) => s + (Number(f.amount) || 0),
+        0
+      )
+      const netAmount =
+        typeof net === "number" && Number.isFinite(net) ? net : gross - fees
+
+      const itemTitle = p.additional_info?.items?.[0]?.title
+      const description = (p.description || itemTitle || `Pagamento ${p.id}`).trim()
+
+      out.push({
+        id: p.id,
+        description,
+        netAmount: Math.round(netAmount * 100) / 100,
+        grossAmount: Math.round(gross * 100) / 100,
+        dateCreated: p.date_created || null,
+        statusDetail: (p as MPPaymentRaw & { status_detail?: string }).status_detail || null,
+        paymentMethodId: p.payment_method_id || null,
+        externalReference: p.external_reference || null,
+        buyer: p.payer?.nickname || p.payer?.email || null,
+      })
+    }
+
+    if (batch.length < LIMIT) break
+    offset += LIMIT
+  }
+
+  return out
+}
+
 export async function getMPIntegrationForTenant(tenantId: string) {
   const integration = await prisma.mPIntegration.findUnique({ where: { tenantId } })
   if (!integration) return null
