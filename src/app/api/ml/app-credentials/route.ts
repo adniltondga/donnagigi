@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import prisma from "@/lib/prisma"
 import { getSession } from "@/lib/tenant"
 import { getMLRedirectUri } from "@/lib/ml-url"
+import { getMLWebhookUrl } from "@/lib/webhook-url"
 import { isWriter } from "@/lib/auth"
 
 export const dynamic = "force-dynamic"
@@ -26,6 +27,7 @@ export async function GET(request: NextRequest) {
   const envId = process.env.ML_CLIENT_ID || null
   const envHasSecret = !!process.env.ML_CLIENT_SECRET
   const redirectUri = await getMLRedirectUri(request, session.tenantId)
+  const webhookUrl = await getMLWebhookUrl(session.tenantId, request)
 
   if (creds) {
     return NextResponse.json({
@@ -37,6 +39,7 @@ export async function GET(request: NextRequest) {
         : "••••",
       redirectUri,
       customRedirectUri: creds.redirectUri || null,
+      webhookUrl,
       updatedAt: creds.updatedAt,
     })
   }
@@ -44,9 +47,10 @@ export async function GET(request: NextRequest) {
   return NextResponse.json({
     configured: !!envId && envHasSecret,
     source: envId && envHasSecret ? "env" : null,
-    clientId: envId ? `${envId.slice(0, 4)}…${envId.slice(-4)}` : null, // mascarado também pro env
+    clientId: envId ? `${envId.slice(0, 4)}…${envId.slice(-4)}` : null,
     clientSecretMasked: envHasSecret ? "••••" : null,
     redirectUri,
+    webhookUrl,
   })
 }
 

@@ -215,6 +215,7 @@ interface MLCredsResponse {
   clientSecretMasked: string | null
   redirectUri: string
   customRedirectUri?: string | null
+  webhookUrl?: string
 }
 
 interface MLIntegrationResponse {
@@ -296,6 +297,7 @@ function MercadoLivreDialog({
             <div className="border-t border-gray-100" />
             <MLConnectionSection
               integration={integration}
+              webhookUrl={creds?.webhookUrl}
               onDisconnect={handleDisconnect}
               onFlash={onFlash}
             />
@@ -474,10 +476,12 @@ function MLCredentialsSection({
 
 function MLConnectionSection({
   integration,
+  webhookUrl,
   onDisconnect,
   onFlash,
 }: {
   integration: MLIntegrationResponse | null
+  webhookUrl?: string
   onDisconnect: () => void
   onFlash: (t: "success" | "error", msg: string) => void
 }) {
@@ -552,7 +556,7 @@ function MLConnectionSection({
           </div>
           <WebhookHint
             label="Webhook ML (tempo real)"
-            path="/api/ml/webhook"
+            url={webhookUrl}
             instructions={
               <>
                 No <a href="https://developers.mercadolivre.com.br/devcenter" target="_blank" rel="noopener noreferrer" className="underline">DevCenter</a>, abra seu app → <strong>Tópicos</strong> → cadastre essa URL e marque <code>orders_v2</code> e <code>items</code>. Assim cada venda cai no sistema em segundos.
@@ -618,6 +622,7 @@ interface MPCredsResponse {
   clientSecretMasked: string | null
   redirectUri: string
   customRedirectUri?: string | null
+  webhookUrl?: string
 }
 
 interface MPIntegrationResponse {
@@ -698,7 +703,11 @@ function MercadoPagoDialog({
           <div className="space-y-6">
             <MPCredentialsSection data={creds} onChanged={load} onFlash={onFlash} />
             <div className="border-t border-gray-100" />
-            <MPConnectionSection integration={integration} onDisconnect={handleDisconnect} />
+            <MPConnectionSection
+              integration={integration}
+              webhookUrl={creds?.webhookUrl}
+              onDisconnect={handleDisconnect}
+            />
           </div>
         )}
       </DialogContent>
@@ -872,9 +881,11 @@ function MPCredentialsSection({
 
 function MPConnectionSection({
   integration,
+  webhookUrl,
   onDisconnect,
 }: {
   integration: MPIntegrationResponse | null
+  webhookUrl?: string
   onDisconnect: () => void
 }) {
   if (!integration?.configured) {
@@ -912,7 +923,7 @@ function MPConnectionSection({
       {!integration.isExpired && (
         <WebhookHint
           label="Webhook MP (tempo real)"
-          path="/api/mercadopago/webhook"
+          url={webhookUrl}
           instructions={
             <>
               No <a href="https://www.mercadopago.com.br/developers/panel" target="_blank" rel="noopener noreferrer" className="underline">painel MP Developers</a>, abra seu app → <strong>Notificações &gt; Webhooks</strong> → cadastre essa URL e marque o evento <code>payment</code>. Assim liberações e disputas atualizam automaticamente.
@@ -939,18 +950,18 @@ function MPConnectionSection({
 
 function WebhookHint({
   label,
-  path,
+  url,
   instructions,
 }: {
   label: string
-  path: string
+  url?: string
   instructions: React.ReactNode
 }) {
   const [copied, setCopied] = useState(false)
-  const fullUrl = typeof window !== "undefined" ? `${window.location.origin}${path}` : path
+  if (!url) return null
   const copy = async () => {
     try {
-      await navigator.clipboard.writeText(fullUrl)
+      await navigator.clipboard.writeText(url)
       setCopied(true)
       setTimeout(() => setCopied(false), 1500)
     } catch {
@@ -962,7 +973,7 @@ function WebhookHint({
       <p className="font-semibold text-gray-900">📡 {label}</p>
       <div className="flex items-center gap-2">
         <code className="flex-1 bg-white border border-gray-200 rounded px-2 py-1 text-[11px] font-mono break-all">
-          {fullUrl}
+          {url}
         </code>
         <button
           onClick={copy}
