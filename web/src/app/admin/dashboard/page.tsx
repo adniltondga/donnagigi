@@ -49,7 +49,7 @@ interface V2Response {
   derivados: { margemPct: number; margemPctAnterior: number }
   cancelamentos: { vendas: number; bruto: number; taxaPct: number }
   timeline: Array<{ date: string; vendas: number; bruto: number; lucro: number }>
-  topPorLucro: Array<{ name: string; mlListingId: string | null; vendas: number; lucro: number; margem: number }>
+  topPorLucro: Array<{ name: string; variation: string | null; mlListingId: string | null; vendas: number; lucro: number; margem: number }>
 }
 
 interface PrevisaoResponse {
@@ -290,12 +290,12 @@ export default function Dashboard() {
           {v2?.topPorLucro && v2.topPorLucro.length > 0 ? (
             <ul className="space-y-3">
               {v2.topPorLucro.slice(0, 5).map((p, i) => (
-                <li key={`${p.mlListingId || p.name}-${i}`} className="flex items-start gap-3">
+                <li key={`${p.mlListingId || p.name}-${p.variation || ""}-${i}`} className="flex items-start gap-3">
                   <div className="w-6 h-6 bg-primary-100 text-primary-700 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0">
                     {i + 1}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <ProductLabel title={p.name} mlListingId={p.mlListingId} size="sm" singleLine />
+                    <ProductLabel title={p.name} variation={p.variation} mlListingId={p.mlListingId} size="sm" singleLine />
                     <div className="flex items-center gap-2 text-xs mt-1">
                       <span className="text-gray-500">{p.vendas} un.</span>
                       <span className="text-emerald-600 font-semibold">{formatCurrency(p.lucro)}</span>

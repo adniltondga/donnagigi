@@ -3,6 +3,11 @@
 // lucro e desenha um painel "Custo / Lucro" dentro do card.
 
 (() => {
+  const LOG = (...a) => console.log("%c[agLivre]", "color:#7c3aed;font-weight:bold", ...a);
+  const WARN = (...a) => console.warn("%c[agLivre]", "color:#dc2626;font-weight:bold", ...a);
+
+  LOG("content script carregado em", location.href);
+
   const MARKER_CLASS = "aglivre-panel";
   const PROCESSED_ATTR = "data-aglivre-id";
   const MLB_RE = /#(\d{6,})\b/;
@@ -42,12 +47,22 @@
   function findCards() {
     const cards = new Set();
     const anchors = [];
-    // Anchors: texto "Selecionar anúncio"
+    // Estratégia 1: texto "Selecionar anúncio"
     const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
     let node;
     while ((node = walker.nextNode())) {
       const t = (node.nodeValue || "").trim();
       if (t === "Selecionar anúncio") anchors.push(node.parentElement);
+    }
+
+    // Estratégia 2 (fallback): qualquer elemento folha com "#MLBid"
+    if (anchors.length === 0) {
+      const all = document.querySelectorAll("*");
+      for (const el of all) {
+        if (el.childElementCount > 0) continue;
+        if (MLB_RE.test(el.textContent || "")) anchors.push(el);
+      }
+      if (anchors.length > 0) LOG("usando fallback #MLBid, achou", anchors.length, "âncoras");
     }
 
     for (const anchor of anchors) {
@@ -260,6 +275,7 @@
   let authWarned = false;
   async function process() {
     const cards = findCards();
+    LOG("process() →", cards.size, "card(s) encontrado(s)");
     if (cards.size === 0) return;
 
     const cardArr = [...cards];
@@ -277,20 +293,22 @@
       .filter(Boolean);
 
     const listingIds = [...new Set(meta.map((m) => m.listingId))];
+    LOG("listingIds extraídos:", listingIds);
     let costs = {};
     try {
       const res = await send({ type: "fetchCosts", listingIds });
       costs = res?.costs || {};
+      LOG("custos recebidos:", costs);
       authWarned = false;
     } catch (err) {
       if (err.message === "NOT_AUTHENTICATED") {
         if (!authWarned) {
-          console.warn("[agLivre] extensão não autenticada — abra o popup pra logar");
+          WARN("extensão não autenticada — clique no ícone da extensão e faça login");
           authWarned = true;
         }
         return;
       }
-      console.error("[agLivre] erro ao buscar custos", err);
+      WARN("erro ao buscar custos:", err);
       return;
     }
 
@@ -313,8 +331,13 @@
   });
 
   function start() {
+    LOG("start() — ativando MutationObserver");
     observer.observe(document.body, { childList: true, subtree: true });
     process();
+    // Re-tenta algumas vezes (ML carrega a tabela de forma assíncrona)
+    setTimeout(process, 1500);
+    setTimeout(process, 3500);
+    setTimeout(process, 6000);
   }
 
   if (document.readyState === "loading") {
@@ -323,6 +346,6 @@
     start();
   }
 
-  // Debug
-  window.__aglivreDebug = { process, findCards };
+  // Debug — no console: window.__aglivreDebug.process()
+  window.__aglivreDebug = { process, findCards, extractVoceRecebe };
 })();

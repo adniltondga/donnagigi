@@ -20,7 +20,7 @@
   },
   "content_scripts": [
     {
-      "matches": ["https://www.mercadolivre.com.br/anuncios*"],
+      "matches": ["https://www.mercadolivre.com.br/*"],
       "js": ["content.js"],
       "css": ["styles.css"],
       "run_at": "document_idle"
