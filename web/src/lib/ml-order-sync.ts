@@ -218,7 +218,7 @@ Bruto: R$ ${order.total_amount.toFixed(2)} | Taxas: ${taxBreakdown} (Total: R$ $
       await createNotification({
         tenantId,
         type: "sale",
-        title: `Venda nova: ${formatBRL(netAmount)}`,
+        title: `Venda nova: ${formatBRL(order.total_amount)}`,
         body: `${displayTitle} · ${order.buyer.nickname}`,
         link: `/admin/relatorios/vendas-ml`,
       })
