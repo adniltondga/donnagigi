@@ -1,5 +1,5 @@
 import Link from "next/link"
-import { ArrowRight, TrendingUp, TrendingDown, FileText, Rocket, Scale, Landmark, BookOpen, type LucideIcon } from "lucide-react"
+import { ArrowRight, TrendingUp, TrendingDown, FileText, FileBarChart, Rocket, Scale, Landmark, BookOpen, type LucideIcon } from "lucide-react"
 import { PageHeader } from "@/components/ui/page-header"
 import { Card, CardContent } from "@/components/ui/card"
 
@@ -32,6 +32,13 @@ const CARDS: Item[] = [
     title: "DRE mensal",
     description: "Demonstração do resultado do mês: receita, taxas, custo, despesas e lucro líquido com comparativo vs mês anterior.",
     accent: "bg-primary-50 text-primary-700",
+  },
+  {
+    href: "/admin/financeiro/relatorios/dre-anual",
+    icon: FileBarChart,
+    title: "DRE anual",
+    description: "Matriz com os 12 meses + total YTD do ano. Filtra por ano, exporta CSV pro contador.",
+    accent: "bg-violet-50 text-violet-700",
   },
   {
     href: "/admin/financeiro/relatorios/pro-labore",
