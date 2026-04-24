@@ -11,28 +11,28 @@ import {
   AlertCircle,
   CheckCircle,
   Loader,
-  LogOut,
-  RefreshCw,
   Eye,
   EyeOff,
   Sparkles,
   FileText,
   XCircle,
+  Users,
   type LucideIcon,
 } from "lucide-react"
 import { PageHeader } from "@/components/ui/page-header"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
 import { formatCurrency } from "@/lib/calculations"
 import { useUserRole } from "@/lib/useUserRole"
+import { EquipePanel } from "@/components/admin/EquipePanel"
+import { IntegrationsPanel } from "@/components/admin/IntegrationsPanel"
 
-type Tab = "perfil" | "senha" | "ml" | "assinatura"
+type Tab = "perfil" | "senha" | "equipe" | "ml" | "assinatura"
 
 const TABS: Array<{ key: Tab; label: string; icon: LucideIcon; writeOnly?: boolean }> = [
   { key: "perfil", label: "Perfil", icon: User },
   { key: "senha", label: "Alterar senha", icon: KeyRound },
-  { key: "ml", label: "Integração ML", icon: Plug, writeOnly: true },
+  { key: "equipe", label: "Equipe", icon: Users, writeOnly: true },
+  { key: "ml", label: "Integrações", icon: Plug, writeOnly: true },
   { key: "assinatura", label: "Assinatura", icon: CreditCard, writeOnly: true },
 ]
 
@@ -82,7 +82,15 @@ function ConfigInner() {
 
       {tab === "perfil" && <PerfilPanel />}
       {tab === "senha" && <SenhaPanel />}
-      {tab === "ml" && canWrite && <MLPanel initialSuccess={params.get("success")} initialError={params.get("error")} />}
+      {tab === "equipe" && canWrite && <EquipePanel />}
+      {tab === "ml" && canWrite && (
+        <IntegrationsPanel
+          mlFlashSuccess={params.get("success")}
+          mlFlashError={params.get("error")}
+          mpFlashSuccess={params.get("mp_success")}
+          mpFlashError={params.get("mp_error")}
+        />
+      )}
       {tab === "assinatura" && canWrite && <AssinaturaPanel />}
     </div>
   )
@@ -324,510 +332,6 @@ function PasswordField({
     </div>
   )
 }
-
-/* ------------------- INTEGRAÇÃO ML ------------------- */
-
-function MLPanel({ initialSuccess, initialError }: { initialSuccess: string | null; initialError: string | null }) {
-  const [integration, setIntegration] = useState<{
-    configured: boolean
-    sellerID?: string
-    expiresAt?: string
-    isExpired?: boolean
-  } | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [status, setStatus] = useState<"idle" | "loading" | "syncing" | "success" | "error">("idle")
-  const [message, setMessage] = useState("")
-  const [syncResult, setSyncResult] = useState<any>(null)
-
-  const check = async () => {
-    try {
-      const res = await fetch("/api/mercadolivre/integration")
-      const d = await res.json()
-      setIntegration(d)
-    } catch {
-      setIntegration({ configured: false })
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  useEffect(() => {
-    check()
-  }, [])
-
-  useEffect(() => {
-    if (initialSuccess) {
-      setStatus("success")
-      setMessage(decodeURIComponent(initialSuccess))
-    } else if (initialError) {
-      setStatus("error")
-      setMessage(decodeURIComponent(initialError))
-    }
-  }, [initialSuccess, initialError])
-
-  const handleLogin = () => {
-    setStatus("loading")
-    window.location.href = "/api/ml/oauth/login"
-  }
-
-  const handleDisconnect = async () => {
-    if (!confirm("Desconectar a integração com Mercado Livre?")) return
-    try {
-      const res = await fetch("/api/mercadolivre/integration", { method: "DELETE" })
-      if (res.ok) {
-        setStatus("success")
-        setMessage("Desconectado do Mercado Livre")
-        setIntegration(null)
-        setTimeout(check, 500)
-      }
-    } catch {
-      setStatus("error")
-      setMessage("Erro ao desconectar")
-    }
-  }
-
-  const syncOrders = async () => {
-    setStatus("syncing")
-    setMessage("")
-    setSyncResult(null)
-    try {
-      const res = await fetch("/api/ml/sync-orders", { method: "GET" })
-      const data = await res.json()
-      if (!res.ok) {
-        setStatus("error")
-        setMessage(data.error || "Erro ao sincronizar vendas")
-        return
-      }
-      setSyncResult(data)
-      setStatus("success")
-      setMessage(data.message)
-      setTimeout(() => {
-        setStatus("idle")
-        setMessage("")
-      }, 10000)
-    } catch (err) {
-      setStatus("error")
-      setMessage(`Erro: ${err instanceof Error ? err.message : "desconhecido"}`)
-    }
-  }
-
-  return (
-    <div className="space-y-4">
-      {message && <StatusMessage status={status === "success" ? "success" : "error"} message={message} />}
-
-      {/* Card unificado: credenciais + conexão */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-start justify-between gap-4">
-            <div className="flex items-center gap-3">
-              <div className="w-11 h-11 rounded-lg bg-amber-50 text-amber-700 flex items-center justify-center">
-                <Plug className="w-5 h-5" />
-              </div>
-              <div>
-                <CardTitle>Mercado Livre</CardTitle>
-                <CardDescription>
-                  Registre seu app no ML DevCenter, cadastre aqui e conecte sua conta.
-                </CardDescription>
-              </div>
-            </div>
-            {!loading && (
-              <Badge
-                variant={
-                  integration?.configured
-                    ? integration.isExpired
-                      ? "destructive"
-                      : "default"
-                    : "secondary"
-                }
-              >
-                {loading
-                  ? "..."
-                  : integration?.configured
-                  ? integration.isExpired
-                    ? "Token expirado"
-                    : "Conectado"
-                  : "Não conectado"}
-              </Badge>
-            )}
-          </div>
-        </CardHeader>
-
-        <CardContent className="space-y-6">
-          {/* Seção 1: Credenciais do app */}
-          <CredentialsSection />
-
-          {/* Divider */}
-          <div className="border-t border-gray-100" />
-
-          {/* Seção 2: Conexão OAuth */}
-          <ConnectionSection
-            loading={loading}
-            integration={integration}
-            status={status}
-            syncResult={syncResult}
-            onLogin={handleLogin}
-            onDisconnect={handleDisconnect}
-            onSyncOrders={syncOrders}
-          />
-        </CardContent>
-      </Card>
-
-    </div>
-  )
-}
-
-/* ------------------- Seção Credenciais ------------------- */
-
-function CredentialsSection() {
-  const [data, setData] = useState<AppCredentialsResponse | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [editing, setEditing] = useState(false)
-  const [clientId, setClientId] = useState("")
-  const [clientSecret, setClientSecret] = useState("")
-  const [redirectUri, setRedirectUri] = useState("")
-  const [showSecret, setShowSecret] = useState(false)
-  const [submitting, setSubmitting] = useState(false)
-  const [msg, setMsg] = useState<{ type: "success" | "error"; text: string } | null>(null)
-
-  const load = () => {
-    setLoading(true)
-    fetch("/api/ml/app-credentials")
-      .then((r) => (r.ok ? r.json() : null))
-      .then(setData)
-      .finally(() => setLoading(false))
-  }
-
-  useEffect(() => {
-    load()
-  }, [])
-
-  const startEdit = () => {
-    setEditing(true)
-    setClientId("")
-    setClientSecret("")
-    setRedirectUri(data?.customRedirectUri || "")
-    setMsg(null)
-  }
-
-  const cancel = () => {
-    setEditing(false)
-    setClientId("")
-    setClientSecret("")
-    setRedirectUri("")
-    setMsg(null)
-  }
-
-  const save = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setSubmitting(true)
-    setMsg(null)
-    try {
-      const res = await fetch("/api/ml/app-credentials", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          clientId: clientId.trim(),
-          clientSecret: clientSecret.trim(),
-          redirectUri: redirectUri.trim() || null,
-        }),
-      })
-      const d = await res.json().catch(() => ({}))
-      if (res.ok) {
-        setMsg({ type: "success", text: "Credenciais salvas." })
-        setEditing(false)
-        load()
-      } else {
-        setMsg({ type: "error", text: d.error || "Erro ao salvar" })
-      }
-    } catch {
-      setMsg({ type: "error", text: "Erro de conexão" })
-    } finally {
-      setSubmitting(false)
-    }
-  }
-
-  const remove = async () => {
-    if (!confirm("Remover credenciais do seu app ML? Volta a usar o app padrão do agLivre.")) return
-    try {
-      await fetch("/api/ml/app-credentials", { method: "DELETE" })
-      load()
-    } catch {}
-  }
-
-  const copy = (text: string) => navigator.clipboard.writeText(text)
-
-  if (loading) return <LoadingBox />
-
-  const hasOwn = data?.configured && data.source === "tenant"
-
-  return (
-    <section className="space-y-3">
-      <div className="flex items-center justify-between">
-        <div>
-          <h3 className="text-sm font-semibold text-gray-900">App Mercado Livre</h3>
-          <p className="text-xs text-gray-500">
-            Credenciais do app registrado no{" "}
-            <a
-              href="https://developers.mercadolivre.com.br/devcenter"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-primary-600 hover:text-primary-700 underline"
-            >
-              ML DevCenter
-            </a>
-            .
-          </p>
-        </div>
-        {!editing && data?.configured && (
-          <Badge variant={hasOwn ? "default" : "secondary"} className="text-xs">
-            {hasOwn ? "App próprio" : "App padrão"}
-          </Badge>
-        )}
-      </div>
-
-      {msg && <StatusMessage status={msg.type} message={msg.text} />}
-
-      {editing ? (
-        <form onSubmit={save} className="space-y-3">
-          <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">Client ID</label>
-            <input
-              type="text"
-              value={clientId}
-              onChange={(e) => setClientId(e.target.value)}
-              required
-              placeholder="1234567890123456"
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg font-mono text-sm focus:ring-2 focus:ring-primary-600 focus:border-transparent outline-none"
-            />
-          </div>
-          <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">Client Secret</label>
-            <div className="relative">
-              <input
-                type={showSecret ? "text" : "password"}
-                value={clientSecret}
-                onChange={(e) => setClientSecret(e.target.value)}
-                required
-                placeholder="••••••••••••••••"
-                className="w-full px-3 py-2 pr-10 border border-gray-300 rounded-lg font-mono text-sm focus:ring-2 focus:ring-primary-600 focus:border-transparent outline-none"
-              />
-              <button
-                type="button"
-                onClick={() => setShowSecret((v) => !v)}
-                className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 p-1"
-              >
-                {showSecret ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-              </button>
-            </div>
-          </div>
-
-          <div className="rounded-lg border border-gray-200 bg-gray-50 p-3 text-xs text-gray-600 space-y-1">
-            <p className="font-semibold text-gray-900">Como obter:</p>
-            <ol className="list-decimal pl-4 space-y-0.5">
-              <li>
-                Acesse{" "}
-                <a
-                  href="https://developers.mercadolivre.com.br/devcenter"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-primary-600 underline"
-                >
-                  ML DevCenter
-                </a>{" "}
-                → Criar aplicação
-              </li>
-              <li>Registre a Redirect URI mostrada abaixo</li>
-              <li>Copie Client ID e Client Secret e cole aqui</li>
-            </ol>
-          </div>
-
-          <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">
-              Redirect URI <span className="text-gray-400 font-normal">(opcional — usa a padrão se deixar vazio)</span>
-            </label>
-            <input
-              type="url"
-              value={redirectUri}
-              onChange={(e) => setRedirectUri(e.target.value)}
-              placeholder={data?.redirectUri || "https://seudominio.com.br/api/ml/oauth/callback"}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg font-mono text-sm focus:ring-2 focus:ring-primary-600 focus:border-transparent outline-none"
-            />
-            <p className="text-xs text-gray-500 mt-1">
-              Esta URI precisa estar cadastrada no app do ML DevCenter. Padrão atual:{" "}
-              <code className="font-mono">{data?.redirectUri || "—"}</code>
-            </p>
-          </div>
-
-          <div className="flex gap-2 justify-end">
-            <Button type="button" variant="outline" size="sm" onClick={cancel}>
-              Cancelar
-            </Button>
-            <Button type="submit" disabled={submitting || !clientId.trim() || !clientSecret.trim()} size="sm">
-              {submitting && <Loader className="w-4 h-4 animate-spin mr-2" />}
-              Salvar credenciais
-            </Button>
-          </div>
-        </form>
-      ) : hasOwn ? (
-        <div className="space-y-3">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <div className="text-xs text-gray-500 uppercase tracking-wide">Client ID</div>
-              <div className="text-sm font-mono text-gray-900 mt-1">{data.clientId}</div>
-            </div>
-            <div>
-              <div className="text-xs text-gray-500 uppercase tracking-wide">Client Secret</div>
-              <div className="text-sm font-mono text-gray-900 mt-1">{data.clientSecretMasked}</div>
-            </div>
-          </div>
-          <div>
-            <div className="text-xs text-gray-500 mb-1">Redirect URI (cadastre no DevCenter)</div>
-            <div className="flex items-center gap-2 bg-gray-50 px-3 py-2 rounded-lg border border-gray-200">
-              <code className="flex-1 text-xs font-mono break-all">{data.redirectUri}</code>
-              <button
-                onClick={() => copy(data.redirectUri)}
-                className="text-xs text-primary-600 hover:text-primary-700 font-medium whitespace-nowrap"
-              >
-                Copiar
-              </button>
-            </div>
-          </div>
-          <div className="flex gap-2">
-            <Button variant="outline" size="sm" onClick={startEdit}>
-              Editar
-            </Button>
-            <Button variant="destructive" size="sm" onClick={remove}>
-              Remover
-            </Button>
-          </div>
-        </div>
-      ) : (
-        <div className="space-y-3">
-          <div className="rounded-lg border border-gray-200 bg-gray-50 p-3 text-xs text-gray-600">
-            {data?.configured ? (
-              <>
-                Usando o app padrão do agLivre. Cadastre seu próprio app pra ter rate limit isolado
-                e a autorização mostrar sua marca.
-              </>
-            ) : (
-              <>
-                Nenhum app cadastrado. Registre um app no ML DevCenter e cole Client ID + Secret.
-              </>
-            )}
-          </div>
-          <Button size="sm" onClick={startEdit}>
-            Cadastrar app próprio
-          </Button>
-        </div>
-      )}
-    </section>
-  )
-}
-
-/* ------------------- Seção Conexão OAuth ------------------- */
-
-function ConnectionSection({
-  loading,
-  integration,
-  status,
-  syncResult,
-  onLogin,
-  onDisconnect,
-  onSyncOrders,
-}: {
-  loading: boolean
-  integration: { configured: boolean; sellerID?: string; expiresAt?: string; isExpired?: boolean } | null
-  status: "idle" | "loading" | "syncing" | "success" | "error"
-  syncResult: any
-  onLogin: () => void
-  onDisconnect: () => void
-  onSyncOrders: () => void
-}) {
-  if (loading) return <LoadingBox />
-
-  if (integration?.configured) {
-    return (
-      <section className="space-y-4">
-        <div>
-          <h3 className="text-sm font-semibold text-gray-900">Conexão ativa</h3>
-          <p className="text-xs text-gray-500">Sua conta ML está conectada.</p>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pb-4 border-b border-gray-100">
-          <div>
-            <div className="text-xs text-gray-500 uppercase tracking-wide">Seller ID</div>
-            <div className="text-sm font-mono font-semibold text-gray-900 mt-1">{integration.sellerID}</div>
-          </div>
-          <div>
-            <div className="text-xs text-gray-500 uppercase tracking-wide">
-              {integration.isExpired ? "Token expirou em" : "Token válido até"}
-            </div>
-            <div className="text-sm font-medium text-gray-900 mt-1">
-              {integration.expiresAt ? new Date(integration.expiresAt).toLocaleString("pt-BR") : "—"}
-            </div>
-          </div>
-        </div>
-
-        {integration.isExpired && (
-          <div className="flex items-start gap-3 bg-amber-50 border border-amber-200 rounded-lg p-3 text-sm text-amber-900">
-            <AlertCircle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
-            <div>
-              <p className="font-semibold">Token expirado</p>
-              <p>Reconecte pra voltar a sincronizar.</p>
-            </div>
-          </div>
-        )}
-
-        <div className="flex flex-wrap gap-2">
-          <Button onClick={onSyncOrders} disabled={status === "syncing"} variant="default" size="sm">
-            {status === "syncing" ? <Loader className="w-4 h-4 animate-spin mr-2" /> : <RefreshCw className="w-4 h-4 mr-2" />}
-            Sincronizar vendas
-          </Button>
-          {integration.isExpired ? (
-            <Button onClick={onLogin} variant="default" size="sm">
-              <Plug className="w-4 h-4 mr-2" />
-              Reconectar
-            </Button>
-          ) : (
-            <Button onClick={onDisconnect} variant="destructive" size="sm" className="ml-auto">
-              <LogOut className="w-4 h-4 mr-2" />
-              Desconectar
-            </Button>
-          )}
-        </div>
-
-        {syncResult && syncResult.stats && (
-          <div className="rounded-lg border border-gray-200 p-4 text-sm bg-gray-50">
-            <p className="font-semibold text-gray-900 mb-2 text-xs uppercase tracking-wide">Último resultado</p>
-            <div className="grid grid-cols-3 gap-2">
-              <StatBox label="Total" value={syncResult.stats.total} />
-              <StatBox label="Sincronizados" value={syncResult.stats.synced ?? syncResult.stats.created} cls="text-emerald-600" />
-              <StatBox label="Erros" value={syncResult.stats.failed ?? 0} cls="text-red-600" />
-            </div>
-          </div>
-        )}
-      </section>
-    )
-  }
-
-  return (
-    <Button onClick={onLogin} disabled={status === "loading"} className="w-full" size="lg">
-      {status === "loading" ? <Loader className="w-4 h-4 animate-spin mr-2" /> : <Plug className="w-4 h-4 mr-2" />}
-      {status === "loading" ? "Redirecionando..." : "Conectar Mercado Livre"}
-    </Button>
-  )
-}
-
-interface AppCredentialsResponse {
-  configured: boolean
-  source: "tenant" | "env" | null
-  clientId: string | null
-  clientSecretMasked: string | null
-  redirectUri: string // a URI efetiva (custom do tenant, .env ou derivada)
-  customRedirectUri?: string | null // o que o tenant cadastrou (se existir)
-  updatedAt?: string
-}
-
 /* ------------------- ASSINATURA ------------------- */
 
 type Status = "TRIAL" | "ACTIVE" | "PENDING" | "OVERDUE" | "CANCELED" | "EXPIRED"
@@ -988,15 +492,6 @@ function AssinaturaPanel() {
 }
 
 /* ------------------- HELPERS ------------------- */
-
-function StatBox({ label, value, cls }: { label: string; value: number | string; cls?: string }) {
-  return (
-    <div className="bg-white rounded p-2 text-center border border-gray-100">
-      <p className="text-xs text-gray-500">{label}</p>
-      <p className={`text-lg font-bold ${cls || "text-gray-900"}`}>{value}</p>
-    </div>
-  )
-}
 
 function LoadingBox() {
   return (
