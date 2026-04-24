@@ -28,6 +28,8 @@ model Tenant {
   mlProductCosts    MLProductCost[]
   subscription      Subscription?
   mlAppCredentials  MLAppCredentials?
+  mpAppCredentials  MPAppCredentials?
+  mpIntegration     MPIntegration?
   invitations       Invitation[]
   billCategories    BillCategory[]
 }
@@ -291,6 +293,46 @@ model MLOAuthState {
   tenantId     String?  // tenantId do usuário que iniciou o OAuth (setado no callback)
   expiresAt    DateTime
   createdAt    DateTime @default(now())
+
+  @@index([expiresAt])
+}
+
+// Credenciais do app do cliente no Mercado Pago DevCenter.
+// Mesmo padrão do MLAppCredentials: cada tenant pode cadastrar seu próprio
+// app (APP_ID + secret) pra ter cotas isoladas e branding próprio, ou cair
+// no fallback das env vars MP_CLIENT_ID / MP_CLIENT_SECRET.
+model MPAppCredentials {
+  id           String   @id @default(cuid())
+  tenantId     String   @unique
+  tenant       Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  clientId     String
+  clientSecret String
+  redirectUri  String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+// Integração OAuth ativa com o Mercado Pago (1 por tenant).
+// Guarda tokens + user_id do seller no MP.
+model MPIntegration {
+  id           String   @id @default(cuid())
+  tenantId     String   @unique
+  tenant       Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  mpUserId     String   // user_id do vendedor no MP
+  accessToken  String
+  refreshToken String?
+  expiresAt    DateTime
+  scope        String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+// State temporário do fluxo OAuth do Mercado Pago (TTL curto).
+model MPOAuthState {
+  state     String   @id
+  tenantId  String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
 
   @@index([expiresAt])
 }
