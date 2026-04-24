@@ -42,29 +42,55 @@ function formatMonthLabel(ym: string): string {
 
 export default function DrePage() {
   const [month, setMonth] = useState(currentMonthYM())
+  const [basis, setBasis] = useState<"caixa" | "competencia">("competencia")
   const [data, setData] = useState<Response | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     setLoading(true)
-    fetch(`/api/relatorios/dre?month=${month}`)
+    fetch(`/api/relatorios/dre?month=${month}&basis=${basis}`)
       .then((r) => (r.ok ? r.json() : null))
       .then(setData)
       .finally(() => setLoading(false))
-  }, [month])
+  }, [month, basis])
 
   return (
     <div className="space-y-6">
       <PageHeader
         title="📊 DRE mensal"
-        description="Demonstração do resultado do mês — o que entrou, o que saiu e o que sobrou. Regime de caixa (pagas/recebidas de fato)."
+        description={
+          basis === "caixa"
+            ? "Regime de caixa: só o que efetivamente entrou/saiu (pago/recebido no período)."
+            : "Regime de competência: tudo que vence no mês, independente de já ter sido pago."
+        }
         actions={
-          <input
-            type="month"
-            value={month}
-            onChange={(e) => setMonth(e.target.value)}
-            className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary-600 outline-none"
-          />
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1 bg-gray-100 rounded-lg p-0.5">
+              {([
+                { key: "competencia", label: "Competência" },
+                { key: "caixa", label: "Caixa" },
+              ] as const).map((opt) => {
+                const active = basis === opt.key
+                return (
+                  <button
+                    key={opt.key}
+                    onClick={() => setBasis(opt.key)}
+                    className={`px-3 py-1.5 text-xs font-medium rounded-md transition ${
+                      active ? "bg-white text-gray-900 shadow-sm" : "text-gray-600 hover:text-gray-900"
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                )
+              })}
+            </div>
+            <input
+              type="month"
+              value={month}
+              onChange={(e) => setMonth(e.target.value)}
+              className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary-600 outline-none"
+            />
+          </div>
         }
       />
 

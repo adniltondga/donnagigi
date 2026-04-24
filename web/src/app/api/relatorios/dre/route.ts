@@ -37,14 +37,17 @@ export async function GET(req: NextRequest) {
       month0 = today.getMonth()
     }
 
-    const currentDre = await computeDre(tenantId, year, month0)
+    const basis = req.nextUrl.searchParams.get("basis") === "competencia" ? "competencia" : "caixa"
+
+    const currentDre = await computeDre(tenantId, year, month0, basis)
     const prevMonth0 = month0 === 0 ? 11 : month0 - 1
     const prevYear = month0 === 0 ? year - 1 : year
-    const previousDre = await computeDre(tenantId, prevYear, prevMonth0)
+    const previousDre = await computeDre(tenantId, prevYear, prevMonth0, basis)
 
     return NextResponse.json({
       month: `${year}-${String(month0 + 1).padStart(2, "0")}`,
       previousMonth: `${prevYear}-${String(prevMonth0 + 1).padStart(2, "0")}`,
+      basis,
       current: currentDre,
       previous: previousDre,
     })
@@ -76,14 +79,34 @@ interface DreResult {
   margemLiquidaPct: number
 }
 
+/**
+ * Extrai valor monetário das notes da bill.
+ * O sync grava em formato americano via `.toFixed(2)` (ex: "1234.56"),
+ * então parseFloat direto já funciona. O replace de vírgula cobre o
+ * caso edge de bills criadas manualmente com formato BR ("1,50").
+ *
+ * Bug anterior: um `.replace(/\./g, "")` tratava "1234.56" como "123456"
+ * — valores apareciam 100x maiores no DRE.
+ */
 function parseAmount(notes: string | null, re: RegExp): number {
   if (!notes) return 0
   const m = notes.match(re)
   if (!m) return 0
-  return Number(m[1].replace(/\./g, "").replace(",", ".")) || 0
+  const raw = m[1]
+  // Formato BR (vírgula como decimal, ponto como milhar): "1.234,56"
+  if (raw.includes(",")) {
+    return Number(raw.replace(/\./g, "").replace(",", ".")) || 0
+  }
+  // Formato americano (padrão do sync): "1234.56"
+  return Number(raw) || 0
 }
 
-async function computeDre(tenantId: string, year: number, month0: number): Promise<DreResult> {
+async function computeDre(
+  tenantId: string,
+  year: number,
+  month0: number,
+  basis: "caixa" | "competencia"
+): Promise<DreResult> {
   const start = new Date(year, month0, 1, 0, 0, 0, 0)
   const end = new Date(year, month0 + 1, 1, 0, 0, 0, 0)
 
@@ -127,16 +150,31 @@ async function computeDre(tenantId: string, year: number, month0: number): Promi
   })
   const receitaBrutaOutras = outras.reduce((s, b) => s + b.amount, 0)
 
-  // Despesas operacionais pagas no período — paidDate no mês, excluindo taxas ML
-  // (já contabilizadas acima) e vendas
+  // Despesas operacionais, excluindo taxas ML (já contabilizadas acima) e vendas.
+  // Caixa: só as pagas, no período do paidDate.
+  // Competência: todas as com dueDate no mês, exceto canceladas — inclui
+  // pendentes ("pagas ou vencendo nesse mês").
+  const despesasWhere =
+    basis === "caixa"
+      ? {
+          tenantId,
+          type: "payable",
+          status: "paid",
+          paidDate: { gte: start, lt: end },
+          NOT: [{ category: "marketplace_fee" }, { category: "venda" }],
+        }
+      : {
+          tenantId,
+          type: "payable",
+          NOT: [
+            { category: "marketplace_fee" },
+            { category: "venda" },
+            { status: "cancelled" },
+          ],
+          dueDate: { gte: start, lt: end },
+        }
   const despesas = await prisma.bill.findMany({
-    where: {
-      tenantId,
-      type: "payable",
-      status: "paid",
-      paidDate: { gte: start, lt: end },
-      NOT: [{ category: "marketplace_fee" }, { category: "venda" }],
-    },
+    where: despesasWhere,
     select: {
       amount: true,
       category: true,
