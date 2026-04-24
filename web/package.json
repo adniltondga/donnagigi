@@ -12,6 +12,7 @@
   "dependencies": {
     "@prisma/client": "^5.20.0",
     "@prisma/extension-accelerate": "^2.0.2",
+    "@radix-ui/react-tooltip": "^1.2.8",
     "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "^20.10.0",
     "@types/nodemailer": "^8.0.0",

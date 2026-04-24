@@ -12,9 +12,11 @@ import {
   ChevronRight,
   Loader,
   AlertCircle,
+  Info,
 } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { formatCurrency } from "@/lib/calculations"
 import { PeriodFilter, PeriodPreset, resolvePreset } from "./PeriodFilter"
 
@@ -299,59 +301,69 @@ export function MercadoPagoClient() {
       )}
 
       {/* Grid: Já liberado · Ainda no mês · Total geral · Retido */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <SummaryCard
-          tone="emerald"
-          icon={<Clock className="w-5 h-5" />}
-          label="Já liberado (este mês)"
-          value={releasedMesAtual.total}
-          sub={`${releasedMesAtual.count} pagamento${releasedMesAtual.count === 1 ? "" : "s"} caíram no MP este mês`}
-          loading={loading && !snap}
-        />
-        <SummaryCard
-          tone="sky"
-          icon={<Clock className="w-5 h-5" />}
-          label="Ainda liberando (este mês)"
-          value={pendingMesAtual.total}
-          sub={`${pendingMesAtual.count} pagamento${pendingMesAtual.count === 1 ? "" : "s"} liberam até fim do mês`}
-          loading={loading && !snap}
-        />
-        <SummaryCard
-          tone="sky"
-          icon={<Clock className="w-5 h-5" />}
-          label="Total a liberar (geral)"
-          value={snap?.unavailableBalance ?? 0}
-          sub={`${totalPendingCount} pagamento${totalPendingCount === 1 ? "" : "s"} no pipeline (até 180d)`}
-          loading={loading && !snap}
-        />
-        <SummaryCard
-          tone={snap?.disputedCount && snap.disputedCount > 0 ? "amber" : "emerald"}
-          icon={<AlertTriangle className="w-5 h-5" />}
-          label="Retido por reclamação"
-          value={snap?.disputedTotal ?? 0}
-          sub={
-            snap?.disputedCount && snap.disputedCount > 0
-              ? `${snap.disputedCount} pagamento${snap.disputedCount === 1 ? "" : "s"} em mediação · responda no app do MP pra destravar`
-              : "Sem reclamações em aberto"
-          }
-          loading={loading && !snap}
-          action={
-            snap?.disputedCount && snap.disputedCount > 0 ? (
-              <button
-                onClick={() => setShowDisputedList((v) => !v)}
-                className="text-xs text-amber-800 hover:text-amber-900 font-medium mt-2 flex items-center gap-1"
-              >
-                {showDisputedList ? (
-                  <ChevronDown className="w-3.5 h-3.5" />
-                ) : (
-                  <ChevronRight className="w-3.5 h-3.5" />
-                )}
-                {showDisputedList ? "Esconder" : "Ver"} pagamentos
-              </button>
-            ) : null
-          }
-        />
-      </div>
+      <TooltipProvider delayDuration={150}>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <SummaryCard
+            tone="emerald"
+            icon={<Clock className="w-5 h-5" />}
+            label="Já liberado (este mês)"
+            value={releasedMesAtual.total}
+            sub={`${releasedMesAtual.count} pagamento${releasedMesAtual.count === 1 ? "" : "s"}`}
+            tooltip={`${releasedMesAtual.count} pagamento${releasedMesAtual.count === 1 ? "" : "s"} caíram no MP este mês e já estão disponíveis.`}
+            loading={loading && !snap}
+          />
+          <SummaryCard
+            tone="sky"
+            icon={<Clock className="w-5 h-5" />}
+            label="Ainda liberando (este mês)"
+            value={pendingMesAtual.total}
+            sub={`${pendingMesAtual.count} pagamento${pendingMesAtual.count === 1 ? "" : "s"}`}
+            tooltip={`${pendingMesAtual.count} pagamento${pendingMesAtual.count === 1 ? "" : "s"} com liberação prevista até o fim deste mês.`}
+            loading={loading && !snap}
+          />
+          <SummaryCard
+            tone="sky"
+            icon={<Clock className="w-5 h-5" />}
+            label="Total a liberar (geral)"
+            value={snap?.unavailableBalance ?? 0}
+            sub={`${totalPendingCount} pagamento${totalPendingCount === 1 ? "" : "s"}`}
+            tooltip={`${totalPendingCount} pagamento${totalPendingCount === 1 ? "" : "s"} no pipeline todo (até 180 dias pra frente).`}
+            loading={loading && !snap}
+          />
+          <SummaryCard
+            tone={snap?.disputedCount && snap.disputedCount > 0 ? "amber" : "emerald"}
+            icon={<AlertTriangle className="w-5 h-5" />}
+            label="Retido por reclamação"
+            value={snap?.disputedTotal ?? 0}
+            sub={
+              snap?.disputedCount && snap.disputedCount > 0
+                ? `${snap.disputedCount} em mediação`
+                : "Sem reclamações"
+            }
+            tooltip={
+              snap?.disputedCount && snap.disputedCount > 0
+                ? `${snap.disputedCount} pagamento${snap.disputedCount === 1 ? "" : "s"} em mediação — responda no app do Mercado Pago pra destravar.`
+                : "Nenhuma reclamação em aberto no momento."
+            }
+            loading={loading && !snap}
+            action={
+              snap?.disputedCount && snap.disputedCount > 0 ? (
+                <button
+                  onClick={() => setShowDisputedList((v) => !v)}
+                  className="text-xs text-amber-800 hover:text-amber-900 font-medium mt-2 flex items-center gap-1"
+                >
+                  {showDisputedList ? (
+                    <ChevronDown className="w-3.5 h-3.5" />
+                  ) : (
+                    <ChevronRight className="w-3.5 h-3.5" />
+                  )}
+                  {showDisputedList ? "Esconder" : "Ver"} pagamentos
+                </button>
+              ) : null
+            }
+          />
+        </div>
+      </TooltipProvider>
 
       {/* Lista dos retidos (expand) */}
       {showDisputedList && disputedPaymentsList.length > 0 && (
@@ -597,6 +609,14 @@ function DayList({
                         <div className="text-sm text-gray-900 line-clamp-1">{p.description}</div>
                         <div className="text-xs text-gray-500 flex items-center gap-2 flex-wrap mt-0.5">
                           <span className="font-mono">#{p.id}</span>
+                          {p.dateCreated && (
+                            <>
+                              <span className="text-gray-300">·</span>
+                              <span>
+                                comprado {new Date(p.dateCreated).toLocaleDateString("pt-BR")}
+                              </span>
+                            </>
+                          )}
                           {method && (
                             <>
                               <span className="text-gray-300">·</span>
@@ -640,6 +660,7 @@ function SummaryCard({
   label,
   value,
   sub,
+  tooltip,
   loading,
   action,
 }: {
@@ -648,6 +669,7 @@ function SummaryCard({
   label: string
   value: number
   sub: string
+  tooltip?: string
   loading?: boolean
   action?: React.ReactNode
 }) {
@@ -688,7 +710,23 @@ function SummaryCard({
             <p className={`text-3xl font-bold ${t.valueColor} mt-0.5 tabular-nums`}>
               {loading ? "—" : formatCurrency(value)}
             </p>
-            <p className="text-xs text-gray-600 mt-1">{sub}</p>
+            <div className="text-xs text-gray-600 mt-1 flex items-center gap-1.5">
+              <span>{sub}</span>
+              {tooltip && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      type="button"
+                      className="text-gray-400 hover:text-gray-600 shrink-0"
+                      aria-label="Detalhes"
+                    >
+                      <Info className="w-3.5 h-3.5" />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent>{tooltip}</TooltipContent>
+                </Tooltip>
+              )}
+            </div>
             {action}
           </div>
         </div>
