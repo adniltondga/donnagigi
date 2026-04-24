@@ -16,9 +16,9 @@ import { Button } from "@/components/ui/button"
 import { StatCard } from "@/components/ui/stat-card"
 import { CalendarClock, AlertTriangle, Wallet } from "lucide-react"
 import { formatCurrency } from "@/lib/calculations"
+import { PeriodFilter, PeriodPreset, resolvePreset } from "./PeriodFilter"
 
 type Kind = "recebimentos" | "pagamentos"
-type Preset = "hoje" | "7dias" | "mes" | "custom"
 
 interface Props {
   kind: Kind
@@ -37,27 +37,6 @@ function ymd(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`
 }
 
-function firstOfMonth(): string {
-  const d = new Date()
-  return ymd(new Date(d.getFullYear(), d.getMonth(), 1))
-}
-
-function lastOfMonth(): string {
-  const d = new Date()
-  return ymd(new Date(d.getFullYear(), d.getMonth() + 1, 0))
-}
-
-function todayISO(): string {
-  return ymd(new Date())
-}
-
-function plusDays(iso: string, n: number): string {
-  const [y, m, d] = iso.split("-").map(Number)
-  const dt = new Date(y, m - 1, d)
-  dt.setDate(dt.getDate() + n)
-  return ymd(dt)
-}
-
 function eachDay(from: string, to: string): string[] {
   const out: string[] = []
   const [fy, fm, fd] = from.split("-").map(Number)
@@ -74,27 +53,12 @@ function eachDay(from: string, to: string): string[] {
 }
 
 export function FluxoDiarioReport({ kind }: Props) {
-  const [from, setFrom] = useState<string>(firstOfMonth())
-  const [to, setTo] = useState<string>(lastOfMonth())
-  const [preset, setPreset] = useState<Preset>("mes")
+  const initial = resolvePreset("mes")
+  const [from, setFrom] = useState<string>(initial.from)
+  const [to, setTo] = useState<string>(initial.to)
+  const [preset, setPreset] = useState<PeriodPreset>("mes")
   const [loading, setLoading] = useState(true)
   const [days, setDays] = useState<DayBucket[]>([])
-
-  const applyPreset = (p: Preset) => {
-    setPreset(p)
-    if (p === "hoje") {
-      const t = todayISO()
-      setFrom(t)
-      setTo(t)
-    } else if (p === "7dias") {
-      const t = todayISO()
-      setFrom(t)
-      setTo(plusDays(t, 6))
-    } else if (p === "mes") {
-      setFrom(firstOfMonth())
-      setTo(lastOfMonth())
-    }
-  }
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -167,52 +131,16 @@ export function FluxoDiarioReport({ kind }: Props) {
       {/* Filtros */}
       <Card>
         <CardContent className="pt-5 flex flex-wrap items-end gap-3">
-          <div className="flex items-center gap-1 bg-gray-100 rounded-lg p-0.5">
-            {([
-              { key: "hoje", label: "Hoje" },
-              { key: "7dias", label: "7 dias" },
-              { key: "mes", label: "Este mês" },
-              { key: "custom", label: "Custom" },
-            ] as const).map((opt) => {
-              const active = preset === opt.key
-              return (
-                <button
-                  key={opt.key}
-                  onClick={() => applyPreset(opt.key)}
-                  className={`px-3 py-1.5 text-xs font-medium rounded-md transition ${
-                    active ? "bg-white text-gray-900 shadow-sm" : "text-gray-600 hover:text-gray-900"
-                  }`}
-                >
-                  {opt.label}
-                </button>
-              )
-            })}
-          </div>
-
-          <div>
-            <label className="block text-xs text-gray-500 mb-1">De</label>
-            <input
-              type="date"
-              value={from}
-              onChange={(e) => {
-                setFrom(e.target.value)
-                setPreset("custom")
-              }}
-              className="border rounded-lg px-3 py-1.5 text-sm"
-            />
-          </div>
-          <div>
-            <label className="block text-xs text-gray-500 mb-1">Até</label>
-            <input
-              type="date"
-              value={to}
-              onChange={(e) => {
-                setTo(e.target.value)
-                setPreset("custom")
-              }}
-              className="border rounded-lg px-3 py-1.5 text-sm"
-            />
-          </div>
+          <PeriodFilter
+            from={from}
+            to={to}
+            preset={preset}
+            onChange={(n) => {
+              setFrom(n.from)
+              setTo(n.to)
+              setPreset(n.preset)
+            }}
+          />
           <Button variant="outline" size="sm" onClick={load} disabled={loading} className="ml-auto">
             <RefreshCw className={`w-4 h-4 mr-1 ${loading ? "animate-spin" : ""}`} />
             Atualizar
