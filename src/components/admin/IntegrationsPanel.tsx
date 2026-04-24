@@ -542,13 +542,24 @@ function MLConnectionSection({
       </div>
 
       {!expired && (
-        <div className="bg-sky-50 border border-sky-200 rounded-lg p-3 text-xs text-sky-900 space-y-1">
-          <p className="font-semibold">🤖 Sincronização automática ativa</p>
-          <p>
-            O sistema puxa vendas, taxas e liberações do ML todo dia às 03:00 (horário BR). Normalmente
-            você não precisa clicar aqui — use só pra forçar uma atualização imediata.
-          </p>
-        </div>
+        <>
+          <div className="bg-sky-50 border border-sky-200 rounded-lg p-3 text-xs text-sky-900 space-y-1">
+            <p className="font-semibold">🤖 Sincronização automática ativa</p>
+            <p>
+              O sistema puxa vendas, taxas e liberações do ML todo dia às 03:00 (horário BR). Normalmente
+              você não precisa clicar aqui — use só pra forçar uma atualização imediata.
+            </p>
+          </div>
+          <WebhookHint
+            label="Webhook ML (tempo real)"
+            path="/api/ml/webhook"
+            instructions={
+              <>
+                No <a href="https://developers.mercadolivre.com.br/devcenter" target="_blank" rel="noopener noreferrer" className="underline">DevCenter</a>, abra seu app → <strong>Tópicos</strong> → cadastre essa URL e marque <code>orders_v2</code> e <code>items</code>. Assim cada venda cai no sistema em segundos.
+              </>
+            }
+          />
+        </>
       )}
 
       {expired ? (
@@ -898,6 +909,17 @@ function MPConnectionSection({
           </div>
         </div>
       </div>
+      {!integration.isExpired && (
+        <WebhookHint
+          label="Webhook MP (tempo real)"
+          path="/api/mercadopago/webhook"
+          instructions={
+            <>
+              No <a href="https://www.mercadopago.com.br/developers/panel" target="_blank" rel="noopener noreferrer" className="underline">painel MP Developers</a>, abra seu app → <strong>Notificações &gt; Webhooks</strong> → cadastre essa URL e marque o evento <code>payment</code>. Assim liberações e disputas atualizam automaticamente.
+            </>
+          }
+        />
+      )}
       <div className="flex gap-2">
         {integration.isExpired ? (
           <Button className="flex-1" onClick={() => (window.location.href = "/api/mp/oauth/login")}>
@@ -912,6 +934,45 @@ function MPConnectionSection({
         )}
       </div>
     </section>
+  )
+}
+
+function WebhookHint({
+  label,
+  path,
+  instructions,
+}: {
+  label: string
+  path: string
+  instructions: React.ReactNode
+}) {
+  const [copied, setCopied] = useState(false)
+  const fullUrl = typeof window !== "undefined" ? `${window.location.origin}${path}` : path
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(fullUrl)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 1500)
+    } catch {
+      // ignore
+    }
+  }
+  return (
+    <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 text-xs text-gray-700 space-y-2">
+      <p className="font-semibold text-gray-900">📡 {label}</p>
+      <div className="flex items-center gap-2">
+        <code className="flex-1 bg-white border border-gray-200 rounded px-2 py-1 text-[11px] font-mono break-all">
+          {fullUrl}
+        </code>
+        <button
+          onClick={copy}
+          className="shrink-0 text-[11px] font-medium bg-gray-900 hover:bg-gray-700 text-white px-2.5 py-1 rounded"
+        >
+          {copied ? "Copiado" : "Copiar"}
+        </button>
+      </div>
+      <p className="text-[11px] text-gray-600 leading-relaxed">{instructions}</p>
+    </div>
   )
 }
 
