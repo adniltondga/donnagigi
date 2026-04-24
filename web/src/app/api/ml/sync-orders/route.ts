@@ -2,6 +2,7 @@ import prisma from '@/lib/prisma';
 import { getTenantIdOrDefault } from '@/lib/tenant';
 import { getMLIntegrationForTenant } from '@/lib/ml';
 import { formatVariationLabel } from '@/lib/ml-format';
+import { resolveCost } from '@/lib/cost-resolver';
 import { NextRequest, NextResponse } from 'next/server';
 
 interface MLOrder {
@@ -271,6 +272,7 @@ Bruto: R$ ${order.total_amount.toFixed(2)} | Taxas: ${taxBreakdown} (Total: R$ $
       ) || 1;
 
       // Custo total do pedido = Σ (custo_unitário × quantity) por item.
+      // O custo é resolvido via cascata: variant → listing (ver cost-resolver).
       // Se nenhum item tiver custo cadastrado, mantém null.
       let productCost: number | null = null;
       const productId: string | null = null;
@@ -279,14 +281,23 @@ Bruto: R$ ${order.total_amount.toFixed(2)} | Taxas: ${taxBreakdown} (Total: R$ $
         const oiId = oi.item?.id;
         const oiQty = Number(oi.quantity) || 1;
         if (!oiId) continue;
-        const cost = await prisma.mLProductCost.findUnique({
-          where: { mlListingId: oiId },
-          select: { productCost: true },
+        const resolved = await resolveCost({
+          tenantId,
+          mlListingId: oiId,
+          variationId: oi.item?.variation_id ?? null,
         });
-        if (cost?.productCost) {
-          productCost = (productCost ?? 0) + cost.productCost * oiQty;
+        if (resolved.cost != null) {
+          productCost = (productCost ?? 0) + resolved.cost * oiQty;
         }
       }
+
+      // variation_id do primeiro item (usado em Bill.mlVariationId).
+      // Bills de pack com múltiplos itens diferentes são raras; quando
+      // acontecem, o variation_id do primeiro item representa a venda
+      // principal. O productCost acima já é a soma correta de todos.
+      const firstVariationId = firstItem?.variation_id
+        ? String(firstItem.variation_id)
+        : null;
 
       // dueDate = data estimada de liberação pelo ML (paidDate + 30 dias)
       const estimatedReleaseDate = new Date(closedDate);
@@ -307,6 +318,7 @@ Bruto: R$ ${order.total_amount.toFixed(2)} | Taxas: ${taxBreakdown} (Total: R$ $
           status: isCancelled ? 'cancelled' : 'pending',
           mlOrderId: `order_${order.id}`,
           mlPackId: order.pack_id ? String(order.pack_id) : null,
+          mlVariationId: firstVariationId,
           notes: `PRODUTO ML ID: ${itemId || 'SEM ID'}\n\n${notesContent}${cancelledSuffix}`,
           productId,
           productCost,

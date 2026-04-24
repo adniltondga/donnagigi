@@ -106,30 +106,24 @@ export default function Dashboard() {
         const to = today()
         const monthEnd = lastDayOfMonth()
 
-        const [meRes, mlRes, v2Res, prevRes, mpRes, manualReceivableRes, payableRes] =
-          await Promise.all([
-            fetch("/api/auth/me").then((r) => (r.ok ? r.json() : null)),
-            fetch("/api/ml/status").then((r) => (r.ok ? r.json() : null)),
-            fetch(`/api/relatorios/v2?from=${from}&to=${to}`).then((r) => (r.ok ? r.json() : null)),
-            fetch(`/api/relatorios/previsao`).then((r) => (r.ok ? r.json() : null)),
-            fetch(`/api/mp/snapshot`).then((r) => (r.ok ? r.json() : null)),
-            // Manuais: receivable pending, excluindo vendas ML (que já vêm do MP).
-            fetch(
-              `/api/bills?type=receivable&status=pending&excludeCategory=venda&dueFrom=${from}&dueTo=${monthEnd}&limit=500`
-            ).then((r) => (r.ok ? r.json() : null)),
-            fetch(
-              `/api/bills?type=payable&status=pending&dueFrom=${from}&dueTo=${monthEnd}&limit=500`
-            ).then((r) => (r.ok ? r.json() : null)),
-          ])
+        const [meRes, mlRes, v2Res, mpRes, manualReceivableRes, payableRes] = await Promise.all([
+          fetch("/api/auth/me").then((r) => (r.ok ? r.json() : null)),
+          fetch("/api/ml/status").then((r) => (r.ok ? r.json() : null)),
+          fetch(`/api/relatorios/v2?from=${from}&to=${to}`).then((r) => (r.ok ? r.json() : null)),
+          fetch(`/api/mp/snapshot`).then((r) => (r.ok ? r.json() : null)),
+          // Manuais: receivable pending, excluindo vendas ML (que já vêm do MP).
+          fetch(
+            `/api/bills?type=receivable&status=pending&excludeCategory=venda&dueFrom=${from}&dueTo=${monthEnd}&limit=500`
+          ).then((r) => (r.ok ? r.json() : null)),
+          fetch(
+            `/api/bills?type=payable&status=pending&dueFrom=${from}&dueTo=${monthEnd}&limit=500`
+          ).then((r) => (r.ok ? r.json() : null)),
+        ])
 
         setMe(meRes)
         setMlStatus(mlRes)
         setV2(v2Res)
         setMpSnapshot(mpRes)
-        // prevRes não é mais usado na UI (proximasLiberacoes veio pro MP),
-        // mas mantemos o fetch por enquanto — se não estiver sendo útil,
-        // dá pra remover numa próxima.
-        void prevRes
 
         // Agrega MP (do mês) + manuais. Se MP não configurado/erro, só usa manuais.
         let rxCount = 0

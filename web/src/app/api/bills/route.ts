@@ -14,6 +14,8 @@ export async function GET(req: NextRequest) {
     const excludeCategory = searchParams.get('excludeCategory');
     const type = searchParams.get('type');
     const status = searchParams.get('status');
+    const dueFrom = searchParams.get('dueFrom'); // YYYY-MM-DD (inclusive)
+    const dueTo = searchParams.get('dueTo');     // YYYY-MM-DD (inclusive)
     const q = searchParams.get('q')?.trim();
     const orderBy = searchParams.get('orderBy') || 'dueDate_desc';
 
@@ -23,6 +25,11 @@ export async function GET(req: NextRequest) {
     if (excludeCategory) where.category = { not: excludeCategory };
     if (type) where.type = type;
     if (status) where.status = status;
+    if (dueFrom || dueTo) {
+      where.dueDate = {};
+      if (dueFrom) where.dueDate.gte = new Date(`${dueFrom}T00:00:00.000`);
+      if (dueTo) where.dueDate.lte = new Date(`${dueTo}T23:59:59.999`);
+    }
     if (q) {
       where.OR = [
         { description: { contains: q, mode: 'insensitive' } },
