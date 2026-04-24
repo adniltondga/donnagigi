@@ -106,10 +106,8 @@ export async function GET(_req: NextRequest) {
             continue;
           }
 
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           const order: any = await res.json();
           const refunded = (order.payments || []).reduce(
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             (s: number, p: any) => s + (Number(p.transaction_amount_refunded) || 0),
             0
           );
