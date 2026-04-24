@@ -127,64 +127,6 @@ export async function GET(req: NextRequest) {
         : []
     const aportesADevolver = aportes.reduce((s, b) => s + b.amount, 0)
 
-    // ---- FLUXO DE CAIXA PROJETADO (30 dias à frente) ----
-    // Base real do cálculo de pró-labore. Lucro líquido contábil é só
-    // info auxiliar — o que importa é ter dinheiro.
-    const hoje = new Date()
-    hoje.setHours(0, 0, 0, 0)
-    const em30d = new Date(hoje)
-    em30d.setDate(em30d.getDate() + 30)
-
-    // Saldo inicial = saldo em caixa informado pelo user
-    const saldoCaixaHoje = settings.saldoCaixaAtual ?? 0
-
-    // Entradas MP confirmadas (liberações programadas até 30d)
-    const mpIntegration = await prisma.mPIntegration.findUnique({
-      where: { tenantId },
-      select: { cachedPendingDays: true },
-    })
-    let entradasMP30d = 0
-    if (mpIntegration?.cachedPendingDays) {
-      const days = mpIntegration.cachedPendingDays as Array<{ date: string; total: number }>
-      for (const d of days) {
-        const [y, m, dd] = d.date.split("-").map(Number)
-        const dt = new Date(y, m - 1, dd)
-        if (dt >= hoje && dt <= em30d) entradasMP30d += d.total
-      }
-    }
-
-    // Entradas manuais (bills receivable pending com dueDate até 30d; exclui
-    // vendas ML que já vêm pelo MP).
-    const entradasManuaisBills = await prisma.bill.findMany({
-      where: {
-        tenantId,
-        type: "receivable",
-        status: "pending",
-        NOT: [{ category: "venda" }],
-        dueDate: { gte: hoje, lte: em30d },
-      },
-      select: { amount: true },
-    })
-    const entradasManuais30d = entradasManuaisBills.reduce((s, b) => s + b.amount, 0)
-
-    // Saídas (contas a pagar com dueDate até 30d; exclui aportes — tratados separados)
-    const saidasBills = await prisma.bill.findMany({
-      where: {
-        tenantId,
-        type: "payable",
-        status: "pending",
-        NOT: [
-          { billCategoryId: { in: aporteIds.length > 0 ? aporteIds : ["__none__"] } },
-        ],
-        dueDate: { gte: hoje, lte: em30d },
-      },
-      select: { amount: true },
-    })
-    const saidas30d = saidasBills.reduce((s, b) => s + b.amount, 0)
-
-    const entradas30d = entradasMP30d + entradasManuais30d
-    const saldoProjetado30d =
-      Math.round((saldoCaixaHoje + entradas30d - saidas30d) * 100) / 100
 
     // Despesa fixa média dos últimos 3 meses (pra cálculo da reserva)
     const tresMesesAtras = new Date(year, month0 - 3, 1)
@@ -215,10 +157,11 @@ export async function GET(req: NextRequest) {
     // — referência, user pode pagar quanto quiser.
     const aporteAmortizacaoSugerida = Math.round((aportesADevolver / 24) * 100) / 100
 
-    // Pró-labore seguro = SALDO PROJETADO em 30d menos as alocações restantes.
-    // As contas a pagar dos próximos 30d já foram descontadas no saldoProjetado30d.
+    // Pró-labore seguro = fechamento do mês (competência) − ajustes.
+    // Regra: em abril você decide o pró-labore com base no fechamento de
+    // março (mês selecionado no header = mês-base de referência).
     const sobra =
-      saldoProjetado30d -
+      lucroLiquido -
       aporteAmortizacaoSugerida -
       reinvestSugerido -
       faltaParaReserva
@@ -249,19 +192,10 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json({
       month: `${year}-${String(month0 + 1).padStart(2, "0")}`,
-      // Resumo contábil do mês (info auxiliar — não entra no cálculo de pró-labore)
+      // Fechamento do mês selecionado — base de competência do pró-labore
       receitaRecebida: Math.round(receitaRecebida * 100) / 100,
       despesasPagas: Math.round(despesasPagasTotal * 100) / 100,
       lucroLiquido: Math.round(lucroLiquido * 100) / 100,
-      // Fluxo de caixa 30 dias (base do cálculo real)
-      fluxoCaixa: {
-        saldoHoje: Math.round(saldoCaixaHoje * 100) / 100,
-        entradasMP30d: Math.round(entradasMP30d * 100) / 100,
-        entradasManuais30d: Math.round(entradasManuais30d * 100) / 100,
-        entradasTotal30d: Math.round(entradas30d * 100) / 100,
-        saidas30d: Math.round(saidas30d * 100) / 100,
-        saldoProjetado30d,
-      },
       contasAPagarDoMes: {
         total: Math.round(contasAPagarMesTotal * 100) / 100,
         count: contasDoMes.length,
