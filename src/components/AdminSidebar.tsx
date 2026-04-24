@@ -7,12 +7,12 @@ import {
   LayoutDashboard,
   BarChart3,
   DollarSign,
-  Trophy,
   Tag,
   Settings,
   LogOut,
   ChevronDown,
   X,
+  ShoppingBag,
   type LucideIcon,
 } from "lucide-react"
 
@@ -43,12 +43,14 @@ const MENU: MenuItem[] = [
   },
   { label: "Custos ML", href: "/admin/custos-ml", icon: Tag },
   {
-    label: "Top Produtos",
-    icon: Trophy,
-    isActive: (p) => p.startsWith("/admin/top-produtos"),
+    label: "Produtos",
+    icon: ShoppingBag,
+    isActive: (p) => p.startsWith("/admin/produtos") || p.startsWith("/admin/top-produtos"),
     children: [
+      { label: "Custo", href: "/admin/produtos/custo" },
       { label: "Mais vendidos", href: "/admin/top-produtos/mais-vendidos" },
       { label: "Menos vendidos", href: "/admin/top-produtos/menos-vendidos" },
+      { label: "Relatório", href: "/admin/produtos/relatorio" },
     ],
   },
   {

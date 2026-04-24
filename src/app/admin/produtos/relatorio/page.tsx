@@ -1,49 +1,35 @@
-import Link from 'next/link';
-import { ArrowRight, PieChart, ShoppingCart, TrendingUp, type LucideIcon } from 'lucide-react';
-import { PageHeader } from '@/components/ui/page-header';
-import { Card, CardContent } from '@/components/ui/card';
+import Link from 'next/link'
+import { ArrowRight, Package, type LucideIcon } from 'lucide-react'
+import { PageHeader } from '@/components/ui/page-header'
+import { Card, CardContent } from '@/components/ui/card'
 
 interface RelatorioCard {
-  href: string;
-  icon: LucideIcon;
-  title: string;
-  description: string;
-  badge?: string;
-  accent: string;
+  href: string
+  icon: LucideIcon
+  title: string
+  description: string
+  badge?: string
+  accent: string
 }
 
 const CARDS: RelatorioCard[] = [
   {
-    href: '/admin/relatorios/vendas-ml',
-    icon: ShoppingCart,
-    title: 'Vendas Mercado Livre',
-    description: 'Listagem de todas as vendas ML com filtros, busca por pedido/pack e drill-down nas notas.',
-    accent: 'bg-amber-50 text-amber-700',
+    href: '/admin/relatorios/potencial-estoque',
+    icon: Package,
+    title: 'Potencial de estoque',
+    description: 'Faturamento bruto, taxa ML, lucro e ticket médio — o que você receberia se vendesse tudo hoje.',
+    accent: 'bg-emerald-50 text-emerald-700',
   },
-  {
-    href: '/admin/relatorios/por-dia',
-    icon: TrendingUp,
-    title: 'Vendas por dia',
-    description: 'Faturamento bruto, taxas ML, custo e lucro agregados por dia do mês selecionado.',
-    accent: 'bg-sky-50 text-sky-700',
-  },
-  {
-    href: '/admin/relatorios/despesas-categoria',
-    icon: PieChart,
-    title: 'Despesas por categoria',
-    description: 'Total de despesas agrupadas por categoria no período selecionado.',
-    accent: 'bg-rose-50 text-rose-700',
-  },
-];
+]
 
-export default function RelatoriosIndexPage() {
+export default function ProdutosRelatorioPage() {
   return (
     <div className="space-y-6">
-      <PageHeader title="Relatórios" description="Escolha um relatório para analisar." />
+      <PageHeader title="Relatórios de Produtos" description="Análises sobre seu catálogo e estoque." />
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {CARDS.map((card) => {
-          const Icon = card.icon;
+          const Icon = card.icon
           return (
             <Link key={card.href} href={card.href} className="group block">
               <Card className="hover:shadow-md hover:border-primary-200 transition h-full">
@@ -70,9 +56,9 @@ export default function RelatoriosIndexPage() {
                 </CardContent>
               </Card>
             </Link>
-          );
+          )
         })}
       </div>
     </div>
-  );
+  )
 }

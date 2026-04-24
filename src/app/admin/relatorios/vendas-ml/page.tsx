@@ -37,6 +37,10 @@ function formatDate(date: string | Date): string {
   return new Date(date).toLocaleDateString('pt-BR');
 }
 
+function formatTime(date: string | Date): string {
+  return new Date(date).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+}
+
 export default function VendasMLPage() {
   const { canWrite } = useUserRole();
   const [bills, setBills] = useState<Bill[]>([]);
@@ -234,7 +238,12 @@ export default function VendasMLPage() {
                 return (
                   <TableRow key={b.id}>
                     <TableCell className="text-sm whitespace-nowrap">
-                      {b.paidDate ? formatDate(b.paidDate) : '—'}
+                      {b.paidDate ? (
+                        <div>
+                          <div>{formatDate(b.paidDate)}</div>
+                          <div className="text-xs text-gray-500">{formatTime(b.paidDate)}</div>
+                        </div>
+                      ) : '—'}
                     </TableCell>
                     <TableCell className="text-sm whitespace-nowrap text-gray-600">
                       {formatDate(b.dueDate)}
