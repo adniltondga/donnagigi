@@ -16,13 +16,10 @@ import {
   Calendar,
   Package,
   Loader2,
-  ChevronRight,
   CheckCircle2,
   AlertCircle,
   ArrowRight,
-  RefreshCw,
-  FileText,
-  Settings,
+  Wallet,
 } from "lucide-react"
 import { formatCurrency } from "@/lib/calculations"
 import { PageHeader } from "@/components/ui/page-header"
@@ -68,6 +65,12 @@ function today(): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`
 }
 
+function lastDayOfMonth(): string {
+  const d = new Date()
+  const last = new Date(d.getFullYear(), d.getMonth() + 1, 0)
+  return `${last.getFullYear()}-${String(last.getMonth() + 1).padStart(2, "0")}-${String(last.getDate()).padStart(2, "0")}`
+}
+
 function firstName(n?: string): string {
   if (!n) return ""
   return n.split(" ")[0]
@@ -87,7 +90,8 @@ export default function Dashboard() {
   const [mlStatus, setMlStatus] = useState<MLStatus | null>(null)
   const [v2, setV2] = useState<V2Response | null>(null)
   const [prev, setPrev] = useState<PrevisaoResponse | null>(null)
-  const [pendingCount, setPendingCount] = useState<{ count: number; amount: number } | null>(null)
+  const [receivableMonth, setReceivableMonth] = useState<{ count: number; amount: number } | null>(null)
+  const [payableMonth, setPayableMonth] = useState<{ count: number; amount: number } | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -96,25 +100,53 @@ export default function Dashboard() {
       try {
         const from = firstDayOfMonth()
         const to = today()
+        const monthEnd = lastDayOfMonth()
 
-        const [meRes, mlRes, v2Res, prevRes, billsRes] = await Promise.all([
-          fetch("/api/auth/me").then((r) => (r.ok ? r.json() : null)),
-          fetch("/api/ml/status").then((r) => (r.ok ? r.json() : null)),
-          fetch(`/api/relatorios/v2?from=${from}&to=${to}`).then((r) => (r.ok ? r.json() : null)),
-          fetch(`/api/relatorios/previsao`).then((r) => (r.ok ? r.json() : null)),
-          fetch(`/api/bills?type=receivable&status=pending&category=venda&limit=200`).then((r) =>
-            r.ok ? r.json() : null
-          ),
-        ])
+        const [meRes, mlRes, v2Res, prevRes, mpRes, manualReceivableRes, payableRes] =
+          await Promise.all([
+            fetch("/api/auth/me").then((r) => (r.ok ? r.json() : null)),
+            fetch("/api/ml/status").then((r) => (r.ok ? r.json() : null)),
+            fetch(`/api/relatorios/v2?from=${from}&to=${to}`).then((r) => (r.ok ? r.json() : null)),
+            fetch(`/api/relatorios/previsao`).then((r) => (r.ok ? r.json() : null)),
+            fetch(`/api/mp/pending-payments`).then((r) => (r.ok ? r.json() : null)),
+            // Manuais: receivable pending, excluindo vendas ML (que já vêm do MP).
+            fetch(
+              `/api/bills?type=receivable&status=pending&excludeCategory=venda&dueFrom=${from}&dueTo=${monthEnd}&limit=500`
+            ).then((r) => (r.ok ? r.json() : null)),
+            fetch(
+              `/api/bills?type=payable&status=pending&dueFrom=${from}&dueTo=${monthEnd}&limit=500`
+            ).then((r) => (r.ok ? r.json() : null)),
+          ])
 
         setMe(meRes)
         setMlStatus(mlRes)
         setV2(v2Res)
         setPrev(prevRes)
-        if (billsRes?.data) {
-          const count = billsRes.total ?? billsRes.data.length
-          const amount = billsRes.data.reduce((s: number, b: any) => s + (b.amount || 0), 0)
-          setPendingCount({ count, amount })
+
+        // Agrega MP (do mês) + manuais. Se MP não configurado/erro, só usa manuais.
+        let rxCount = 0
+        let rxAmount = 0
+        if (mpRes?.configured && Array.isArray(mpRes?.days)) {
+          for (const d of mpRes.days as Array<{ date: string; total: number; count: number }>) {
+            if (d.date >= from && d.date <= monthEnd) {
+              rxCount += d.count
+              rxAmount += d.total
+            }
+          }
+        }
+        if (manualReceivableRes?.data) {
+          rxCount += manualReceivableRes.total ?? manualReceivableRes.data.length
+          rxAmount += manualReceivableRes.data.reduce(
+            (s: number, b: any) => s + (b.amount || 0),
+            0
+          )
+        }
+        setReceivableMonth({ count: rxCount, amount: rxAmount })
+
+        if (payableRes?.data) {
+          const count = payableRes.total ?? payableRes.data.length
+          const amount = payableRes.data.reduce((s: number, b: any) => s + (b.amount || 0), 0)
+          setPayableMonth({ count, amount })
         }
       } catch (e) {
         console.error(e)
@@ -129,7 +161,19 @@ export default function Dashboard() {
   const kpis = v2?.kpisAtual
   const kpisPrev = v2?.kpisAnterior
   const timeline7d = v2?.timeline?.slice(-7) || []
-  const proximasLiberacoes = prev?.dias?.filter((d) => d.totalVenda > 0).slice(0, 5) || []
+  // Próximas liberações MP — vem do cache do /api/mp/snapshot.
+  // Pega os 5 primeiros dias com money_release_date no futuro.
+  const nowMs = Date.now()
+  const proximasLiberacoes = (mpSnapshot?.pendingDays || [])
+    .filter((d) => {
+      const [y, m, dd] = d.date.split("-").map(Number)
+      return new Date(y, m - 1, dd).getTime() >= nowMs - 86400000 // inclui hoje
+    })
+    .slice(0, 5)
+    .map((d) => {
+      const [, , dd] = d.date.split("-").map(Number)
+      return { dia: dd, date: d.date, vendas: d.count, totalVenda: d.total }
+    })
 
   if (loading) {
     return (
@@ -206,20 +250,6 @@ export default function Dashboard() {
           accent="emerald"
         />
         <StatCard
-          label="A receber (ML)"
-          value={pendingCount ? `${pendingCount.count}` : "—"}
-          sub={pendingCount ? formatCurrency(pendingCount.amount) : "nenhuma pendente"}
-          icon={DollarSign}
-          accent="amber"
-        />
-        <StatCard
-          label="Libera neste mês"
-          value={prev ? `${prev.totalVendas} un.` : "—"}
-          sub={prev ? formatCurrency(prev.total) : "—"}
-          icon={Calendar}
-          accent="sky"
-        />
-        <StatCard
           label="Lucro do mês"
           value={kpis ? formatCurrency(kpis.lucro) : "—"}
           sub={
@@ -232,6 +262,32 @@ export default function Dashboard() {
           }
           icon={Package}
           accent="primary"
+        />
+        <StatCard
+          label="A receber (mês)"
+          value={receivableMonth ? formatCurrency(receivableMonth.amount) : "—"}
+          sub={
+            receivableMonth
+              ? `${receivableMonth.count} conta${receivableMonth.count === 1 ? "" : "s"} pendente${
+                  receivableMonth.count === 1 ? "" : "s"
+                }`
+              : "sem contas no mês"
+          }
+          icon={DollarSign}
+          accent="amber"
+        />
+        <StatCard
+          label="A pagar (mês)"
+          value={payableMonth ? formatCurrency(payableMonth.amount) : "—"}
+          sub={
+            payableMonth
+              ? `${payableMonth.count} conta${payableMonth.count === 1 ? "" : "s"} pendente${
+                  payableMonth.count === 1 ? "" : "s"
+                }`
+              : "sem contas no mês"
+          }
+          icon={Wallet}
+          accent="sky"
         />
       </div>
 
@@ -318,19 +374,21 @@ export default function Dashboard() {
           <div className="flex items-center justify-between mb-4">
             <h2 className="font-bold text-gray-900 flex items-center gap-2">
               <Calendar className="w-5 h-5 text-primary-600" />
-              Próximas liberações
+              Próximas liberações Mercado Pago
             </h2>
             <Link
-              href="/admin/previsao"
+              href="/admin/financeiro/mercado-pago"
               className="text-sm text-primary-600 hover:text-primary-700 font-medium"
             >
               Ver previsão completa →
             </Link>
           </div>
-          {proximasLiberacoes.length > 0 ? (
+          {mpSnapshot && !mpSnapshot.configured ? (
+            <EmptyInline message="Conecte seu Mercado Pago em Configurações → Integrações" />
+          ) : proximasLiberacoes.length > 0 ? (
             <ul className="divide-y divide-gray-100">
               {proximasLiberacoes.map((d) => (
-                <li key={d.dia} className="flex items-center justify-between py-2.5">
+                <li key={d.date} className="flex items-center justify-between py-2.5">
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 bg-primary-50 text-primary-700 rounded-lg flex flex-col items-center justify-center leading-none">
                       <span className="text-xs font-semibold">DIA</span>
@@ -338,9 +396,9 @@ export default function Dashboard() {
                     </div>
                     <div>
                       <p className="text-sm font-medium text-gray-900">
-                        {d.vendas} venda{d.vendas === 1 ? "" : "s"}
+                        {d.vendas} pagamento{d.vendas === 1 ? "" : "s"}
                       </p>
-                      <p className="text-xs text-gray-500">entra no seu Mercado Pago</p>
+                      <p className="text-xs text-gray-500">libera no Mercado Pago</p>
                     </div>
                   </div>
                   <div className="text-right">
@@ -349,8 +407,10 @@ export default function Dashboard() {
                 </li>
               ))}
             </ul>
+          ) : mpSnapshot?.cachedSyncedAt ? (
+            <EmptyInline message="Nada liberando nos próximos dias" />
           ) : (
-            <EmptyInline message="Nada liberando nesse mês" />
+            <EmptyInline message="Abra Financeiro → Mercado Pago e clique em Atualizar" />
           )}
         </Card>
 
@@ -377,69 +437,7 @@ export default function Dashboard() {
         </Card>
       </div>
 
-      {/* Quick Actions */}
-      <div>
-        <h2 className="font-bold text-gray-900 mb-3">Ações rápidas</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
-          <QuickAction
-            href="/api/ml/sync-orders"
-            external
-            icon={<RefreshCw className="w-5 h-5" />}
-            label="Sincronizar ML"
-            desc="Buscar novos pedidos"
-          />
-          <QuickAction
-            href="/admin/relatorios-v2"
-            icon={<TrendingUp className="w-5 h-5" />}
-            label="Ver relatório"
-            desc="KPIs e top produtos"
-          />
-          <QuickAction
-            href="/admin/financeiro"
-            icon={<FileText className="w-5 h-5" />}
-            label="Nova conta"
-            desc="A pagar ou receber"
-          />
-          <QuickAction
-            href="/admin/integracao"
-            icon={<Settings className="w-5 h-5" />}
-            label="Integração ML"
-            desc="Reconectar se precisar"
-          />
-        </div>
-      </div>
     </div>
-  )
-}
-
-function QuickAction({
-  href,
-  icon,
-  label,
-  desc,
-  external,
-}: {
-  href: string
-  icon: React.ReactNode
-  label: string
-  desc: string
-  external?: boolean
-}) {
-  const Comp: any = external ? "a" : Link
-  return (
-    <Comp
-      href={href}
-      className="bg-white rounded-xl border border-gray-200 p-4 flex items-center gap-3 hover:border-primary-300 hover:shadow-sm transition group"
-    >
-      <div className="w-10 h-10 bg-primary-100 text-primary-700 rounded-lg flex items-center justify-center group-hover:bg-primary-200 transition flex-shrink-0">
-        {icon}
-      </div>
-      <div className="flex-1 min-w-0">
-        <p className="font-semibold text-sm text-gray-900">{label}</p>
-        <p className="text-xs text-gray-500 truncate">{desc}</p>
-      </div>
-      <ChevronRight className="w-4 h-4 text-gray-400 group-hover:text-primary-600 transition flex-shrink-0" />
-    </Comp>
   )
 }
 
