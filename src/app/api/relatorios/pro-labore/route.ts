@@ -110,6 +110,68 @@ export async function GET(req: NextRequest) {
     const custoOperacionalTotal = despesasPagasTotal + aportesNoMesTotal
     const lucroLiquido = receitaRecebida - custoOperacionalTotal
 
+    // ---- RESULTADO ACUMULADO YTD (mês a mês) ----
+    // Lucros dos meses de janeiro até o mês selecionado (inclusive).
+    // Assim o pró-labore desconta prejuízos acumulados dos meses anteriores.
+    const inicioAno = new Date(year, 0, 1, 0, 0, 0, 0)
+    const [receitasAno, despesasAno, aportesAnoAll, proLaboresAnoAll] = await Promise.all([
+      prisma.bill.findMany({
+        where: {
+          tenantId,
+          type: "receivable",
+          NOT: { status: "cancelled" },
+          paidDate: { gte: inicioAno, lt: end },
+        },
+        select: { amount: true },
+      }),
+      prisma.bill.findMany({
+        where: {
+          tenantId,
+          type: "payable",
+          status: "paid",
+          paidDate: { gte: inicioAno, lt: end },
+          NOT: [
+            { billCategoryId: { in: aporteIds.length > 0 ? aporteIds : ["__none__"] } },
+            ...(proLaboreSub ? [{ billCategoryId: proLaboreSub.id }] : []),
+          ],
+        },
+        select: { amount: true },
+      }),
+      aporteIds.length > 0
+        ? prisma.bill.findMany({
+            where: {
+              tenantId,
+              type: "payable",
+              billCategoryId: { in: aporteIds },
+              NOT: { status: "cancelled" },
+              dueDate: { gte: inicioAno, lt: end },
+            },
+            select: { amount: true },
+          })
+        : Promise.resolve([]),
+      proLaboreSub
+        ? prisma.bill.findMany({
+            where: {
+              tenantId,
+              type: "payable",
+              billCategoryId: proLaboreSub.id,
+              NOT: { status: "cancelled" },
+              dueDate: { gte: inicioAno, lt: end },
+            },
+            select: { amount: true },
+          })
+        : Promise.resolve([]),
+    ])
+    const receitaYTD = receitasAno.reduce((s, b) => s + b.amount, 0)
+    const despesaYTD = despesasAno.reduce((s, b) => s + b.amount, 0)
+    const aportesYTD = aportesAnoAll.reduce((s, b) => s + b.amount, 0)
+    const proLaboresYTD = proLaboresAnoAll.reduce((s, b) => s + b.amount, 0)
+    const lucroAcumuladoYTD = receitaYTD - despesaYTD - aportesYTD
+    // Base disponível pra tirar = lucro acumulado menos o que já foi tirado
+    // como pró-labore no ano (se ainda não marcou como paga, conta também —
+    // é um compromisso já tomado).
+    const baseDisponivel = Math.max(0, lucroAcumuladoYTD - proLaboresYTD)
+
     // Contas a pagar pendentes com dueDate no mês (exclui aporte)
     const contasDoMes = await prisma.bill.findMany({
       where: {
@@ -180,11 +242,11 @@ export async function GET(req: NextRequest) {
     // — referência, user pode pagar quanto quiser.
     const aporteAmortizacaoSugerida = Math.round((aportesADevolver / 24) * 100) / 100
 
-    // Pró-labore seguro = fechamento do mês (competência) − ajustes.
-    // Regra: em abril você decide o pró-labore com base no fechamento de
-    // março (mês selecionado no header = mês-base de referência).
+    // Pró-labore seguro = base disponível (lucro acumulado YTD − pró-labores
+    // já tirados no ano) − ajustes. Assim, se março deu prejuízo, o lucro de
+    // abril é "absorvido" pra cobrir o déficit antes de virar pró-labore.
     const sobra =
-      lucroLiquido -
+      baseDisponivel -
       aporteAmortizacaoSugerida -
       reinvestSugerido -
       faltaParaReserva
@@ -221,6 +283,9 @@ export async function GET(req: NextRequest) {
       aportesNoMes: Math.round(aportesNoMesTotal * 100) / 100,
       custoOperacionalTotal: Math.round(custoOperacionalTotal * 100) / 100,
       lucroLiquido: Math.round(lucroLiquido * 100) / 100,
+      lucroAcumuladoYTD: Math.round(lucroAcumuladoYTD * 100) / 100,
+      proLaboresYTD: Math.round(proLaboresYTD * 100) / 100,
+      baseDisponivel: Math.round(baseDisponivel * 100) / 100,
       contasAPagarDoMes: {
         total: Math.round(contasAPagarMesTotal * 100) / 100,
         count: contasDoMes.length,
