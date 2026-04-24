@@ -144,26 +144,14 @@ export default function ProLaborePage() {
         </Card>
       ) : (
         <>
-          {/* Fechamento do mês — base do pró-labore. Lucro destaca, receita é só
-              referência (ainda não desconta custos). */}
+          {/* Fechamento do mês — ordem: entrada → custos → resultado. */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
             <StatCard
-              label="Lucro líquido do mês"
-              value={formatCurrency(data.lucroLiquido)}
-              sub={
-                data.lucroLiquido >= 0
-                  ? "receita − (despesas + aportes) · o que de fato sobrou"
-                  : "prejuízo — custo operacional maior que a receita"
-              }
-              icon={PiggyBank}
-              accent={data.lucroLiquido >= 0 ? "emerald" : "rose"}
-            />
-            <StatCard
-              label="Receita líquida"
+              label="Lucro real recebido"
               value={formatCurrency(data.receitaRecebida)}
-              sub="entrada do mês · já sem taxas ML · antes de custos"
+              sub="o que entrou após taxas ML · antes de custos operacionais"
               icon={TrendingUp}
-              accent="sky"
+              accent="emerald"
             />
             <StatCard
               label="Despesas pagas"
@@ -178,6 +166,17 @@ export default function ProLaborePage() {
               sub="o sócio pagou do bolso · entra como custo"
               icon={PiggyBank}
               accent="fuchsia"
+            />
+            <StatCard
+              label="Lucro líquido do mês"
+              value={formatCurrency(data.lucroLiquido)}
+              sub={
+                data.lucroLiquido >= 0
+                  ? "recebido − (despesas + aportes) · o que sobrou"
+                  : "prejuízo — custo operacional maior que o recebido"
+              }
+              icon={PiggyBank}
+              accent={data.lucroLiquido >= 0 ? "emerald" : "rose"}
             />
           </div>
 
