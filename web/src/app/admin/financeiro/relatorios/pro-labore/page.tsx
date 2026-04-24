@@ -36,6 +36,9 @@ interface ProLaboreResponse {
   aportesNoMes: number
   custoOperacionalTotal: number
   lucroLiquido: number
+  lucroAcumuladoYTD: number
+  proLaboresYTD: number
+  baseDisponivel: number
   contasAPagarDoMes: { total: number; count: number; vencendo7d: number }
   aportesADevolver: { total: number; count: number; amortizacaoSugerida: number }
   reserva: {
@@ -181,9 +184,18 @@ export default function ProLaborePage() {
                     {formatCurrency(data.proLaboreSeguro)}
                   </p>
                   <p className="text-sm text-gray-600 mt-1">
-                    Base: lucro líquido do mês (competência). Já descontei amortização de aportes, reserva que
-                    falta e reinvestimento ({data.reinvestimento.pct}%).
+                    <strong>Base: {formatCurrency(data.baseDisponivel)}</strong> — resultado acumulado do ano
+                    ({formatCurrency(data.lucroAcumuladoYTD)})
+                    {data.proLaboresYTD > 0 && ` − pró-labores já tirados (${formatCurrency(data.proLaboresYTD)})`}
+                    . Depois descontei amortização de aportes, reserva que falta e reinvestimento (
+                    {data.reinvestimento.pct}%).
                   </p>
+                  {data.baseDisponivel === 0 && data.lucroLiquido > 0 && (
+                    <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded px-2 py-1 mt-2 inline-block">
+                      ⚠️ Mês lucrativo, mas o ano ainda acumula prejuízo. O lucro deste mês está cobrindo
+                      o déficit antes de liberar pró-labore.
+                    </p>
+                  )}
                 </div>
                 {canWrite && data.proLaboreSubcategoryId && (
                   <Button
