@@ -100,6 +100,8 @@ export function MercadoPagoClient() {
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
   const [expandedDays, setExpandedDays] = useState<Set<string>>(new Set())
   const [showDisputedList, setShowDisputedList] = useState(false)
+  const [periodFilter, setPeriodFilter] = useState<"7" | "15" | "30" | "all">("all")
+  const [searchQuery, setSearchQuery] = useState("")
 
   const loadAll = useCallback(async () => {
     setLoading(true)
@@ -139,6 +141,53 @@ export function MercadoPagoClient() {
     if (!lastUpdated) return ""
     return lastUpdated.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })
   }, [lastUpdated])
+
+  // Aplica filtros de período (dias a partir de hoje) e busca por texto.
+  const filteredDays = useMemo(() => {
+    if (!pending?.days) return [] as Day[]
+    const q = searchQuery.trim().toLowerCase()
+    const maxDays = periodFilter === "all" ? null : Number(periodFilter)
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    const cutoff = maxDays
+      ? new Date(today.getTime() + maxDays * 86400000).getTime()
+      : null
+
+    const result: Day[] = []
+    for (const day of pending.days) {
+      const [y, m, d] = day.date.split("-").map(Number)
+      const dayDate = new Date(y, m - 1, d).getTime()
+      if (cutoff !== null && dayDate > cutoff) continue
+
+      let payments = day.payments
+      if (q) {
+        payments = payments.filter((p) =>
+          [p.description, String(p.id), p.buyer, p.externalReference, p.paymentMethodId]
+            .filter(Boolean)
+            .some((field) => String(field).toLowerCase().includes(q))
+        )
+        if (payments.length === 0) continue
+      }
+      const total = payments.reduce((s, p) => s + p.netAmount, 0)
+      result.push({
+        date: day.date,
+        total: Math.round(total * 100) / 100,
+        count: payments.length,
+        payments,
+      })
+    }
+    return result
+  }, [pending, periodFilter, searchQuery])
+
+  const filteredTotal = useMemo(
+    () => filteredDays.reduce((s, d) => s + d.total, 0),
+    [filteredDays]
+  )
+  const filteredCount = useMemo(
+    () => filteredDays.reduce((s, d) => s + d.count, 0),
+    [filteredDays]
+  )
+  const hasFilters = periodFilter !== "all" || searchQuery.trim().length > 0
 
   // Caso especial: MP não conectado
   if (notConfigured) {
@@ -299,11 +348,63 @@ export function MercadoPagoClient() {
 
       {/* Liberações por dia */}
       <Card>
-        <CardHeader>
-          <CardTitle className="text-base flex items-center gap-2">
-            <Calendar className="w-4 h-4 text-sky-600" />
-            Liberações programadas
-          </CardTitle>
+        <CardHeader className="space-y-3">
+          <div className="flex items-center justify-between gap-2 flex-wrap">
+            <CardTitle className="text-base flex items-center gap-2">
+              <Calendar className="w-4 h-4 text-sky-600" />
+              Liberações programadas
+            </CardTitle>
+            {hasFilters && pending?.days && (
+              <span className="text-xs text-gray-500">
+                {filteredCount} de {pending.count ?? 0} pagamento{(pending.count ?? 0) === 1 ? "" : "s"} ·{" "}
+                <strong className="text-emerald-600">{formatCurrency(filteredTotal)}</strong>
+              </span>
+            )}
+          </div>
+
+          {/* Filtros */}
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="flex items-center gap-1 bg-gray-100 rounded-lg p-0.5">
+              {([
+                { key: "7", label: "7 dias" },
+                { key: "15", label: "15 dias" },
+                { key: "30", label: "30 dias" },
+                { key: "all", label: "Todos" },
+              ] as const).map((opt) => {
+                const active = periodFilter === opt.key
+                return (
+                  <button
+                    key={opt.key}
+                    onClick={() => setPeriodFilter(opt.key)}
+                    className={`px-3 py-1 text-xs font-medium rounded-md transition ${
+                      active ? "bg-white text-gray-900 shadow-sm" : "text-gray-600 hover:text-gray-900"
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                )
+              })}
+            </div>
+
+            <div className="flex-1 min-w-[200px] relative">
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Buscar por id, comprador, descrição..."
+                className="w-full px-3 py-1.5 pr-8 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-600 focus:border-transparent outline-none"
+              />
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery("")}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 text-lg leading-none"
+                  title="Limpar"
+                >
+                  ×
+                </button>
+              )}
+            </div>
+          </div>
         </CardHeader>
         <CardContent className="p-0">
           {loading && !pending ? (
@@ -315,9 +416,13 @@ export function MercadoPagoClient() {
             <div className="px-5 py-8 text-center text-gray-500 text-sm">
               Nenhum pagamento pendente de liberação.
             </div>
+          ) : filteredDays.length === 0 ? (
+            <div className="px-5 py-8 text-center text-gray-500 text-sm">
+              Nenhum pagamento casa com esses filtros.
+            </div>
           ) : (
             <ul className="divide-y divide-gray-100">
-              {pending.days.map((day) => {
+              {filteredDays.map((day) => {
                 const open = expandedDays.has(day.date)
                 return (
                   <li key={day.date}>
