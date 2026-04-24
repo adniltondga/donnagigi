@@ -9,12 +9,10 @@ export const dynamic = "force-dynamic"
  * POST /api/bills/amortize-aporte
  * Body: { amount: number }
  *
- * Amortiza X reais dos aportes pendentes. Aplica FIFO (mais antigos
- * primeiro). Se o valor não cobrir a última bill inteira, DIVIDE ela:
- * mantém a original reduzida (pending) e cria outra com o valor pago.
- *
- * Retorna: { ok, totalPaid, billsAffected, remaining }
- * — remaining > 0 significa que não tinha aporte pendente suficiente.
+ * Cria uma bill payable paga na sub "Aporte sócio > Amortização" com o
+ * valor informado. Não mexe nas bills de aporte originais — o saldo
+ * devedor é calculado como `aporte pending − amortizações pagas`, então
+ * deletar uma amortização volta o saldo automaticamente (reversível).
  */
 export async function POST(req: NextRequest) {
   try {
@@ -27,89 +25,42 @@ export async function POST(req: NextRequest) {
 
     const tenantId = await getTenantIdOrDefault()
 
-    const root = await prisma.billCategory.findFirst({
-      where: { tenantId, parentId: null, name: "Aporte sócio", type: "payable" },
-      include: { children: { select: { id: true } } },
-    })
-    if (!root) {
-      return NextResponse.json(
-        { error: 'Categoria "Aporte sócio" não encontrada' },
-        { status: 404 }
-      )
-    }
-    const aporteIds = [root.id, ...root.children.map((c) => c.id)]
-
-    // FIFO: aportes pendentes mais antigos primeiro
-    const bills = await prisma.bill.findMany({
+    const amortizacaoSub = await prisma.billCategory.findFirst({
       where: {
         tenantId,
         type: "payable",
-        status: "pending",
-        billCategoryId: { in: aporteIds },
+        name: "Amortização",
+        parent: { name: "Aporte sócio" },
       },
-      orderBy: { dueDate: "asc" },
+      select: { id: true },
     })
-
-    let remaining = amount
-    let totalPaid = 0
-    const affected: Array<{ id: string; paid: number; split: boolean }> = []
-    const now = new Date()
-    const EPS = 0.005 // 1 centavo de tolerância
-
-    for (const bill of bills) {
-      if (remaining <= EPS) break
-
-      if (remaining >= bill.amount - EPS) {
-        // Quita a bill inteira
-        await prisma.bill.update({
-          where: { id: bill.id },
-          data: { status: "paid", paidDate: now },
-        })
-        totalPaid += bill.amount
-        remaining -= bill.amount
-        affected.push({ id: bill.id, paid: bill.amount, split: false })
-      } else {
-        // Divide: reduz a original pro saldo remanescente, cria uma nova com o pago
-        const paidPortion = Math.round(remaining * 100) / 100
-        const pendingLeft = Math.round((bill.amount - paidPortion) * 100) / 100
-
-        await prisma.$transaction([
-          prisma.bill.update({
-            where: { id: bill.id },
-            data: { amount: pendingLeft },
-          }),
-          prisma.bill.create({
-            data: {
-              type: bill.type,
-              description: `${bill.description} (amortização)`,
-              amount: paidPortion,
-              dueDate: bill.dueDate,
-              paidDate: now,
-              status: "paid",
-              category: bill.category,
-              billCategoryId: bill.billCategoryId,
-              supplierId: bill.supplierId,
-              productId: bill.productId,
-              notes: bill.notes,
-              productCost: null,
-              mlOrderId: null, // unique — nunca duplica
-              quantity: 1,
-              tenantId,
-            },
-          }),
-        ])
-        totalPaid += paidPortion
-        remaining = 0
-        affected.push({ id: bill.id, paid: paidPortion, split: true })
-      }
+    if (!amortizacaoSub) {
+      return NextResponse.json(
+        { error: 'Subcategoria "Aporte sócio > Amortização" não encontrada. Crie em Financeiro > Categorias.' },
+        { status: 404 }
+      )
     }
+
+    const now = new Date()
+    const bill = await prisma.bill.create({
+      data: {
+        type: "payable",
+        description: `Amortização de aporte — ${amount.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}`,
+        amount: Math.round(amount * 100) / 100,
+        dueDate: now,
+        paidDate: now,
+        status: "paid",
+        category: "aporte_amortizacao",
+        billCategoryId: amortizacaoSub.id,
+        quantity: 1,
+        tenantId,
+      },
+    })
 
     return NextResponse.json({
       ok: true,
-      totalPaid: Math.round(totalPaid * 100) / 100,
-      billsAffected: affected.length,
-      remaining: Math.round(remaining * 100) / 100,
-      details: affected,
+      billId: bill.id,
+      amount: bill.amount,
     })
   } catch (err) {
     if (err instanceof AuthError) return authErrorResponse(err)
