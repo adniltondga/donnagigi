@@ -10,7 +10,6 @@ import {
   Trophy,
   Tag,
   Settings,
-  Users,
   LogOut,
   ChevronDown,
   X,
@@ -58,14 +57,7 @@ const MENU: MenuItem[] = [
 ]
 
 // Itens no rodapé (acima do Sair): configurações gerais.
-// Equipe só aparece pra OWNER/ADMIN (filtrado em runtime).
 const FOOTER_MENU: MenuItem[] = [
-  {
-    label: "Equipe",
-    href: "/admin/equipe",
-    icon: Users,
-    isActive: (p) => p.startsWith("/admin/equipe"),
-  },
   {
     label: "Configurações",
     href: "/admin/configuracoes",
@@ -73,7 +65,8 @@ const FOOTER_MENU: MenuItem[] = [
     isActive: (p) =>
       p.startsWith("/admin/configuracoes") ||
       p.startsWith("/admin/integracao") ||
-      p.startsWith("/admin/billing"),
+      p.startsWith("/admin/billing") ||
+      p.startsWith("/admin/equipe"),
   },
 ]
 
@@ -85,21 +78,6 @@ interface AdminSidebarProps {
 export function AdminSidebar({ isOpen, onClose }: AdminSidebarProps) {
   const pathname = usePathname()
   const router = useRouter()
-  const [role, setRole] = useState<"OWNER" | "ADMIN" | "VIEWER" | null>(null)
-
-  useEffect(() => {
-    fetch("/api/auth/me")
-      .then((r) => (r.ok ? r.json() : null))
-      .then((d) => {
-        if (d?.role) setRole(d.role)
-      })
-      .catch(() => {})
-  }, [])
-
-  const footerItems = FOOTER_MENU.filter((item) => {
-    if (item.href === "/admin/equipe") return role === "OWNER" || role === "ADMIN"
-    return true
-  })
 
   // Estado de grupos expandidos. Auto-abre o grupo que contém a página atual.
   const initialExpanded = useMemo(() => {
@@ -258,7 +236,7 @@ export function AdminSidebar({ isOpen, onClose }: AdminSidebarProps) {
 
         {/* Footer menu (Configurações) */}
         <div className="border-t border-gray-200 p-4 space-y-1">
-          {footerItems.map((item) => {
+          {FOOTER_MENU.map((item) => {
             const Icon = item.icon
             const active = item.isActive ? item.isActive(pathname) : pathname === item.href
             return (

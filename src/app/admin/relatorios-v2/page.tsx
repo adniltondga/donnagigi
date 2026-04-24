@@ -28,6 +28,7 @@ interface ProdutoAgg {
   productId: string | null;
   mlListingId: string | null;
   name: string;
+  variation: string | null;
   vendas: number;
   bruto: number;
   totalVenda: number;
@@ -415,10 +416,10 @@ export default function RelatoriosV2Page() {
                     </tr>
                   ) : (
                     topList.map((p, i) => (
-                      <tr key={`${p.productId ?? p.mlListingId ?? 'sem'}-${i}`} className="border-t">
+                      <tr key={`${p.productId ?? p.mlListingId ?? 'sem'}-${p.variation || ''}-${i}`} className="border-t">
                         <td className="px-4 py-2 text-gray-500 font-mono">{i + 1}</td>
                         <td className="px-4 py-2">
-                          <ProductLabel title={p.name} mlListingId={p.mlListingId} size="sm" />
+                          <ProductLabel title={p.name} variation={p.variation} mlListingId={p.mlListingId} size="sm" />
                         </td>
                         <td className="px-4 py-2 text-right">{p.vendas}</td>
                         <td className="px-4 py-2 text-right font-semibold">{formatCurrency(p.bruto)}</td>

@@ -1,5 +1,6 @@
 import prisma from '@/lib/prisma';
 import { getTenantIdOrDefault } from '@/lib/tenant';
+import { normalizeVariationKey, parseSaleDescription } from '@/lib/ml-format';
 import { NextRequest, NextResponse } from 'next/server';
 
 export const dynamic = 'force-dynamic';
@@ -35,6 +36,7 @@ type ProdutoAgg = {
   productId: string | null;
   mlListingId: string | null;
   name: string;
+  variation: string | null;
   vendas: number;
   bruto: number;
   totalVenda: number;
@@ -47,6 +49,7 @@ type BillRow = {
   id: string;
   amount: number;
   paidDate: Date | null;
+  description: string;
   notes: string | null;
   productCost: number | null;
   productId: string | null;
@@ -139,6 +142,7 @@ export async function GET(req: NextRequest) {
           id: true,
           amount: true,
           paidDate: true,
+          description: true,
           notes: true,
           productCost: true,
           productId: true,
@@ -158,6 +162,7 @@ export async function GET(req: NextRequest) {
           id: true,
           amount: true,
           paidDate: true,
+          description: true,
           notes: true,
           productCost: true,
           productId: true,
@@ -177,6 +182,7 @@ export async function GET(req: NextRequest) {
           id: true,
           amount: true,
           paidDate: true,
+          description: true,
           notes: true,
           productCost: true,
           productId: true,
@@ -244,17 +250,25 @@ export async function GET(req: NextRequest) {
       if (p.mlListingId) nomePorMlb.set(p.mlListingId, { id: p.id, name: p.name });
     }
 
-    // Top produtos — chave canônica = MLB (colapsa bills do mesmo anúncio mesmo sem productId)
+    // Top produtos — chave canônica = MLB + variação normalizada (granularidade por variação).
+    // Assim "Azul · iPhone 15PM" e "iPhone 15PM · Azul" caem no mesmo grupo, e variações
+    // diferentes do mesmo MLB aparecem como linhas distintas (igual /admin/top-produtos).
     const produtosMap = new Map<string, ProdutoAgg>();
     for (const b of currentBills) {
+      const parsed = parseSaleDescription(b.description);
       const mlbFromNotes = extractMlbFromNotes(b.notes);
-      const mlbCanonico = b.product?.mlListingId ?? mlbFromNotes;
+      const mlbCanonico = parsed.mlListingId ?? b.product?.mlListingId ?? mlbFromNotes;
       const fallback = mlbFromNotes ? nomePorMlb.get(mlbFromNotes) : null;
 
-      const key = mlbCanonico ?? b.product?.id ?? 'sem-produto';
+      const variation = parsed.variation;
+      const normalizedVariation = normalizeVariationKey(variation);
+      const baseKey = mlbCanonico ?? b.product?.id ?? 'sem-produto';
+      const key = normalizedVariation ? `${baseKey}|${normalizedVariation}` : baseKey;
+
       const name =
-        b.product?.name ??
-        fallback?.name ??
+        parsed.title ||
+        b.product?.name ||
+        fallback?.name ||
         (mlbCanonico ? `Anúncio ${mlbCanonico}` : 'Sem produto');
       const productId = b.product?.id ?? fallback?.id ?? null;
       const mlListingId = mlbCanonico ?? null;
@@ -280,6 +294,7 @@ export async function GET(req: NextRequest) {
           productId,
           mlListingId,
           name,
+          variation,
           vendas: qty,
           bruto: brutoReal,
           totalVenda,
