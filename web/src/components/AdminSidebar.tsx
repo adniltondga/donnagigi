@@ -35,6 +35,7 @@ const MENU: MenuItem[] = [
     children: [
       { label: "Contas a pagar", href: "/admin/financeiro/contas-a-pagar" },
       { label: "Contas a receber", href: "/admin/financeiro/contas-a-receber" },
+      { label: "Mercado Pago", href: "/admin/financeiro/mercado-pago" },
       { label: "Categorias", href: "/admin/financeiro/categorias" },
     ],
   },
