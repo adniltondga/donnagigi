@@ -33,6 +33,8 @@ interface ProLaboreResponse {
   month: string
   receitaRecebida: number
   despesasPagas: number
+  aportesNoMes: number
+  custoOperacionalTotal: number
   lucroLiquido: number
   contasAPagarDoMes: { total: number; count: number; vencendo7d: number }
   aportesADevolver: { total: number; count: number; amortizacaoSugerida: number }
@@ -41,6 +43,7 @@ interface ProLaboreResponse {
     atual: number
     despesaFixaMedia: number
     meses: number
+    semHistorico: boolean
     pctAtingido: number
     falta: number
   }
@@ -132,7 +135,7 @@ export default function ProLaborePage() {
       ) : (
         <>
           {/* Fechamento do mês — base do pró-labore */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
             <StatCard
               label="Receita recebida"
               value={formatCurrency(data.receitaRecebida)}
@@ -143,14 +146,21 @@ export default function ProLaborePage() {
             <StatCard
               label="Despesas pagas"
               value={formatCurrency(data.despesasPagas)}
-              sub="bills payable marcadas como pagas (exclui aportes)"
+              sub="bills payable marcadas como pagas"
               icon={Wallet}
               accent="rose"
             />
             <StatCard
+              label="Aportes do mês"
+              value={formatCurrency(data.aportesNoMes)}
+              sub="o sócio pagou do bolso · entra como custo"
+              icon={PiggyBank}
+              accent="fuchsia"
+            />
+            <StatCard
               label="Lucro líquido"
               value={formatCurrency(data.lucroLiquido)}
-              sub="receita − despesas (base do cálculo)"
+              sub="receita − (despesas + aportes)"
               icon={PiggyBank}
               accent={data.lucroLiquido >= 0 ? "emerald" : "rose"}
             />
@@ -220,16 +230,23 @@ export default function ProLaborePage() {
                 <BucketRow
                   index={3}
                   icon={<ShieldCheck className="w-5 h-5" />}
-                  tone={data.reserva.pctAtingido >= 100 ? "emerald" : "sky"}
+                  tone={
+                    data.reserva.semHistorico
+                      ? "sky"
+                      : data.reserva.pctAtingido >= 100
+                      ? "emerald"
+                      : "sky"
+                  }
                   title={`Reserva de emergência (${data.reserva.meses}m)`}
                   amount={data.reserva.atual}
                   sub={
-                    data.reserva.meta > 0
-                      ? `Meta: ${formatCurrency(data.reserva.meta)} · ${data.reserva.pctAtingido.toFixed(0)}% atingido${data.reserva.falta > 0 ? ` · faltam ${formatCurrency(data.reserva.falta)}` : ""}`
-                      : "Configure despesas fixas pra calcular a meta"
+                    data.reserva.semHistorico
+                      ? "Sem histórico de despesas pagas nos últimos 3 meses — não dá pra calcular a meta"
+                      : `Meta: ${formatCurrency(data.reserva.meta)} · ${data.reserva.pctAtingido.toFixed(0)}% atingido${data.reserva.falta > 0 ? ` · faltam ${formatCurrency(data.reserva.falta)}` : ""}`
                   }
-                  progressPct={data.reserva.pctAtingido}
+                  progressPct={data.reserva.semHistorico ? undefined : data.reserva.pctAtingido}
                   info={!data.saldoCaixa.informado ? "Informe seu saldo em caixa nas Configurações" : undefined}
+                  pending={data.reserva.semHistorico}
                 />
                 <BucketRow
                   index={4}
@@ -301,6 +318,7 @@ function BucketRow({
   warning,
   progressPct,
   info,
+  pending,
 }: {
   index: number
   icon: React.ReactNode
@@ -311,6 +329,7 @@ function BucketRow({
   warning?: boolean
   progressPct?: number
   info?: string
+  pending?: boolean
 }) {
   const toneCls: Record<string, string> = {
     amber: "bg-amber-50 text-amber-700",
@@ -347,6 +366,11 @@ function BucketRow({
             <span className="inline-flex items-center gap-1 text-xs bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded">
               <CheckCircle2 className="w-3 h-3" />
               Atingido
+            </span>
+          )}
+          {pending && (
+            <span className="inline-flex items-center gap-1 text-xs bg-gray-100 text-gray-700 px-2 py-0.5 rounded">
+              Pendente
             </span>
           )}
         </div>
