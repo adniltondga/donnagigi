@@ -31,6 +31,8 @@ import { useUserRole } from "@/lib/useUserRole"
 
 interface ProLaboreResponse {
   month: string
+  receitaBruta: number
+  cmvDoMes: number
   receitaRecebida: number
   despesasPagas: number
   aportesNoMes: number
@@ -149,7 +151,11 @@ export default function ProLaborePage() {
             <StatCard
               label="Lucro real recebido"
               value={formatCurrency(data.receitaRecebida)}
-              sub="o que entrou após taxas ML · antes de custos operacionais"
+              sub={
+                data.cmvDoMes > 0
+                  ? `receita ${formatCurrency(data.receitaBruta)} − CMV ${formatCurrency(data.cmvDoMes)} · já sem taxas ML`
+                  : "entrada após taxas ML e custo da mercadoria (se cadastrado em Custos ML)"
+              }
               icon={TrendingUp}
               accent="emerald"
             />
