@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import prisma from "@/lib/prisma"
 import { getSession } from "@/lib/tenant"
 import { getMPCredentialsForTenant, getMPRedirectUri } from "@/lib/mp"
+import { getMPWebhookUrl } from "@/lib/webhook-url"
 import { isWriter } from "@/lib/auth"
 
 export const dynamic = "force-dynamic"
@@ -25,6 +26,7 @@ export async function GET(request: NextRequest) {
   const envHasSecret = !!process.env.MP_CLIENT_SECRET
   const effectiveCreds = await getMPCredentialsForTenant(session.tenantId)
   const redirectUri = getMPRedirectUri(request, effectiveCreds)
+  const webhookUrl = await getMPWebhookUrl(session.tenantId, request)
 
   if (creds) {
     return NextResponse.json({
@@ -37,6 +39,7 @@ export async function GET(request: NextRequest) {
           : "••••",
       redirectUri,
       customRedirectUri: creds.redirectUri || null,
+      webhookUrl,
       updatedAt: creds.updatedAt,
     })
   }
@@ -47,6 +50,7 @@ export async function GET(request: NextRequest) {
     clientId: envId ? `${envId.slice(0, 4)}…${envId.slice(-4)}` : null,
     clientSecretMasked: envHasSecret ? "••••" : null,
     redirectUri,
+    webhookUrl,
   })
 }
 
