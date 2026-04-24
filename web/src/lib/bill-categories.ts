@@ -10,11 +10,15 @@ const DEFAULT_CATEGORIES: Array<{
   name: string
   subs: string[]
 }> = [
-  { type: "payable", name: "Impostos", subs: ["DAS", "ICMS", "Nota Fiscal"] },
+  { type: "payable", name: "Impostos", subs: ["DAS MEI", "DAS", "ICMS", "Nota Fiscal"] },
   { type: "payable", name: "Fornecedores", subs: ["Mercadoria", "Embalagem", "Frete"] },
   { type: "payable", name: "Marketplace", subs: ["Taxa de venda", "Taxa de envio", "Impulso"] },
   { type: "payable", name: "Operacional", subs: ["Internet", "Energia", "Aluguel", "Software/SaaS"] },
   { type: "payable", name: "Pessoal", subs: ["Pró-labore", "Salário", "13º/Férias"] },
+  // Aporte sócio = despesas que o sócio pagou do bolso pra loja. Saldo
+  // vivo desse grupo é a "dívida" da loja com ele (vai sendo amortizada
+  // quando a loja pagar de volta).
+  { type: "payable", name: "Aporte sócio", subs: ["Mercadoria", "Embalagem", "Frete", "Outros"] },
   { type: "payable", name: "Outros", subs: ["Outros"] },
   { type: "receivable", name: "Vendas", subs: ["Venda ML", "Venda Shopee", "Venda outros"] },
   { type: "receivable", name: "Outros", subs: ["Outros"] },

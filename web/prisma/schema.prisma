@@ -32,6 +32,7 @@ model Tenant {
   mpIntegration     MPIntegration?
   invitations       Invitation[]
   billCategories    BillCategory[]
+  financialSettings FinancialSettings?
 }
 
 // Credenciais do app do cliente no Mercado Livre DevCenter.
@@ -432,6 +433,20 @@ model Bill {
 
   @@index([tenantId])
   @@index([billCategoryId])
+}
+
+// Configurações financeiras do tenant — alimenta o relatório de
+// "pró-labore seguro" (Pay Yourself Last).
+model FinancialSettings {
+  id              String   @id @default(cuid())
+  tenantId        String   @unique
+  tenant          Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  reservaMeses    Int      @default(3)  // meses de despesa fixa a manter como colchão
+  reinvestPct     Float    @default(20) // % do lucro líquido pra reinvestir
+  saldoCaixaAtual Float?   // saldo em conta/caixa informado manualmente
+  saldoAtualizadoEm DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 }
 
 // Categoria hierárquica de contas (2 níveis: raiz + subcategoria).

@@ -1,5 +1,5 @@
 import Link from "next/link"
-import { ArrowRight, TrendingUp, TrendingDown, FileText, type LucideIcon } from "lucide-react"
+import { ArrowRight, TrendingUp, TrendingDown, FileText, Rocket, type LucideIcon } from "lucide-react"
 import { PageHeader } from "@/components/ui/page-header"
 import { Card, CardContent } from "@/components/ui/card"
 
@@ -32,6 +32,13 @@ const CARDS: Item[] = [
     title: "DRE mensal",
     description: "Demonstração do resultado do mês: receita, taxas, custo, despesas e lucro líquido com comparativo vs mês anterior.",
     accent: "bg-primary-50 text-primary-700",
+  },
+  {
+    href: "/admin/financeiro/relatorios/pro-labore",
+    icon: Rocket,
+    title: "Pró-labore seguro",
+    description: "Quanto você pode tirar esse mês depois de cobrir operação, aportes, reserva e reinvestimento (Pay Yourself Last).",
+    accent: "bg-fuchsia-50 text-fuchsia-700",
   },
 ]
 
