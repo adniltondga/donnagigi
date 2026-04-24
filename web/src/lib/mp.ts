@@ -174,40 +174,105 @@ export async function refreshMPToken(params: {
  * automaticamente.
  */
 export interface MPBalance {
-  availableBalance: number // saldo liquidado, disponível pra saque
-  unavailableBalance: number // "total a liberar" — dinheiro preso aguardando liberação
-  totalAmount: number
+  /** Pagamentos aprovados cujo money_release_date ainda não chegou = "Total a liberar". */
+  unavailableBalance: number
+  /** Número de pagamentos contados em `unavailableBalance`. */
+  pendingReleaseCount: number
   currencyId: string
-  lastUpdated: string | null
+  lastUpdated: string
+}
+
+interface MPPaymentSearchResult {
+  results?: Array<{
+    id: number
+    status?: string
+    transaction_amount?: number
+    money_release_date?: string | null
+    fee_details?: Array<{ amount?: number }>
+    transaction_details?: {
+      net_received_amount?: number
+    }
+  }>
+  paging?: { total?: number; limit?: number; offset?: number }
 }
 
 /**
- * Consulta o saldo da conta MP do vendedor (usando access_token OAuth).
- * Endpoint oficial: GET /users/{user_id}/mercadopago_account/balance
+ * Calcula o "Total a liberar" do vendedor MP somando os pagamentos
+ * aprovados cujo `money_release_date` é no futuro.
+ *
+ * Usa `/v1/payments/search` — endpoint público OAuth-compatível (o antigo
+ * `/users/{id}/mercadopago_account/balance` retorna 403 pra tokens de app).
+ *
+ * Pagina em batches de 50 e limita a 500 pra não travar (> que isso é
+ * cenário atípico — MP libera em 14-30 dias, dificilmente alguém tem mil
+ * pagamentos presos).
  */
 export async function fetchMPBalance(params: {
   accessToken: string
-  userId: string
 }): Promise<MPBalance> {
-  const url = `https://api.mercadopago.com/users/${params.userId}/mercadopago_account/balance`
-  const res = await fetch(url, {
-    headers: {
-      Authorization: `Bearer ${params.accessToken}`,
-      Accept: "application/json",
-    },
-    cache: "no-store",
-  })
-  if (!res.ok) {
-    const err = await res.text()
-    throw new Error(`MP balance failed (${res.status}): ${err}`)
+  const now = Date.now()
+  let unavailable = 0
+  let pendingCount = 0
+  const LIMIT = 50
+  let offset = 0
+  const MAX_OFFSET = 500
+
+  while (offset < MAX_OFFSET) {
+    const q = new URLSearchParams({
+      status: "approved",
+      sort: "date_created",
+      criteria: "desc",
+      range: "date_created",
+      // MP aceita "NOW-60DAYS" como atalho. Pega pagamentos recentes que
+      // ainda podem ter saldo a liberar.
+      begin_date: "NOW-60DAYS",
+      end_date: "NOW",
+      limit: String(LIMIT),
+      offset: String(offset),
+    })
+    const url = `https://api.mercadopago.com/v1/payments/search?${q.toString()}`
+    const res = await fetch(url, {
+      headers: {
+        Authorization: `Bearer ${params.accessToken}`,
+        Accept: "application/json",
+      },
+      cache: "no-store",
+    })
+    if (!res.ok) {
+      const body = await res.text()
+      throw new Error(`MP payments/search failed (${res.status}): ${body}`)
+    }
+    const data: MPPaymentSearchResult = await res.json()
+    const batch = data.results || []
+
+    for (const p of batch) {
+      if (!p.money_release_date) continue
+      const release = new Date(p.money_release_date).getTime()
+      if (release <= now) continue
+      // Preferimos net_received_amount; se não vier, cai pra transaction - fees
+      const net = p.transaction_details?.net_received_amount
+      if (typeof net === "number" && Number.isFinite(net)) {
+        unavailable += net
+      } else {
+        const gross = Number(p.transaction_amount) || 0
+        const fees = (p.fee_details || []).reduce(
+          (s, f) => s + (Number(f.amount) || 0),
+          0
+        )
+        unavailable += gross - fees
+      }
+      pendingCount += 1
+    }
+
+    if (batch.length < LIMIT) break
+    offset += LIMIT
   }
-  const data = await res.json()
+
   return {
-    availableBalance: Number(data.available_balance ?? 0),
-    unavailableBalance: Number(data.unavailable_balance ?? 0),
-    totalAmount: Number(data.total_amount ?? 0),
-    currencyId: String(data.currency_id ?? "BRL"),
-    lastUpdated: data.last_updated ?? null,
+    unavailableBalance: Math.round(unavailable * 100) / 100,
+    pendingReleaseCount: pendingCount,
+    currencyId: "BRL",
+    lastUpdated: new Date().toISOString(),
   }
 }
 

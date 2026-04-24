@@ -9,9 +9,8 @@ import { formatCurrency } from "@/lib/calculations"
 
 interface BalanceResponse {
   configured: boolean
-  availableBalance?: number
   unavailableBalance?: number
-  totalAmount?: number
+  pendingReleaseCount?: number
   currencyId?: string
   lastUpdated?: string | null
   error?: string
@@ -104,11 +103,7 @@ export function MercadoPagoBalanceCard() {
             {data && (
               <div className="flex items-center gap-3 mt-2 text-xs text-gray-600 flex-wrap">
                 <span>
-                  Disponível: <strong className="text-emerald-600">{formatCurrency(data.availableBalance ?? 0)}</strong>
-                </span>
-                <span className="text-gray-300">·</span>
-                <span>
-                  Total: <strong className="text-gray-900">{formatCurrency(data.totalAmount ?? 0)}</strong>
+                  <strong className="text-gray-900">{data.pendingReleaseCount ?? 0}</strong> pagamento(s) aguardando liberação
                 </span>
                 {data.lastUpdated && (
                   <>

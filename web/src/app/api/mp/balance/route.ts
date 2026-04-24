@@ -24,10 +24,7 @@ export async function GET() {
     }
 
     try {
-      const balance = await fetchMPBalance({
-        accessToken: integration.accessToken,
-        userId: integration.mpUserId,
-      })
+      const balance = await fetchMPBalance({ accessToken: integration.accessToken })
       return NextResponse.json({ configured: true, ...balance })
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Erro ao consultar MP"
