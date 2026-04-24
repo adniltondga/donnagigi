@@ -81,6 +81,7 @@ export default function ProLaborePage() {
   const [loading, setLoading] = useState(true)
   const [showLancar, setShowLancar] = useState(false)
   const [showSettings, setShowSettings] = useState(false)
+  const [showAmortize, setShowAmortize] = useState(false)
   const [flash, setFlash] = useState<{ type: "success" | "error"; text: string } | null>(null)
 
   const load = useCallback(async () => {
@@ -238,6 +239,14 @@ export default function ProLaborePage() {
                       ? `${data.aportesADevolver.count} lançamento(s) · sugestão amortizar ${formatCurrency(data.aportesADevolver.amortizacaoSugerida)}/mês (2 anos)`
                       : "Sem aportes cadastrados"
                   }
+                  action={
+                    canWrite && data.aportesADevolver.total > 0 ? (
+                      <Button size="sm" variant="outline" className="mt-2" onClick={() => setShowAmortize(true)}>
+                        <ArrowRight className="w-4 h-4 mr-1" />
+                        Amortizar
+                      </Button>
+                    ) : null
+                  }
                 />
                 <BucketRow
                   index={3}
@@ -315,6 +324,25 @@ export default function ProLaborePage() {
           load()
         }}
       />
+
+      <AmortizeAporteDialog
+        open={showAmortize}
+        onClose={() => setShowAmortize(false)}
+        saldoDevedor={data?.aportesADevolver.total ?? 0}
+        sugestao={data?.aportesADevolver.amortizacaoSugerida ?? 0}
+        onSuccess={(res) => {
+          setShowAmortize(false)
+          setFlash({
+            type: "success",
+            text: `Amortizados ${formatCurrency(res.totalPaid)} em ${res.billsAffected} lançamento(s)${
+              res.remaining > 0 ? ` (sobraram ${formatCurrency(res.remaining)} sem aporte pra quitar)` : ""
+            }`,
+          })
+          setTimeout(() => setFlash(null), 8000)
+          load()
+        }}
+        onError={(msg) => setFlash({ type: "error", text: msg })}
+      />
     </div>
   )
 }
@@ -330,6 +358,7 @@ function BucketRow({
   progressPct,
   info,
   pending,
+  action,
 }: {
   index: number
   icon: React.ReactNode
@@ -341,6 +370,7 @@ function BucketRow({
   progressPct?: number
   info?: string
   pending?: boolean
+  action?: React.ReactNode
 }) {
   const toneCls: Record<string, string> = {
     amber: "bg-amber-50 text-amber-700",
@@ -396,10 +426,11 @@ function BucketRow({
           </div>
         )}
       </div>
-      <div className="text-right shrink-0">
+      <div className="text-right shrink-0 flex flex-col items-end gap-1">
         <div className="text-base font-bold text-gray-900 tabular-nums whitespace-nowrap">
           {formatCurrency(amount)}
         </div>
+        {action}
       </div>
     </li>
   )
@@ -512,6 +543,101 @@ function LancarProLaboreDialog({
             <Button type="submit" disabled={submitting || valor <= 0}>
               {submitting && <Loader className="w-4 h-4 animate-spin mr-2" />}
               Lançar
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+function AmortizeAporteDialog({
+  open,
+  onClose,
+  saldoDevedor,
+  sugestao,
+  onSuccess,
+  onError,
+}: {
+  open: boolean
+  onClose: () => void
+  saldoDevedor: number
+  sugestao: number
+  onSuccess: (res: { totalPaid: number; billsAffected: number; remaining: number }) => void
+  onError: (msg: string) => void
+}) {
+  const [valor, setValor] = useState(sugestao)
+  const [submitting, setSubmitting] = useState(false)
+
+  useEffect(() => {
+    if (open) setValor(sugestao > 0 ? sugestao : saldoDevedor)
+  }, [open, sugestao, saldoDevedor])
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (valor <= 0) {
+      onError("Informe um valor maior que zero")
+      return
+    }
+    setSubmitting(true)
+    try {
+      const res = await fetch("/api/bills/amortize-aporte", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ amount: valor }),
+      })
+      const d = await res.json()
+      if (res.ok) {
+        onSuccess(d)
+      } else {
+        onError(d.error || "Erro ao amortizar")
+      }
+    } catch {
+      onError("Erro de conexão")
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={(v) => (!v ? onClose() : null)}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Amortizar aporte</DialogTitle>
+          <DialogDescription>
+            A loja paga de volta parte ou o total do aporte. Bills mais antigas são quitadas primeiro
+            (FIFO). Se o valor não cobrir a última bill, ela é dividida.
+          </DialogDescription>
+        </DialogHeader>
+        <form onSubmit={submit} className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Valor (R$)</label>
+            <CurrencyInput
+              value={valor}
+              onChange={setValor}
+              placeholder="R$ 0,00"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-600 outline-none"
+            />
+            <div className="text-xs text-gray-500 mt-1 space-y-0.5">
+              <p>
+                Saldo devedor: <strong>{saldoDevedor.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</strong>
+              </p>
+              <p>
+                Sugestão mensal (1/24): <strong>{sugestao.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</strong>
+              </p>
+            </div>
+          </div>
+          <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-xs text-amber-900">
+            ⚠️ Essa ação marca as bills mais antigas de <strong>Aporte sócio</strong> como pagas, na
+            data de hoje. Se quiser reverter, vá em Contas a pagar e volte o status pra pendente.
+          </div>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={onClose} disabled={submitting}>
+              Cancelar
+            </Button>
+            <Button type="submit" disabled={submitting || valor <= 0}>
+              {submitting && <Loader className="w-4 h-4 animate-spin mr-2" />}
+              Amortizar
             </Button>
           </DialogFooter>
         </form>
