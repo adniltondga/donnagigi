@@ -1,5 +1,5 @@
 import Link from "next/link"
-import { ArrowRight, TrendingUp, TrendingDown, type LucideIcon } from "lucide-react"
+import { ArrowRight, TrendingUp, TrendingDown, FileText, type LucideIcon } from "lucide-react"
 import { PageHeader } from "@/components/ui/page-header"
 import { Card, CardContent } from "@/components/ui/card"
 
@@ -25,6 +25,13 @@ const CARDS: Item[] = [
     title: "Previsão de pagamentos",
     description: "Gráfico diário das contas a pagar pendentes no período.",
     accent: "bg-rose-50 text-rose-700",
+  },
+  {
+    href: "/admin/financeiro/relatorios/dre",
+    icon: FileText,
+    title: "DRE mensal",
+    description: "Demonstração do resultado do mês: receita, taxas, custo, despesas e lucro líquido com comparativo vs mês anterior.",
+    accent: "bg-primary-50 text-primary-700",
   },
 ]
 
