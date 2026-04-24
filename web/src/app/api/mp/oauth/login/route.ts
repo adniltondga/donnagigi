@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import crypto from "node:crypto"
 import prisma from "@/lib/prisma"
 import { getSession } from "@/lib/tenant"
-import { buildMPAuthUrl, getMPCredentialsForTenant, getMPRedirectUri } from "@/lib/mp"
+import { buildMPAuthUrl, generatePKCE, getMPCredentialsForTenant, getMPRedirectUri } from "@/lib/mp"
 
 export const dynamic = "force-dynamic"
 
@@ -26,10 +26,11 @@ export async function GET(req: NextRequest) {
   }
 
   const state = crypto.randomBytes(16).toString("hex")
+  const { verifier, challenge } = generatePKCE()
   const expiresAt = new Date(Date.now() + 10 * 60 * 1000) // 10 min
 
   await prisma.mPOAuthState.create({
-    data: { state, tenantId: session.tenantId, expiresAt },
+    data: { state, codeVerifier: verifier, tenantId: session.tenantId, expiresAt },
   })
 
   const redirectUri = getMPRedirectUri(req, creds)
@@ -37,6 +38,7 @@ export async function GET(req: NextRequest) {
     clientId: creds.clientId,
     redirectUri,
     state,
+    codeChallenge: challenge,
   })
 
   return NextResponse.redirect(authUrl)

@@ -328,11 +328,13 @@ model MPIntegration {
 }
 
 // State temporário do fluxo OAuth do Mercado Pago (TTL curto).
+// Guarda o codeVerifier (PKCE S256) pra trocar no callback.
 model MPOAuthState {
-  state     String   @id
-  tenantId  String
-  expiresAt DateTime
-  createdAt DateTime @default(now())
+  state        String   @id
+  codeVerifier String
+  tenantId     String
+  expiresAt    DateTime
+  createdAt    DateTime @default(now())
 
   @@index([expiresAt])
 }

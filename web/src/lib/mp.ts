@@ -64,11 +64,13 @@ export function getMPRedirectUri(
 
 /**
  * Monta a URL de autorização OAuth do MP pro tenant logado.
+ * MP exige PKCE S256: passamos code_challenge aqui e code_verifier no exchange.
  */
 export function buildMPAuthUrl(params: {
   clientId: string
   redirectUri: string
   state: string
+  codeChallenge: string
 }): string {
   const url = new URL(MP_AUTH_URL)
   url.searchParams.set("client_id", params.clientId)
@@ -76,7 +78,22 @@ export function buildMPAuthUrl(params: {
   url.searchParams.set("platform_id", "mp")
   url.searchParams.set("state", params.state)
   url.searchParams.set("redirect_uri", params.redirectUri)
+  url.searchParams.set("code_challenge", params.codeChallenge)
+  url.searchParams.set("code_challenge_method", "S256")
   return url.toString()
+}
+
+/**
+ * Gera um par (code_verifier, code_challenge) pra PKCE S256.
+ * verifier: 43-128 chars base64url; challenge = BASE64URL(SHA256(verifier)).
+ */
+export function generatePKCE(): { verifier: string; challenge: string } {
+  // Node 18+ tem crypto global; usamos require pra manter compat com edge.
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const crypto = require("node:crypto") as typeof import("node:crypto")
+  const verifier = crypto.randomBytes(32).toString("base64url")
+  const challenge = crypto.createHash("sha256").update(verifier).digest("base64url")
+  return { verifier, challenge }
 }
 
 interface MPTokenResponse {
@@ -92,12 +109,14 @@ interface MPTokenResponse {
 
 /**
  * Troca o `code` do OAuth por access_token. Usado no callback.
+ * `codeVerifier` é o verifier gerado no /login (PKCE S256).
  */
 export async function exchangeMPCodeForToken(params: {
   clientId: string
   clientSecret: string
   code: string
   redirectUri: string
+  codeVerifier: string
 }): Promise<MPTokenResponse> {
   const body = new URLSearchParams({
     grant_type: "authorization_code",
@@ -105,6 +124,7 @@ export async function exchangeMPCodeForToken(params: {
     client_secret: params.clientSecret,
     code: params.code,
     redirect_uri: params.redirectUri,
+    code_verifier: params.codeVerifier,
   })
   const res = await fetch(MP_TOKEN_URL, {
     method: "POST",
