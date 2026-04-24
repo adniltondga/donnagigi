@@ -294,7 +294,11 @@ function MercadoLivreDialog({
           <div className="space-y-6">
             <MLCredentialsSection data={creds} onChanged={load} onFlash={onFlash} />
             <div className="border-t border-gray-100" />
-            <MLConnectionSection integration={integration} onDisconnect={handleDisconnect} />
+            <MLConnectionSection
+              integration={integration}
+              onDisconnect={handleDisconnect}
+              onFlash={onFlash}
+            />
           </div>
         )}
       </DialogContent>
@@ -471,10 +475,38 @@ function MLCredentialsSection({
 function MLConnectionSection({
   integration,
   onDisconnect,
+  onFlash,
 }: {
   integration: MLIntegrationResponse | null
   onDisconnect: () => void
+  onFlash: (t: "success" | "error", msg: string) => void
 }) {
+  const [syncing, setSyncing] = useState<null | "orders" | "products">(null)
+
+  const runSync = async (kind: "orders" | "products") => {
+    if (syncing) return
+    setSyncing(kind)
+    try {
+      const url = kind === "orders" ? "/api/ml/sync-orders" : "/api/ml/sync"
+      const res = await fetch(url, { method: "GET" })
+      const data = await res.json().catch(() => null)
+      if (!res.ok) {
+        onFlash("error", data?.error || `Falha ao sincronizar ${kind === "orders" ? "vendas" : "produtos"}`)
+        return
+      }
+      const stats = data?.stats
+      const label = kind === "orders" ? "Vendas" : "Produtos"
+      const detail = stats
+        ? ` · ${stats.synced ?? stats.created ?? stats.total ?? 0} itens`
+        : ""
+      onFlash("success", `${label} sincronizados${detail}`)
+    } catch (err) {
+      onFlash("error", err instanceof Error ? err.message : "Erro desconhecido")
+    } finally {
+      setSyncing(null)
+    }
+  }
+
   if (!integration?.configured) {
     return (
       <section className="space-y-3">
@@ -490,6 +522,7 @@ function MLConnectionSection({
     )
   }
 
+  const expired = integration.isExpired
   return (
     <section className="space-y-3">
       <h4 className="text-sm font-semibold text-gray-900">Conexão ativa</h4>
@@ -500,26 +533,65 @@ function MLConnectionSection({
         </div>
         <div>
           <div className="text-xs text-gray-500 uppercase tracking-wide">
-            {integration.isExpired ? "Expirou em" : "Válido até"}
+            {expired ? "Expirou em" : "Válido até"}
           </div>
           <div className="font-medium text-gray-900 mt-1">
             {integration.expiresAt ? new Date(integration.expiresAt).toLocaleString("pt-BR") : "—"}
           </div>
         </div>
       </div>
-      <div className="flex gap-2">
-        {integration.isExpired ? (
-          <Button className="flex-1" onClick={() => (window.location.href = "/api/ml/oauth/login")}>
-            <RefreshCw className="w-4 h-4 mr-2" />
-            Reconectar
-          </Button>
-        ) : (
-          <Button variant="destructive" size="sm" onClick={onDisconnect}>
+
+      {!expired && (
+        <div className="bg-sky-50 border border-sky-200 rounded-lg p-3 text-xs text-sky-900 space-y-1">
+          <p className="font-semibold">🤖 Sincronização automática ativa</p>
+          <p>
+            O sistema puxa vendas, taxas e liberações do ML todo dia às 03:00 (horário BR). Normalmente
+            você não precisa clicar aqui — use só pra forçar uma atualização imediata.
+          </p>
+        </div>
+      )}
+
+      {expired ? (
+        <Button className="w-full" onClick={() => (window.location.href = "/api/ml/oauth/login")}>
+          <RefreshCw className="w-4 h-4 mr-2" />
+          Reconectar
+        </Button>
+      ) : (
+        <>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <Button
+              variant="outline"
+              onClick={() => runSync("orders")}
+              disabled={syncing !== null}
+              className="border-sky-300 text-sky-700 hover:bg-sky-50"
+            >
+              {syncing === "orders" ? (
+                <Loader className="w-4 h-4 mr-2 animate-spin" />
+              ) : (
+                <RefreshCw className="w-4 h-4 mr-2" />
+              )}
+              Sincronizar vendas
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => runSync("products")}
+              disabled={syncing !== null}
+              className="border-emerald-300 text-emerald-700 hover:bg-emerald-50"
+            >
+              {syncing === "products" ? (
+                <Loader className="w-4 h-4 mr-2 animate-spin" />
+              ) : (
+                <RefreshCw className="w-4 h-4 mr-2" />
+              )}
+              Sincronizar produtos
+            </Button>
+          </div>
+          <Button variant="destructive" size="sm" onClick={onDisconnect} className="w-full">
             <LogOut className="w-4 h-4 mr-2" />
             Desconectar
           </Button>
-        )}
-      </div>
+        </>
+      )}
     </section>
   )
 }
