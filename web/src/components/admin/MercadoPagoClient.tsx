@@ -326,8 +326,8 @@ export function MercadoPagoClient() {
             icon={<Clock className="w-5 h-5" />}
             label="Total a liberar"
             value={snap?.unavailableBalance ?? 0}
-            sub={`${totalPendingCount} pagamento${totalPendingCount === 1 ? "" : "s"}`}
-            tooltip={`Pipeline todo — ${totalPendingCount} pagamento${totalPendingCount === 1 ? "" : "s"} até 180 dias pra frente.`}
+            sub={`${totalPendingCount} pag. · próx. 180d`}
+            tooltip={`Pipeline inteiro — ${totalPendingCount} pagamento${totalPendingCount === 1 ? "" : "s"} com liberação agendada até 180 dias pra frente. Inclui o que vai cair ainda este mês.`}
             loading={loading && !snap}
           />
           <SummaryCard
