@@ -18,9 +18,12 @@ interface SnapshotResponse {
   configured: boolean
   unavailableBalance: number
   pendingCount: number
+  releasedTotal: number
+  releasedCount: number
   disputedTotal: number
   disputedCount: number
   pendingDays: unknown
+  releasedDays: unknown
   disputedPayments: unknown
   cachedSyncedAt: string | null
   error?: string
@@ -36,9 +39,12 @@ export async function GET() {
       select: {
         cachedUnavailableBalance: true,
         cachedPendingCount: true,
+        cachedReleasedTotal: true,
+        cachedReleasedCount: true,
         cachedDisputedTotal: true,
         cachedDisputedCount: true,
         cachedPendingDays: true,
+        cachedReleasedDays: true,
         cachedDisputedPayments: true,
         cachedSyncedAt: true,
       },
@@ -52,9 +58,12 @@ export async function GET() {
       configured: true,
       unavailableBalance: integration.cachedUnavailableBalance ?? 0,
       pendingCount: integration.cachedPendingCount ?? 0,
+      releasedTotal: integration.cachedReleasedTotal ?? 0,
+      releasedCount: integration.cachedReleasedCount ?? 0,
       disputedTotal: integration.cachedDisputedTotal ?? 0,
       disputedCount: integration.cachedDisputedCount ?? 0,
       pendingDays: integration.cachedPendingDays ?? [],
+      releasedDays: integration.cachedReleasedDays ?? [],
       disputedPayments: integration.cachedDisputedPayments ?? [],
       cachedSyncedAt: integration.cachedSyncedAt ? integration.cachedSyncedAt.toISOString() : null,
     }
@@ -84,9 +93,12 @@ export async function POST() {
       select: {
         cachedUnavailableBalance: true,
         cachedPendingCount: true,
+        cachedReleasedTotal: true,
+        cachedReleasedCount: true,
         cachedDisputedTotal: true,
         cachedDisputedCount: true,
         cachedPendingDays: true,
+        cachedReleasedDays: true,
         cachedDisputedPayments: true,
         cachedSyncedAt: true,
       },
@@ -97,9 +109,12 @@ export async function POST() {
       configured: true,
       unavailableBalance: integration.cachedUnavailableBalance ?? 0,
       pendingCount: integration.cachedPendingCount ?? 0,
+      releasedTotal: integration.cachedReleasedTotal ?? 0,
+      releasedCount: integration.cachedReleasedCount ?? 0,
       disputedTotal: integration.cachedDisputedTotal ?? 0,
       disputedCount: integration.cachedDisputedCount ?? 0,
       pendingDays: integration.cachedPendingDays ?? [],
+      releasedDays: integration.cachedReleasedDays ?? [],
       disputedPayments: integration.cachedDisputedPayments ?? [],
       cachedSyncedAt: integration.cachedSyncedAt ? integration.cachedSyncedAt.toISOString() : null,
     } satisfies SnapshotResponse)

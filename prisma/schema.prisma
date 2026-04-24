@@ -329,9 +329,12 @@ model MPIntegration {
   // Cache do último snapshot (refresh manual ou cron)
   cachedUnavailableBalance Float?
   cachedPendingCount       Int?
+  cachedReleasedTotal      Float?
+  cachedReleasedCount      Int?
   cachedDisputedTotal      Float?
   cachedDisputedCount      Int?
-  cachedPendingDays        Json?     // array de { date, total, count, payments[] }
+  cachedPendingDays        Json?     // array de { date, total, count, payments[] } (futuro)
+  cachedReleasedDays       Json?     // mesma estrutura, release_date passado
   cachedDisputedPayments   Json?     // array de payments em mediação
   cachedSyncedAt           DateTime?
 
