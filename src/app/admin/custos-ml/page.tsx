@@ -7,6 +7,7 @@ import { Card } from '@/components/ui/card';
 import { EmptyState } from '@/components/ui/empty-state';
 import { Package } from 'lucide-react';
 import { useUserRole } from '@/lib/useUserRole';
+import CurrencyInput from '@/components/CurrencyInput';
 
 interface Item {
   mlListingId: string;
@@ -189,16 +190,13 @@ export default function CustosMLPage() {
                     <td className="px-4 py-3 text-right">{formatCurrency(it.totalBruto)}</td>
                     <td className="px-4 py-3 text-right">
                       {canWrite ? (
-                        <input
-                          type="number"
-                          step="0.01"
-                          min="0"
+                        <CurrencyInput
                           value={drafts[it.mlListingId] ?? ''}
-                          onChange={(e) =>
-                            setDrafts((d) => ({ ...d, [it.mlListingId]: e.target.value }))
+                          onChange={(v) =>
+                            setDrafts((d) => ({ ...d, [it.mlListingId]: v > 0 ? String(v) : '' }))
                           }
-                          className="w-28 border rounded px-2 py-1 text-right"
                           placeholder="0,00"
+                          className="w-28 border rounded px-2 py-1 text-right focus:outline-none focus:ring-2 focus:ring-primary-600"
                         />
                       ) : (
                         <span className="text-gray-700">
