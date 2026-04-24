@@ -16,6 +16,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { formatCurrency } from "@/lib/calculations"
+import { PeriodFilter, PeriodPreset, resolvePreset } from "./PeriodFilter"
 
 interface Payment {
   id: number
@@ -90,7 +91,10 @@ export function MercadoPagoClient() {
   const [syncError, setSyncError] = useState<string | null>(null)
   const [expandedDays, setExpandedDays] = useState<Set<string>>(new Set())
   const [showDisputedList, setShowDisputedList] = useState(false)
-  const [periodFilter, setPeriodFilter] = useState<"7" | "15" | "30" | "all">("all")
+  const initialPeriod = resolvePreset("mes")
+  const [periodFrom, setPeriodFrom] = useState<string>(initialPeriod.from)
+  const [periodTo, setPeriodTo] = useState<string>(initialPeriod.to)
+  const [periodPreset, setPeriodPreset] = useState<PeriodPreset>("mes")
   const [searchQuery, setSearchQuery] = useState("")
 
   // Leitura do cache (instantâneo).
@@ -153,22 +157,14 @@ export function MercadoPagoClient() {
     })
   }, [cachedAt])
 
-  // Aplica filtros de período (dias a partir de hoje) e busca por texto.
+  // Aplica filtros de período (from..to) e busca por texto.
   const filteredDays = useMemo(() => {
     if (!snap?.pendingDays) return [] as Day[]
     const q = searchQuery.trim().toLowerCase()
-    const maxDays = periodFilter === "all" ? null : Number(periodFilter)
-    const today = new Date()
-    today.setHours(0, 0, 0, 0)
-    const cutoff = maxDays
-      ? new Date(today.getTime() + maxDays * 86400000).getTime()
-      : null
 
     const result: Day[] = []
     for (const day of snap.pendingDays) {
-      const [y, m, d] = day.date.split("-").map(Number)
-      const dayDate = new Date(y, m - 1, d).getTime()
-      if (cutoff !== null && dayDate > cutoff) continue
+      if (day.date < periodFrom || day.date > periodTo) continue
 
       let payments = day.payments
       if (q) {
@@ -188,7 +184,7 @@ export function MercadoPagoClient() {
       })
     }
     return result
-  }, [snap, periodFilter, searchQuery])
+  }, [snap, periodFrom, periodTo, searchQuery])
 
   const filteredTotal = useMemo(
     () => filteredDays.reduce((s, d) => s + d.total, 0),
@@ -198,7 +194,7 @@ export function MercadoPagoClient() {
     () => filteredDays.reduce((s, d) => s + d.count, 0),
     [filteredDays]
   )
-  const hasFilters = periodFilter !== "all" || searchQuery.trim().length > 0
+  const hasFilters = periodPreset !== "mes" || searchQuery.trim().length > 0
   const totalPendingCount = snap?.pendingCount ?? 0
   const disputedPaymentsList = snap?.disputedPayments ?? []
 
@@ -381,28 +377,17 @@ export function MercadoPagoClient() {
           </div>
 
           {/* Filtros */}
-          <div className="flex flex-wrap items-center gap-2">
-            <div className="flex items-center gap-1 bg-gray-100 rounded-lg p-0.5">
-              {([
-                { key: "7", label: "7 dias" },
-                { key: "15", label: "15 dias" },
-                { key: "30", label: "30 dias" },
-                { key: "all", label: "Todos" },
-              ] as const).map((opt) => {
-                const active = periodFilter === opt.key
-                return (
-                  <button
-                    key={opt.key}
-                    onClick={() => setPeriodFilter(opt.key)}
-                    className={`px-3 py-1 text-xs font-medium rounded-md transition ${
-                      active ? "bg-white text-gray-900 shadow-sm" : "text-gray-600 hover:text-gray-900"
-                    }`}
-                  >
-                    {opt.label}
-                  </button>
-                )
-              })}
-            </div>
+          <div className="flex flex-wrap items-end gap-3">
+            <PeriodFilter
+              from={periodFrom}
+              to={periodTo}
+              preset={periodPreset}
+              onChange={(n) => {
+                setPeriodFrom(n.from)
+                setPeriodTo(n.to)
+                setPeriodPreset(n.preset)
+              }}
+            />
 
             <div className="flex-1 min-w-[200px] relative">
               <input
