@@ -34,6 +34,14 @@ interface ProLaboreResponse {
   receitaRecebida: number
   despesasPagas: number
   lucroLiquido: number
+  fluxoCaixa: {
+    saldoHoje: number
+    entradasMP30d: number
+    entradasManuais30d: number
+    entradasTotal30d: number
+    saidas30d: number
+    saldoProjetado30d: number
+  }
   contasAPagarDoMes: { total: number; count: number; vencendo7d: number }
   aportesADevolver: { total: number; count: number; amortizacaoSugerida: number }
   reserva: {
@@ -131,30 +139,48 @@ export default function ProLaborePage() {
         </Card>
       ) : (
         <>
-          {/* KPIs */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          {/* KPIs de fluxo de caixa — o que importa pra pró-labore */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
             <StatCard
-              label="Receita recebida"
-              value={formatCurrency(data.receitaRecebida)}
-              sub="vendas fechadas no mês · já líquido de taxas ML"
+              label="Saldo hoje"
+              value={formatCurrency(data.fluxoCaixa.saldoHoje)}
+              sub={data.saldoCaixa.informado ? "informado nas configurações" : "configure em ⚙️"}
+              icon={Wallet}
+              accent="sky"
+            />
+            <StatCard
+              label="Entra em 30d"
+              value={formatCurrency(data.fluxoCaixa.entradasTotal30d)}
+              sub={`MP: ${formatCurrency(data.fluxoCaixa.entradasMP30d)} · manual: ${formatCurrency(data.fluxoCaixa.entradasManuais30d)}`}
               icon={TrendingUp}
               accent="emerald"
             />
             <StatCard
-              label="Despesas pagas"
-              value={formatCurrency(data.despesasPagas)}
-              sub="bills payable marcadas como pagas (exclui aportes)"
-              icon={Wallet}
+              label="Sai em 30d"
+              value={formatCurrency(data.fluxoCaixa.saidas30d)}
+              sub="contas a pagar com vencimento nos próximos 30 dias"
+              icon={PiggyBank}
               accent="rose"
             />
             <StatCard
-              label="Lucro líquido"
-              value={formatCurrency(data.lucroLiquido)}
-              sub="receita líquida − despesas pagas"
+              label="Saldo projetado 30d"
+              value={formatCurrency(data.fluxoCaixa.saldoProjetado30d)}
+              sub="hoje + entradas − saídas"
               icon={PiggyBank}
-              accent={data.lucroLiquido >= 0 ? "emerald" : "rose"}
+              accent={data.fluxoCaixa.saldoProjetado30d >= 0 ? "emerald" : "rose"}
             />
           </div>
+
+          {!data.saldoCaixa.informado && (
+            <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 flex items-start gap-2 text-sm text-amber-900">
+              <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
+              <div>
+                <strong>Informe seu saldo em caixa</strong> em ⚙️ Config pra o cálculo considerar quanto
+                você de fato tem disponível. Sem isso, o pró-labore é estimado só com o que vai entrar
+                nos próximos 30 dias.
+              </div>
+            </div>
+          )}
 
           {/* Sugestão principal */}
           <Card className="border-primary-200 bg-gradient-to-br from-primary-50 to-white">
