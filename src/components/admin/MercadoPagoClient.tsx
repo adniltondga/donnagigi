@@ -306,16 +306,16 @@ export function MercadoPagoClient() {
           <SummaryCard
             tone="emerald"
             icon={<Clock className="w-5 h-5" />}
-            label="Já liberado (este mês)"
+            label="Liberado no mês"
             value={releasedMesAtual.total}
             sub={`${releasedMesAtual.count} pagamento${releasedMesAtual.count === 1 ? "" : "s"}`}
-            tooltip={`${releasedMesAtual.count} pagamento${releasedMesAtual.count === 1 ? "" : "s"} caíram no MP este mês e já estão disponíveis.`}
+            tooltip={`${releasedMesAtual.count} pagamento${releasedMesAtual.count === 1 ? "" : "s"} caíram no MP este mês e já estão disponíveis pra saque.`}
             loading={loading && !snap}
           />
           <SummaryCard
             tone="sky"
             icon={<Clock className="w-5 h-5" />}
-            label="Ainda liberando (este mês)"
+            label="Liberando no mês"
             value={pendingMesAtual.total}
             sub={`${pendingMesAtual.count} pagamento${pendingMesAtual.count === 1 ? "" : "s"}`}
             tooltip={`${pendingMesAtual.count} pagamento${pendingMesAtual.count === 1 ? "" : "s"} com liberação prevista até o fim deste mês.`}
@@ -324,25 +324,25 @@ export function MercadoPagoClient() {
           <SummaryCard
             tone="sky"
             icon={<Clock className="w-5 h-5" />}
-            label="Total a liberar (geral)"
+            label="Total a liberar"
             value={snap?.unavailableBalance ?? 0}
             sub={`${totalPendingCount} pagamento${totalPendingCount === 1 ? "" : "s"}`}
-            tooltip={`${totalPendingCount} pagamento${totalPendingCount === 1 ? "" : "s"} no pipeline todo (até 180 dias pra frente).`}
+            tooltip={`Pipeline todo — ${totalPendingCount} pagamento${totalPendingCount === 1 ? "" : "s"} até 180 dias pra frente.`}
             loading={loading && !snap}
           />
           <SummaryCard
             tone={snap?.disputedCount && snap.disputedCount > 0 ? "amber" : "emerald"}
             icon={<AlertTriangle className="w-5 h-5" />}
-            label="Retido por reclamação"
+            label="Em mediação"
             value={snap?.disputedTotal ?? 0}
             sub={
               snap?.disputedCount && snap.disputedCount > 0
-                ? `${snap.disputedCount} em mediação`
+                ? `${snap.disputedCount} retido${snap.disputedCount === 1 ? "" : "s"}`
                 : "Sem reclamações"
             }
             tooltip={
               snap?.disputedCount && snap.disputedCount > 0
-                ? `${snap.disputedCount} pagamento${snap.disputedCount === 1 ? "" : "s"} em mediação — responda no app do Mercado Pago pra destravar.`
+                ? `${snap.disputedCount} pagamento${snap.disputedCount === 1 ? "" : "s"} retido${snap.disputedCount === 1 ? "" : "s"} por reclamação — responda no app do Mercado Pago pra destravar.`
                 : "Nenhuma reclamação em aberto no momento."
             }
             loading={loading && !snap}
@@ -707,7 +707,7 @@ function SummaryCard({
           </div>
           <div className="flex-1 min-w-0">
             <p className={`text-xs font-medium ${t.labelColor} uppercase tracking-wide`}>{label}</p>
-            <p className={`text-3xl font-bold ${t.valueColor} mt-0.5 tabular-nums`}>
+            <p className={`text-2xl font-bold ${t.valueColor} mt-0.5 tabular-nums break-words`}>
               {loading ? "—" : formatCurrency(value)}
             </p>
             <div className="text-xs text-gray-600 mt-1 flex items-center gap-1.5">
