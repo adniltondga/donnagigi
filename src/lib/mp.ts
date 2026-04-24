@@ -182,37 +182,57 @@ export interface MPBalance {
   lastUpdated: string
 }
 
+interface MPPaymentRaw {
+  id: number
+  status?: string
+  description?: string | null
+  date_created?: string
+  date_approved?: string
+  money_release_date?: string | null
+  transaction_amount?: number
+  external_reference?: string | null
+  payment_method_id?: string
+  fee_details?: Array<{ amount?: number }>
+  transaction_details?: {
+    net_received_amount?: number
+  }
+  order?: { id?: string | number | null } | null
+  additional_info?: {
+    items?: Array<{ id?: string; title?: string; quantity?: number }>
+  } | null
+  payer?: { email?: string; nickname?: string | null } | null
+}
+
 interface MPPaymentSearchResult {
-  results?: Array<{
-    id: number
-    status?: string
-    transaction_amount?: number
-    money_release_date?: string | null
-    fee_details?: Array<{ amount?: number }>
-    transaction_details?: {
-      net_received_amount?: number
-    }
-  }>
+  results?: MPPaymentRaw[]
   paging?: { total?: number; limit?: number; offset?: number }
 }
 
+export interface MPPendingPayment {
+  id: number
+  description: string
+  releaseDate: string
+  dateCreated: string | null
+  netAmount: number
+  grossAmount: number
+  paymentMethodId: string | null
+  externalReference: string | null
+  buyer: string | null
+}
+
 /**
- * Calcula o "Total a liberar" do vendedor MP somando os pagamentos
- * aprovados cujo `money_release_date` é no futuro.
+ * Lista pagamentos aprovados recentes cujo money_release_date ainda é
+ * futuro. Base pra "Total a liberar" + lista detalhada por dia.
  *
- * Usa `/v1/payments/search` — endpoint público OAuth-compatível (o antigo
- * `/users/{id}/mercadopago_account/balance` retorna 403 pra tokens de app).
- *
- * Pagina em batches de 50 e limita a 500 pra não travar (> que isso é
- * cenário atípico — MP libera em 14-30 dias, dificilmente alguém tem mil
- * pagamentos presos).
+ * Usa /v1/payments/search (endpoint OAuth-compatível; o antigo
+ * /users/{id}/mercadopago_account/balance retorna 403 pra tokens de app).
+ * Pagina em batches de 50 até 500 (MP libera em 14-30d).
  */
-export async function fetchMPBalance(params: {
+export async function fetchMPPendingPayments(params: {
   accessToken: string
-}): Promise<MPBalance> {
+}): Promise<MPPendingPayment[]> {
   const now = Date.now()
-  let unavailable = 0
-  let pendingCount = 0
+  const out: MPPendingPayment[] = []
   const LIMIT = 50
   let offset = 0
   const MAX_OFFSET = 500
@@ -223,8 +243,6 @@ export async function fetchMPBalance(params: {
       sort: "date_created",
       criteria: "desc",
       range: "date_created",
-      // MP aceita "NOW-60DAYS" como atalho. Pega pagamentos recentes que
-      // ainda podem ter saldo a liberar.
       begin_date: "NOW-60DAYS",
       end_date: "NOW",
       limit: String(LIMIT),
@@ -249,28 +267,50 @@ export async function fetchMPBalance(params: {
       if (!p.money_release_date) continue
       const release = new Date(p.money_release_date).getTime()
       if (release <= now) continue
-      // Preferimos net_received_amount; se não vier, cai pra transaction - fees
+
       const net = p.transaction_details?.net_received_amount
-      if (typeof net === "number" && Number.isFinite(net)) {
-        unavailable += net
-      } else {
-        const gross = Number(p.transaction_amount) || 0
-        const fees = (p.fee_details || []).reduce(
-          (s, f) => s + (Number(f.amount) || 0),
-          0
-        )
-        unavailable += gross - fees
-      }
-      pendingCount += 1
+      const gross = Number(p.transaction_amount) || 0
+      const fees = (p.fee_details || []).reduce(
+        (s, f) => s + (Number(f.amount) || 0),
+        0
+      )
+      const netAmount =
+        typeof net === "number" && Number.isFinite(net) ? net : gross - fees
+
+      const itemTitle = p.additional_info?.items?.[0]?.title
+      const description = (p.description || itemTitle || `Pagamento ${p.id}`).trim()
+
+      out.push({
+        id: p.id,
+        description,
+        releaseDate: p.money_release_date,
+        dateCreated: p.date_created || null,
+        netAmount: Math.round(netAmount * 100) / 100,
+        grossAmount: Math.round(gross * 100) / 100,
+        paymentMethodId: p.payment_method_id || null,
+        externalReference: p.external_reference || null,
+        buyer: p.payer?.nickname || p.payer?.email || null,
+      })
     }
 
     if (batch.length < LIMIT) break
     offset += LIMIT
   }
 
+  return out
+}
+
+/**
+ * Resumo pro card de topo: soma dos pagamentos a liberar.
+ */
+export async function fetchMPBalance(params: {
+  accessToken: string
+}): Promise<MPBalance> {
+  const payments = await fetchMPPendingPayments(params)
+  const total = payments.reduce((s, p) => s + p.netAmount, 0)
   return {
-    unavailableBalance: Math.round(unavailable * 100) / 100,
-    pendingReleaseCount: pendingCount,
+    unavailableBalance: Math.round(total * 100) / 100,
+    pendingReleaseCount: payments.length,
     currencyId: "BRL",
     lastUpdated: new Date().toISOString(),
   }
