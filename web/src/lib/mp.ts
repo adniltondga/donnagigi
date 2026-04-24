@@ -406,6 +406,82 @@ export async function fetchMPDisputedPayments(params: {
   return out
 }
 
+/**
+ * Busca os 3 datasets MP (balance agregado, dias de liberação, retidos por
+ * reclamação) e salva no cache da `MPIntegration`. Chamado quando o user
+ * clica "Atualizar" ou via cron/rotina.
+ *
+ * Agrupa os payments a liberar por dia no fuso America/Sao_Paulo.
+ */
+export async function syncAndCacheMP(tenantId: string): Promise<{
+  cachedSyncedAt: Date
+  unavailableBalance: number
+  pendingCount: number
+  disputedTotal: number
+  disputedCount: number
+}> {
+  const integration = await prisma.mPIntegration.findUnique({ where: { tenantId } })
+  if (!integration) throw new Error("Mercado Pago não conectado nesse tenant")
+
+  // Refresh automático de token, se próximo de expirar
+  const fresh = await getMPIntegrationForTenant(tenantId)
+  const accessToken = fresh?.accessToken || integration.accessToken
+
+  const [pending, disputed] = await Promise.all([
+    fetchMPPendingPayments({ accessToken }),
+    fetchMPDisputedPayments({ accessToken }),
+  ])
+
+  // Agrupa pending por dia (America/Sao_Paulo)
+  const byDay = new Map<
+    string,
+    { date: string; total: number; count: number; payments: MPPendingPayment[] }
+  >()
+  for (const p of pending) {
+    const d = new Date(p.releaseDate)
+    const dayKey = d.toLocaleDateString("en-CA", { timeZone: "America/Sao_Paulo" })
+    const slot = byDay.get(dayKey) || { date: dayKey, total: 0, count: 0, payments: [] }
+    slot.total += p.netAmount
+    slot.count += 1
+    slot.payments.push(p)
+    byDay.set(dayKey, slot)
+  }
+  const days = Array.from(byDay.values())
+    .map((d) => ({
+      ...d,
+      total: Math.round(d.total * 100) / 100,
+      payments: d.payments.sort(
+        (a, b) => new Date(a.releaseDate).getTime() - new Date(b.releaseDate).getTime()
+      ),
+    }))
+    .sort((a, b) => a.date.localeCompare(b.date))
+
+  const unavailableBalance = Math.round(pending.reduce((s, p) => s + p.netAmount, 0) * 100) / 100
+  const disputedTotal = Math.round(disputed.reduce((s, p) => s + p.netAmount, 0) * 100) / 100
+  const now = new Date()
+
+  await prisma.mPIntegration.update({
+    where: { tenantId },
+    data: {
+      cachedUnavailableBalance: unavailableBalance,
+      cachedPendingCount: pending.length,
+      cachedDisputedTotal: disputedTotal,
+      cachedDisputedCount: disputed.length,
+      cachedPendingDays: days as unknown as object,
+      cachedDisputedPayments: disputed as unknown as object,
+      cachedSyncedAt: now,
+    },
+  })
+
+  return {
+    cachedSyncedAt: now,
+    unavailableBalance,
+    pendingCount: pending.length,
+    disputedTotal,
+    disputedCount: disputed.length,
+  }
+}
+
 export async function getMPIntegrationForTenant(tenantId: string) {
   const integration = await prisma.mPIntegration.findUnique({ where: { tenantId } })
   if (!integration) return null

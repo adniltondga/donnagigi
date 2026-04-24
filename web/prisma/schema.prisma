@@ -313,7 +313,8 @@ model MPAppCredentials {
 }
 
 // Integração OAuth ativa com o Mercado Pago (1 por tenant).
-// Guarda tokens + user_id do seller no MP.
+// Guarda tokens + user_id do seller no MP + cache do último snapshot
+// consultado (evita bater na API do MP a cada abertura de tela).
 model MPIntegration {
   id           String   @id @default(cuid())
   tenantId     String   @unique
@@ -323,6 +324,16 @@ model MPIntegration {
   refreshToken String?
   expiresAt    DateTime
   scope        String?
+
+  // Cache do último snapshot (refresh manual ou cron)
+  cachedUnavailableBalance Float?
+  cachedPendingCount       Int?
+  cachedDisputedTotal      Float?
+  cachedDisputedCount      Int?
+  cachedPendingDays        Json?     // array de { date, total, count, payments[] }
+  cachedDisputedPayments   Json?     // array de payments em mediação
+  cachedSyncedAt           DateTime?
+
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 }

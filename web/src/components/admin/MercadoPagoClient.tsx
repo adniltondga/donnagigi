@@ -35,24 +35,15 @@ interface Day {
   count: number
   payments: Payment[]
 }
-interface BalanceData {
+interface Snapshot {
   configured: boolean
   unavailableBalance?: number
-  pendingReleaseCount?: number
-  error?: string
-}
-interface PendingData {
-  configured: boolean
-  total?: number
-  count?: number
-  days?: Day[]
-  error?: string
-}
-interface DisputedData {
-  configured: boolean
-  total?: number
-  count?: number
-  payments?: Payment[]
+  pendingCount?: number
+  disputedTotal?: number
+  disputedCount?: number
+  pendingDays?: Day[]
+  disputedPayments?: Payment[]
+  cachedSyncedAt?: string | null
   error?: string
 }
 
@@ -93,38 +84,51 @@ function formatDayLabel(isoDate: string): string {
 }
 
 export function MercadoPagoClient() {
-  const [balance, setBalance] = useState<BalanceData | null>(null)
-  const [pending, setPending] = useState<PendingData | null>(null)
-  const [disputed, setDisputed] = useState<DisputedData | null>(null)
+  const [snap, setSnap] = useState<Snapshot | null>(null)
   const [loading, setLoading] = useState(true)
-  const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
+  const [syncing, setSyncing] = useState(false)
+  const [syncError, setSyncError] = useState<string | null>(null)
   const [expandedDays, setExpandedDays] = useState<Set<string>>(new Set())
   const [showDisputedList, setShowDisputedList] = useState(false)
   const [periodFilter, setPeriodFilter] = useState<"7" | "15" | "30" | "all">("all")
   const [searchQuery, setSearchQuery] = useState("")
 
-  const loadAll = useCallback(async () => {
+  // Leitura do cache (instantâneo).
+  const loadCache = useCallback(async () => {
     setLoading(true)
     try {
-      const [b, p, d] = await Promise.all([
-        fetch("/api/mp/balance").then((r) => r.json()),
-        fetch("/api/mp/pending-payments").then((r) => r.json()),
-        fetch("/api/mp/disputed").then((r) => r.json()),
-      ])
-      setBalance(b)
-      setPending(p)
-      setDisputed(d)
-      setLastUpdated(new Date())
+      const res = await fetch("/api/mp/snapshot")
+      const data = (await res.json()) as Snapshot
+      setSnap(data)
     } catch {
-      setBalance({ configured: true, error: "Erro de conexão" })
+      setSnap({ configured: true, error: "Erro de conexão" })
     } finally {
       setLoading(false)
     }
   }, [])
 
+  // Busca no MP + atualiza o cache (lento — mostra spinner dedicado).
+  const refreshFromMP = useCallback(async () => {
+    setSyncing(true)
+    setSyncError(null)
+    try {
+      const res = await fetch("/api/mp/snapshot", { method: "POST" })
+      const data = (await res.json()) as Snapshot
+      if (data.error) {
+        setSyncError(data.error)
+        return
+      }
+      setSnap(data)
+    } catch {
+      setSyncError("Erro de conexão ao atualizar")
+    } finally {
+      setSyncing(false)
+    }
+  }, [])
+
   useEffect(() => {
-    loadAll()
-  }, [loadAll])
+    loadCache()
+  }, [loadCache])
 
   const toggleDay = (key: string) => {
     setExpandedDays((prev) => {
@@ -135,16 +139,23 @@ export function MercadoPagoClient() {
     })
   }
 
-  const notConfigured = balance && !balance.configured
+  const notConfigured = snap && !snap.configured
 
-  const totalMs = useMemo(() => {
-    if (!lastUpdated) return ""
-    return lastUpdated.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })
-  }, [lastUpdated])
+  const cachedAt = snap?.cachedSyncedAt ? new Date(snap.cachedSyncedAt) : null
+  const cachedLabel = useMemo(() => {
+    if (!cachedAt) return null
+    return cachedAt.toLocaleString("pt-BR", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    })
+  }, [cachedAt])
 
   // Aplica filtros de período (dias a partir de hoje) e busca por texto.
   const filteredDays = useMemo(() => {
-    if (!pending?.days) return [] as Day[]
+    if (!snap?.pendingDays) return [] as Day[]
     const q = searchQuery.trim().toLowerCase()
     const maxDays = periodFilter === "all" ? null : Number(periodFilter)
     const today = new Date()
@@ -154,7 +165,7 @@ export function MercadoPagoClient() {
       : null
 
     const result: Day[] = []
-    for (const day of pending.days) {
+    for (const day of snap.pendingDays) {
       const [y, m, d] = day.date.split("-").map(Number)
       const dayDate = new Date(y, m - 1, d).getTime()
       if (cutoff !== null && dayDate > cutoff) continue
@@ -177,7 +188,7 @@ export function MercadoPagoClient() {
       })
     }
     return result
-  }, [pending, periodFilter, searchQuery])
+  }, [snap, periodFilter, searchQuery])
 
   const filteredTotal = useMemo(
     () => filteredDays.reduce((s, d) => s + d.total, 0),
@@ -188,6 +199,8 @@ export function MercadoPagoClient() {
     [filteredDays]
   )
   const hasFilters = periodFilter !== "all" || searchQuery.trim().length > 0
+  const totalPendingCount = snap?.pendingCount ?? 0
+  const disputedPaymentsList = snap?.disputedPayments ?? []
 
   // Caso especial: MP não conectado
   if (notConfigured) {
@@ -214,26 +227,37 @@ export function MercadoPagoClient() {
     )
   }
 
-  const anyError = balance?.error || pending?.error || disputed?.error
+  const neverSynced = !cachedAt && !loading
+  const hasError = snap?.error || syncError
 
   return (
     <div className="space-y-4">
       {/* Barra superior: atualizar + timestamp */}
-      <div className="flex items-center justify-between gap-2 flex-wrap">
-        <p className="text-xs text-gray-500">
-          {lastUpdated ? `Atualizado às ${totalMs}` : "—"}
-        </p>
-        <Button variant="outline" size="sm" onClick={loadAll} disabled={loading}>
-          <RefreshCw className={`w-4 h-4 mr-1.5 ${loading ? "animate-spin" : ""}`} />
-          Atualizar
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <div className="text-xs text-gray-500">
+          {neverSynced ? (
+            <span className="text-amber-700">
+              Nunca sincronizado — clique em Atualizar pra puxar os dados do MP.
+            </span>
+          ) : cachedLabel ? (
+            <>
+              Última atualização: <strong className="text-gray-700">{cachedLabel}</strong>
+            </>
+          ) : (
+            "—"
+          )}
+        </div>
+        <Button variant="outline" size="sm" onClick={refreshFromMP} disabled={syncing}>
+          <RefreshCw className={`w-4 h-4 mr-1.5 ${syncing ? "animate-spin" : ""}`} />
+          {syncing ? "Atualizando..." : "Atualizar"}
         </Button>
       </div>
 
-      {anyError && (
+      {hasError && (
         <Card className="border-red-200 bg-red-50/40">
           <CardContent className="pt-4 flex items-start gap-2 text-sm text-red-800">
             <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
-            <div className="flex-1">{anyError}</div>
+            <div className="flex-1">{hasError}</div>
           </CardContent>
         </Card>
       )}
@@ -244,29 +268,23 @@ export function MercadoPagoClient() {
           tone="sky"
           icon={<Clock className="w-5 h-5" />}
           label="Total a liberar"
-          value={balance?.unavailableBalance ?? 0}
-          sub={`${balance?.pendingReleaseCount ?? 0} pagamento${balance?.pendingReleaseCount === 1 ? "" : "s"} aguardando liberação`}
-          loading={loading && !balance}
+          value={snap?.unavailableBalance ?? 0}
+          sub={`${totalPendingCount} pagamento${totalPendingCount === 1 ? "" : "s"} aguardando liberação`}
+          loading={loading && !snap}
         />
         <SummaryCard
-          tone={disputed?.count && disputed.count > 0 ? "amber" : "emerald"}
-          icon={
-            disputed?.count && disputed.count > 0 ? (
-              <AlertTriangle className="w-5 h-5" />
-            ) : (
-              <AlertTriangle className="w-5 h-5" />
-            )
-          }
+          tone={snap?.disputedCount && snap.disputedCount > 0 ? "amber" : "emerald"}
+          icon={<AlertTriangle className="w-5 h-5" />}
           label="Retido por reclamação"
-          value={disputed?.total ?? 0}
+          value={snap?.disputedTotal ?? 0}
           sub={
-            disputed?.count && disputed.count > 0
-              ? `${disputed.count} pagamento${disputed.count === 1 ? "" : "s"} em mediação · responda no app do MP pra destravar`
+            snap?.disputedCount && snap.disputedCount > 0
+              ? `${snap.disputedCount} pagamento${snap.disputedCount === 1 ? "" : "s"} em mediação · responda no app do MP pra destravar`
               : "Sem reclamações em aberto"
           }
-          loading={loading && !disputed}
+          loading={loading && !snap}
           action={
-            disputed?.count && disputed.count > 0 ? (
+            snap?.disputedCount && snap.disputedCount > 0 ? (
               <button
                 onClick={() => setShowDisputedList((v) => !v)}
                 className="text-xs text-amber-800 hover:text-amber-900 font-medium mt-2 flex items-center gap-1"
@@ -284,7 +302,7 @@ export function MercadoPagoClient() {
       </div>
 
       {/* Lista dos retidos (expand) */}
-      {showDisputedList && disputed?.payments && disputed.payments.length > 0 && (
+      {showDisputedList && disputedPaymentsList.length > 0 && (
         <Card className="border-amber-200 bg-amber-50/30">
           <CardHeader>
             <CardTitle className="text-sm text-amber-900 flex items-center gap-2">
@@ -294,7 +312,7 @@ export function MercadoPagoClient() {
           </CardHeader>
           <CardContent className="p-0">
             <ul className="divide-y divide-amber-100">
-              {disputed.payments.map((p) => {
+              {disputedPaymentsList.map((p) => {
                 const method = p.paymentMethodId
                   ? METHOD_LABELS[p.paymentMethodId] || p.paymentMethodId
                   : null
@@ -354,9 +372,9 @@ export function MercadoPagoClient() {
               <Calendar className="w-4 h-4 text-sky-600" />
               Liberações programadas
             </CardTitle>
-            {hasFilters && pending?.days && (
+            {hasFilters && snap?.pendingDays && (
               <span className="text-xs text-gray-500">
-                {filteredCount} de {pending.count ?? 0} pagamento{(pending.count ?? 0) === 1 ? "" : "s"} ·{" "}
+                {filteredCount} de {totalPendingCount} pagamento{totalPendingCount === 1 ? "" : "s"} ·{" "}
                 <strong className="text-emerald-600">{formatCurrency(filteredTotal)}</strong>
               </span>
             )}
@@ -407,14 +425,16 @@ export function MercadoPagoClient() {
           </div>
         </CardHeader>
         <CardContent className="p-0">
-          {loading && !pending ? (
+          {loading && !snap ? (
             <div className="px-5 py-8 flex items-center justify-center text-gray-500">
               <Loader className="w-4 h-4 animate-spin mr-2" />
               Carregando...
             </div>
-          ) : !pending?.days || pending.days.length === 0 ? (
+          ) : !snap?.pendingDays || snap.pendingDays.length === 0 ? (
             <div className="px-5 py-8 text-center text-gray-500 text-sm">
-              Nenhum pagamento pendente de liberação.
+              {neverSynced
+                ? "Clique em Atualizar pra buscar os dados do Mercado Pago."
+                : "Nenhum pagamento pendente de liberação."}
             </div>
           ) : filteredDays.length === 0 ? (
             <div className="px-5 py-8 text-center text-gray-500 text-sm">
