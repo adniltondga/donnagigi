@@ -1,5 +1,5 @@
 import Link from "next/link"
-import { ArrowRight, TrendingUp, TrendingDown, FileText, Rocket, type LucideIcon } from "lucide-react"
+import { ArrowRight, TrendingUp, TrendingDown, FileText, Rocket, Scale, type LucideIcon } from "lucide-react"
 import { PageHeader } from "@/components/ui/page-header"
 import { Card, CardContent } from "@/components/ui/card"
 
@@ -39,6 +39,13 @@ const CARDS: Item[] = [
     title: "Pró-labore seguro",
     description: "Quanto você pode tirar esse mês depois de cobrir operação, aportes, reserva e reinvestimento (Pay Yourself Last).",
     accent: "bg-fuchsia-50 text-fuchsia-700",
+  },
+  {
+    href: "/admin/financeiro/relatorios/balancete",
+    icon: Scale,
+    title: "Balancete gerencial",
+    description: "Resultado + movimento de caixa + posição patrimonial em uma tela. Direitos, obrigações, lucro YTD e patrimônio estimado.",
+    accent: "bg-indigo-50 text-indigo-700",
   },
 ]
 
