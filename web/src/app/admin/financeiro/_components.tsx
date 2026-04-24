@@ -22,6 +22,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { StatCard } from '@/components/ui/stat-card';
 import { EmptyState } from '@/components/ui/empty-state';
 import { useUserRole } from '@/lib/useUserRole';
+import CurrencyInput from '@/components/CurrencyInput';
 
 export type BillType = 'payable' | 'receivable';
 
@@ -531,14 +532,12 @@ function BillForm({
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Valor (R$)</label>
-              <input
-                type="number"
-                step="0.01"
-                min="0.01"
-                value={amount}
-                onChange={(e) => setAmount(e.target.value)}
+              <CurrencyInput
+                value={amount === '' ? 0 : parseFloat(amount)}
+                onChange={(v) => setAmount(v > 0 ? String(v) : '')}
+                placeholder="R$ 0,00"
+                className="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary-600"
                 required
-                className="w-full border rounded-lg px-3 py-2"
               />
             </div>
 
