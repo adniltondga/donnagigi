@@ -106,15 +106,28 @@
       WARN("nenhuma âncora de card encontrada — o ML pode ter mudado a estrutura");
     }
 
+    // Extrai os dígitos do id, ignorando prefixo "#" ou "MLB" e sufixo
+    // opcional "_variationId". Assim "#6444194488", "MLB6444194488" e
+    // "MLB6444194488_191323520158" contam como o MESMO id.
+    const uniqueIdsIn = (txt) => {
+      const raw = txt.match(ID_RE_GLOBAL) || [];
+      const set = new Set();
+      for (const m of raw) {
+        const digits = m.replace(/^[#]/, "").replace(/^MLB/i, "").split("_")[0];
+        if (digits) set.add(digits);
+      }
+      return set;
+    };
+
     for (const anchor of anchors) {
       let cur = anchor;
       let last = null;
       while (cur && cur !== document.body) {
         const txt = cur.textContent || "";
-        const ids = txt.match(ID_RE_GLOBAL);
-        if (ids && ids.length === 1) {
+        const distinct = uniqueIdsIn(txt);
+        if (distinct.size === 1) {
           last = cur;
-        } else if (ids && ids.length > 1) {
+        } else if (distinct.size > 1) {
           break;
         }
         cur = cur.parentElement;
@@ -697,6 +710,224 @@
       .replace(/"/g, "&quot;");
   }
 
+  /* =========================================================
+   * Sub-rows de variação (card expandido).
+   * Cada variação vira uma <div class="sll-list-grid-row-lite
+   * sll-list-expanded-row__row-light">. Injetamos uma célula
+   * "Custo" clicável, que grava em MLProductVariantCost via
+   * variationId extraído do SKU "MLB<listing>_<variation>".
+   * =======================================================*/
+  const SUB_ROW_CLS = "sll-list-expanded-row__row-light";
+  const SUB_CELL_CLS = "aglivre-sub-cell";
+  const SUB_SKU_RE = /MLB(\d{6,})_(\d+)/i;
+
+  function processSubRows() {
+    const subRows = document.querySelectorAll("." + SUB_ROW_CLS);
+    for (const subRow of subRows) injectSubRowCost(subRow);
+  }
+
+  function injectSubRowCost(subRow) {
+    const txt = subRow.textContent || "";
+    const m = SUB_SKU_RE.exec(txt);
+    if (!m) return;
+    const listingId = "MLB" + m[1];
+    const variationId = m[2];
+
+    const titleEl = subRow.querySelector(".sll-list-row-title");
+    const variationName = titleEl ? (titleEl.textContent || "").trim().slice(0, 200) : null;
+
+    const info = listingData.get(listingId);
+    const variantCost = info?.variantCosts?.[variationId] ?? null;
+    const listingCost = info?.listingCost ?? null;
+
+    // Popula cache com essa variação (se ainda não estiver)
+    if (info) {
+      if (!info.variations) info.variations = {};
+      if (!info.variations[variationId] && variationName) {
+        info.variations[variationId] = variationName;
+      }
+    }
+
+    // "Você recebe" vem do card pai (mesma lógica das colunas principais)
+    const parentCard = subRow.closest("[" + PROCESSED_ATTR + "]");
+    const vr = parentCard ? extractVoceRecebe(parentCard) : null;
+    const vrKey = vr ? `${vr.min}-${vr.max ?? ""}` : "-";
+
+    const sig = `${variantCost ?? ""}|${listingCost ?? ""}|${vrKey}`;
+    if (
+      subRow.dataset.aglivreSubSig === sig &&
+      subRow.querySelector("." + SUB_CELL_CLS)
+    ) {
+      return;
+    }
+
+    // garante position:relative no sub-row pra célula absolutar direito
+    if (!subRow.dataset.aglivreSubPos) {
+      const cs = getComputedStyle(subRow);
+      if (cs.position === "static") subRow.style.position = "relative";
+      subRow.dataset.aglivreSubPos = "1";
+    }
+
+    let cell = subRow.querySelector("." + SUB_CELL_CLS);
+    if (!cell) {
+      cell = document.createElement("div");
+      cell.className = SUB_CELL_CLS;
+      subRow.appendChild(cell);
+    }
+    cell._aglivreSubData = {
+      listingId,
+      variationId,
+      variationName,
+      cost: variantCost,
+      listingCost,
+      vr,
+    };
+    renderSubCostCell(cell);
+    subRow.dataset.aglivreSubSig = sig;
+  }
+
+  function renderSubCostCell(cell) {
+    const data = cell._aglivreSubData;
+    cell.innerHTML = "";
+
+    // --- Bloco Custo ---
+    const costLabel = document.createElement("span");
+    costLabel.className = "aglivre-sub-cell__label";
+    costLabel.textContent = "Custo";
+    cell.appendChild(costLabel);
+
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "aglivre-sub-cost";
+
+    const effectiveCost =
+      data.cost != null ? data.cost : data.listingCost != null ? data.listingCost : null;
+
+    if (data.cost != null) {
+      btn.textContent = fmt(data.cost);
+      btn.title = "Custo desta variação — clique pra editar";
+    } else if (data.listingCost != null) {
+      btn.textContent = fmt(data.listingCost);
+      btn.classList.add("aglivre-sub-cost--inherited");
+      btn.title = "Herdado do custo geral do anúncio — clique pra definir um custo específico";
+    } else {
+      btn.textContent = "Definir";
+      btn.classList.add("aglivre-sub-cost--empty");
+      btn.title = "Clique pra definir custo desta variação";
+    }
+
+    btn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      e.preventDefault();
+      startEditSubCost(cell);
+    });
+    cell.appendChild(btn);
+
+    // --- Separador + Bloco Lucro ---
+    const sep = document.createElement("span");
+    sep.className = "aglivre-sub-cell__sep";
+    cell.appendChild(sep);
+
+    const profitLabel = document.createElement("span");
+    profitLabel.className = "aglivre-sub-cell__label";
+    profitLabel.textContent = "Lucro";
+    cell.appendChild(profitLabel);
+
+    const profitVal = document.createElement("span");
+    profitVal.className = "aglivre-sub-profit";
+    const p = computeProfit(effectiveCost, data.vr);
+    if (p.positive === true) profitVal.classList.add("aglivre-sub-profit--pos");
+    if (p.positive === false) profitVal.classList.add("aglivre-sub-profit--neg");
+    profitVal.textContent = p.text;
+    if (data.vr && data.vr.max != null && Math.abs(data.vr.max - data.vr.min) > 0.005) {
+      profitVal.title =
+        "O ML mostra uma faixa de 'Você recebe' pra esse anúncio; o lucro usa essa faixa.";
+    }
+    cell.appendChild(profitVal);
+  }
+
+  function startEditSubCost(cell) {
+    const data = cell._aglivreSubData;
+    const btn = cell.querySelector(".aglivre-sub-cost");
+    if (!btn || btn.dataset.editing === "1") return;
+    btn.dataset.editing = "1";
+
+    const input = document.createElement("input");
+    input.type = "text";
+    input.className = "aglivre-sub-input";
+    const initial = data.cost != null ? data.cost : data.listingCost;
+    input.value = initial != null ? initial.toFixed(2).replace(".", ",") : "";
+    input.placeholder = "0,00";
+
+    btn.replaceWith(input);
+    input.focus();
+    input.select();
+
+    let settled = false;
+    const cleanup = () => {
+      if (settled) return;
+      settled = true;
+      input.replaceWith(btn);
+      btn.dataset.editing = "";
+    };
+
+    const commit = async () => {
+      const raw = input.value.trim().replace(/\./g, "").replace(",", ".");
+      const value = parseFloat(raw);
+      if (!Number.isFinite(value) || value < 0) {
+        cleanup();
+        return;
+      }
+      input.disabled = true;
+      try {
+        await send({
+          type: "saveCost",
+          payload: {
+            mlListingId: data.listingId,
+            variationId: data.variationId,
+            variationName: data.variationName || null,
+            productCost: value,
+          },
+        });
+        settled = true;
+        const cached = listingData.get(data.listingId) || {
+          listingCost: null,
+          variantCosts: {},
+          variations: {},
+        };
+        if (!cached.variantCosts) cached.variantCosts = {};
+        cached.variantCosts[data.variationId] = value;
+        if (!cached.variations) cached.variations = {};
+        if (data.variationName) cached.variations[data.variationId] = data.variationName;
+        listingData.set(data.listingId, cached);
+
+        cell._aglivreSubData.cost = value;
+        renderSubCostCell(cell);
+
+        const subRow = cell.closest("." + SUB_ROW_CLS);
+        if (subRow) {
+          const vr = cell._aglivreSubData.vr;
+          const vrKey = vr ? `${vr.min}-${vr.max ?? ""}` : "-";
+          subRow.dataset.aglivreSubSig = `${value}|${cached.listingCost ?? ""}|${vrKey}`;
+        }
+      } catch (err) {
+        console.error("[agLivre] erro ao salvar custo de variação", err);
+        cleanup();
+      }
+    };
+
+    input.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        commit();
+      } else if (e.key === "Escape") {
+        e.preventDefault();
+        cleanup();
+      }
+    });
+    input.addEventListener("blur", commit, { once: true });
+  }
+
   function buildPanel({ listingId, cost, vr, title }) {
     const panel = document.createElement("div");
     panel.className = MARKER_CLASS;
@@ -909,6 +1140,7 @@
           injectRowColumns(card, { listingId, cost, vr, title });
           card.dataset.aglivreSig = sig;
         }
+        processSubRows();
       } finally {
         // Deixa o DOM assentar antes de reativar o observer.
         setTimeout(() => {
@@ -922,20 +1154,29 @@
 
   const debouncedProcess = debounce(process, 600);
 
+  const OUR_CLASSES = [MARKER_CLASS, COL_COST_CLS, COL_PROFIT_CLS, SUB_CELL_CLS];
+  const isOurs = (el) => {
+    if (!el || el.nodeType !== 1) return false;
+    if (!el.closest) return false;
+    for (const c of OUR_CLASSES) if (el.closest("." + c)) return true;
+    return false;
+  };
+
   const observer = new MutationObserver((mutations) => {
     if (pausedObserver) return;
-    // Ignora mutações causadas pelos nossos próprios painéis
     let relevant = false;
     for (const m of mutations) {
       const target = m.target;
       if (!target) continue;
-      if (target.nodeType === 1 && target.closest && target.closest("." + MARKER_CLASS)) continue;
-      // Verifica se todos os addedNodes são nossos painéis
+      if (isOurs(target)) continue;
       const added = m.addedNodes ? Array.from(m.addedNodes) : [];
       const allOurs =
         added.length > 0 &&
         added.every(
-          (n) => n.nodeType === 1 && n.classList && n.classList.contains(MARKER_CLASS)
+          (n) =>
+            n.nodeType === 1 &&
+            n.classList &&
+            OUR_CLASSES.some((c) => n.classList.contains(c))
         );
       if (allOurs) continue;
       relevant = true;
