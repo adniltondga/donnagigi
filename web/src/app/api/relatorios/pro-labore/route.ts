@@ -108,20 +108,15 @@ export async function GET(req: NextRequest) {
       : []
     const aporteMercadoriaNoMes = aportesMercadoriaBills.reduce((s, b) => s + b.amount, 0)
 
-    // Custo da mercadoria (CMV efetivo): usa o MAIOR entre productCost
-    // cadastrado e aporte mercadoria do mês. Evita double count quando
-    // user registra dos dois jeitos. Pra quem usa só aporte (caso atual),
-    // vai usar o aporte; pra quem cadastra em Custos ML, usa o CMV preciso.
-    const cmvDoMes = Math.max(cmvCadastrado, aporteMercadoriaNoMes)
+    // CMV = apenas productCost cadastrado. Aporte é tratado como passivo
+    // (dívida com o sócio), não despesa. Se o user não cadastrar custos
+    // em Custos ML, o CMV fica 0 e mostramos aviso.
+    const cmvDoMes = cmvCadastrado
     const cmvSource: "productCost" | "aporte" | "none" =
-      cmvCadastrado > 0 && cmvCadastrado >= aporteMercadoriaNoMes
-        ? "productCost"
-        : aporteMercadoriaNoMes > 0
-        ? "aporte"
-        : "none"
+      cmvCadastrado > 0 ? "productCost" : "none"
+    const cmvFaltando = cmvCadastrado === 0 && aporteMercadoriaNoMes > 0
 
-    // "Lucro real recebido" = receita − CMV. Já considera o custo da
-    // mercadoria (seja via productCost, seja via aporte).
+    // "Lucro real recebido" = receita − CMV. Aporte NÃO entra aqui.
     const receitaRecebida = receitaBruta - cmvDoMes
 
     // Despesas operacionais pagas no mês (status=paid, exclui aporte)
@@ -139,9 +134,8 @@ export async function GET(req: NextRequest) {
     })
     const despesasPagasTotal = despesasPagas.reduce((s, b) => s + b.amount, 0)
 
-    // Aportes OPERACIONAIS do mês: embalagem, frete, outros — custos que
-    // não foram contabilizados no CMV. Excluídos: Amortização (não é custo)
-    // e Mercadoria (já entrou como CMV).
+    // Aportes operacionais do mês (só pra display — NÃO entra no lucro).
+    // Aporte é passivo (dívida com sócio), não despesa da loja.
     const aportesOperacionaisBills =
       aporteOperacionalIds.length > 0
         ? await prisma.bill.findMany({
@@ -156,11 +150,10 @@ export async function GET(req: NextRequest) {
           })
         : []
     const aportesOperacionaisNoMes = aportesOperacionaisBills.reduce((s, b) => s + b.amount, 0)
-
-    // Total de aportes do mês (mercadoria + operacionais) — só pra display
     const aportesNoMesTotal = aporteMercadoriaNoMes + aportesOperacionaisNoMes
 
-    const custoOperacionalTotal = despesasPagasTotal + aportesOperacionaisNoMes
+    // Custo operacional = apenas despesas pagas. Aportes ficam como passivo.
+    const custoOperacionalTotal = despesasPagasTotal
     const lucroLiquido = receitaRecebida - custoOperacionalTotal
 
     // ---- RESULTADO ACUMULADO YTD (mês a mês) ----
@@ -175,7 +168,7 @@ export async function GET(req: NextRequest) {
           NOT: { status: "cancelled" },
           paidDate: { gte: inicioAno, lt: end },
         },
-        select: { amount: true },
+        select: { amount: true, productCost: true },
       }),
       prisma.bill.findMany({
         where: {
@@ -216,10 +209,13 @@ export async function GET(req: NextRequest) {
         : Promise.resolve([]),
     ])
     const receitaYTD = receitasAno.reduce((s, b) => s + b.amount, 0)
+    const cmvYTD = receitasAno.reduce((s, b) => s + (b.productCost || 0), 0)
     const despesaYTD = despesasAno.reduce((s, b) => s + b.amount, 0)
-    const aportesYTD = aportesAnoAll.reduce((s, b) => s + b.amount, 0)
+    const _aportesYTD = aportesAnoAll.reduce((s, b) => s + b.amount, 0) // só info
+    void _aportesYTD
     const proLaboresYTD = proLaboresAnoAll.reduce((s, b) => s + b.amount, 0)
-    const lucroAcumuladoYTD = receitaYTD - despesaYTD - aportesYTD
+    // Lucro acumulado = receita − CMV − despesas (aportes ficam como passivo)
+    const lucroAcumuladoYTD = receitaYTD - cmvYTD - despesaYTD
     // Base disponível pra tirar = lucro acumulado menos o que já foi tirado
     // como pró-labore no ano (se ainda não marcou como paga, conta também —
     // é um compromisso já tomado).
@@ -354,6 +350,7 @@ export async function GET(req: NextRequest) {
       aporteMercadoriaNoMes: Math.round(aporteMercadoriaNoMes * 100) / 100,
       aportesOperacionaisNoMes: Math.round(aportesOperacionaisNoMes * 100) / 100,
       cmvSource,
+      cmvFaltando,
       custoOperacionalTotal: Math.round(custoOperacionalTotal * 100) / 100,
       lucroLiquido: Math.round(lucroLiquido * 100) / 100,
       lucroAcumuladoYTD: Math.round(lucroAcumuladoYTD * 100) / 100,

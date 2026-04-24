@@ -34,6 +34,7 @@ interface ProLaboreResponse {
   receitaBruta: number
   cmvDoMes: number
   cmvSource: "productCost" | "aporte" | "none"
+  cmvFaltando: boolean
   receitaRecebida: number
   despesasPagas: number
   aportesNoMes: number
@@ -156,8 +157,8 @@ export default function ProLaborePage() {
               value={formatCurrency(data.receitaRecebida)}
               sub={
                 data.cmvDoMes > 0
-                  ? `recebido ${formatCurrency(data.receitaBruta)} − mercadoria ${formatCurrency(data.cmvDoMes)}${data.cmvSource === "aporte" ? " (via aporte)" : " (via Custos ML)"}`
-                  : "já sem taxas ML e sem custo da mercadoria"
+                  ? `recebido ${formatCurrency(data.receitaBruta)} − mercadoria ${formatCurrency(data.cmvDoMes)} (via Custos ML)`
+                  : "recebido já sem taxas ML · sem custo cadastrado"
               }
               icon={TrendingUp}
               accent="emerald"
@@ -172,11 +173,7 @@ export default function ProLaborePage() {
             <StatCard
               label="Aportes do mês"
               value={formatCurrency(data.aportesNoMes)}
-              sub={
-                data.aporteMercadoriaNoMes > 0
-                  ? `mercadoria ${formatCurrency(data.aporteMercadoriaNoMes)}${data.aportesOperacionaisNoMes > 0 ? ` · outros ${formatCurrency(data.aportesOperacionaisNoMes)}` : ""}`
-                  : "o sócio pagou do bolso · entra como custo"
-              }
+              sub="dívida da loja com o sócio · não conta no lucro · vira amortização quando pago"
               icon={PiggyBank}
               accent="fuchsia"
             />
@@ -185,13 +182,24 @@ export default function ProLaborePage() {
               value={formatCurrency(data.lucroLiquido)}
               sub={
                 data.lucroLiquido >= 0
-                  ? "lucro real − despesas − aportes operacionais · o que sobrou"
-                  : "prejuízo — custo operacional maior que o lucro real"
+                  ? "lucro real − despesas pagas · o que sobrou"
+                  : "prejuízo — despesas maiores que o lucro real"
               }
               icon={PiggyBank}
               accent={data.lucroLiquido >= 0 ? "emerald" : "rose"}
             />
           </div>
+
+          {data.cmvFaltando && (
+            <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 flex items-start gap-2 text-sm text-amber-900">
+              <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
+              <div>
+                <strong>Cadastre o custo dos anúncios em Custos ML</strong> — você tem{" "}
+                {formatCurrency(data.aporteMercadoriaNoMes)} de aporte em mercadoria no mês que não
+                está entrando como CMV. Sem isso, o lucro pode aparecer inflado.
+              </div>
+            </div>
+          )}
 
           {/* Sugestão principal */}
           <Card className="border-primary-200 bg-gradient-to-br from-primary-50 to-white">
