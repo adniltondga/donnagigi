@@ -43,14 +43,35 @@ export default function BalancoPage() {
   const [month, setMonth] = useState(currentMonthYM())
   const [data, setData] = useState<Balanco | null>(null)
   const [loading, setLoading] = useState(true)
+  const [savingZero, setSavingZero] = useState(false)
 
-  useEffect(() => {
+  const reload = () => {
     setLoading(true)
     fetch(`/api/relatorios/balanco?month=${month}`)
       .then((r) => (r.ok ? r.json() : null))
       .then(setData)
       .finally(() => setLoading(false))
+  }
+
+  useEffect(() => {
+    reload()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [month])
+
+  const marcarSemCaixa = async () => {
+    if (savingZero) return
+    setSavingZero(true)
+    try {
+      const res = await fetch("/api/financial-settings", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ saldoCaixaAtual: 0 }),
+      })
+      if (res.ok) reload()
+    } finally {
+      setSavingZero(false)
+    }
+  }
 
   return (
     <div className="space-y-6">
@@ -77,12 +98,20 @@ export default function BalancoPage() {
       ) : (
         <>
           {!data.ativo.caixaInformado && (
-            <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 flex items-start gap-2 text-sm text-amber-900">
+            <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 flex items-start gap-3 text-sm text-amber-900">
               <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
-              <div>
-                <strong>Saldo em caixa não informado</strong> — o ativo está subestimado. Cadastre em{" "}
-                <code>Pró-labore &gt; Config</code> pra o balanço fechar corretamente.
+              <div className="flex-1">
+                <strong>Saldo em caixa não informado</strong> — se você tem conta bancária / dinheiro
+                vivo, cadastre o saldo em <code>Pró-labore &gt; Config</code>. Se todo seu dinheiro
+                fica no Mercado Pago, clique no botão ao lado — o balanço vai fechar.
               </div>
+              <button
+                onClick={marcarSemCaixa}
+                disabled={savingZero}
+                className="shrink-0 text-xs font-medium bg-amber-100 hover:bg-amber-200 disabled:opacity-50 text-amber-900 px-3 py-1.5 rounded-md whitespace-nowrap"
+              >
+                {savingZero ? "Salvando..." : "Só uso Mercado Pago"}
+              </button>
             </div>
           )}
 
