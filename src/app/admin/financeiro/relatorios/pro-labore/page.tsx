@@ -245,7 +245,6 @@ export default function ProLaborePage() {
                       : `Meta: ${formatCurrency(data.reserva.meta)} · ${data.reserva.pctAtingido.toFixed(0)}% atingido${data.reserva.falta > 0 ? ` · faltam ${formatCurrency(data.reserva.falta)}` : ""}`
                   }
                   progressPct={data.reserva.semHistorico ? undefined : data.reserva.pctAtingido}
-                  info={!data.saldoCaixa.informado ? "Informe seu saldo em caixa nas Configurações" : undefined}
                   pending={data.reserva.semHistorico}
                 />
                 <BucketRow
