@@ -67,7 +67,7 @@ export async function GET(req: NextRequest) {
       select: { id: true },
     })
 
-    // Receita recebida no mês (receivable, paga)
+    // Receita recebida no mês (receivable, paga) com productCost pra CMV
     const receitas = await prisma.bill.findMany({
       where: {
         tenantId,
@@ -75,9 +75,14 @@ export async function GET(req: NextRequest) {
         NOT: { status: "cancelled" },
         paidDate: { gte: start, lt: end },
       },
-      select: { amount: true },
+      select: { amount: true, productCost: true },
     })
-    const receitaRecebida = receitas.reduce((s, b) => s + b.amount, 0)
+    const receitaBruta = receitas.reduce((s, b) => s + b.amount, 0)
+    const cmvDoMes = receitas.reduce((s, b) => s + (b.productCost || 0), 0)
+    // "Lucro real recebido" = o que entrou já sem taxas ML e sem o custo
+    // da mercadoria (productCost). É a margem sobre as vendas, antes das
+    // despesas operacionais e aportes.
+    const receitaRecebida = receitaBruta - cmvDoMes
 
     // Despesas operacionais pagas no mês (status=paid, exclui aporte)
     const despesasPagas = await prisma.bill.findMany({
@@ -300,6 +305,8 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({
       month: `${year}-${String(month0 + 1).padStart(2, "0")}`,
       // Fechamento do mês selecionado — base de competência do pró-labore
+      receitaBruta: Math.round(receitaBruta * 100) / 100,
+      cmvDoMes: Math.round(cmvDoMes * 100) / 100,
       receitaRecebida: Math.round(receitaRecebida * 100) / 100,
       despesasPagas: Math.round(despesasPagasTotal * 100) / 100,
       aportesNoMes: Math.round(aportesNoMesTotal * 100) / 100,
