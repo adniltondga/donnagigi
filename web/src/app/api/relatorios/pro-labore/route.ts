@@ -54,12 +54,24 @@ export async function GET(req: NextRequest) {
       select: { id: true, children: { select: { id: true, name: true } } },
     })
     const amortizacaoSubId = aporteRoot?.children.find((c) => c.name === "Amortização")?.id ?? null
+    // Sub "Mercadoria" especificamente — é custo de mercadoria (vira CMV).
+    const aporteMercadoriaSubId = aporteRoot?.children.find((c) => c.name === "Mercadoria")?.id ?? null
     const aporteIds = aporteRoot
       ? [aporteRoot.id, ...aporteRoot.children.map((c) => c.id)]
       : []
-    // Pra contar como "aporte original" (custo do sócio), excluir a sub Amortização
+    // Pra contar como "aporte original" (custo do sócio), excluir Amortização
     const aporteOriginalIds = aporteRoot
       ? [aporteRoot.id, ...aporteRoot.children.filter((c) => c.name !== "Amortização").map((c) => c.id)]
+      : []
+    // Aportes "operacionais" (não-mercadoria): embalagem, frete, outros. A
+    // Mercadoria é tratada como CMV pra não duplicar com productCost.
+    const aporteOperacionalIds = aporteRoot
+      ? [
+          aporteRoot.id,
+          ...aporteRoot.children
+            .filter((c) => c.name !== "Amortização" && c.name !== "Mercadoria")
+            .map((c) => c.id),
+        ]
       : []
 
     const proLaboreSub = await prisma.billCategory.findFirst({
@@ -78,10 +90,38 @@ export async function GET(req: NextRequest) {
       select: { amount: true, productCost: true },
     })
     const receitaBruta = receitas.reduce((s, b) => s + b.amount, 0)
-    const cmvDoMes = receitas.reduce((s, b) => s + (b.productCost || 0), 0)
-    // "Lucro real recebido" = o que entrou já sem taxas ML e sem o custo
-    // da mercadoria (productCost). É a margem sobre as vendas, antes das
-    // despesas operacionais e aportes.
+    const cmvCadastrado = receitas.reduce((s, b) => s + (b.productCost || 0), 0)
+
+    // Aportes de mercadoria do mês — proxy do CMV quando user não cadastra
+    // productCost mas registra a compra como aporte.
+    const aportesMercadoriaBills = aporteMercadoriaSubId
+      ? await prisma.bill.findMany({
+          where: {
+            tenantId,
+            type: "payable",
+            billCategoryId: aporteMercadoriaSubId,
+            NOT: { status: "cancelled" },
+            dueDate: { gte: start, lt: end },
+          },
+          select: { amount: true },
+        })
+      : []
+    const aporteMercadoriaNoMes = aportesMercadoriaBills.reduce((s, b) => s + b.amount, 0)
+
+    // Custo da mercadoria (CMV efetivo): usa o MAIOR entre productCost
+    // cadastrado e aporte mercadoria do mês. Evita double count quando
+    // user registra dos dois jeitos. Pra quem usa só aporte (caso atual),
+    // vai usar o aporte; pra quem cadastra em Custos ML, usa o CMV preciso.
+    const cmvDoMes = Math.max(cmvCadastrado, aporteMercadoriaNoMes)
+    const cmvSource: "productCost" | "aporte" | "none" =
+      cmvCadastrado > 0 && cmvCadastrado >= aporteMercadoriaNoMes
+        ? "productCost"
+        : aporteMercadoriaNoMes > 0
+        ? "aporte"
+        : "none"
+
+    // "Lucro real recebido" = receita − CMV. Já considera o custo da
+    // mercadoria (seja via productCost, seja via aporte).
     const receitaRecebida = receitaBruta - cmvDoMes
 
     // Despesas operacionais pagas no mês (status=paid, exclui aporte)
@@ -99,27 +139,28 @@ export async function GET(req: NextRequest) {
     })
     const despesasPagasTotal = despesasPagas.reduce((s, b) => s + b.amount, 0)
 
-    // Aportes LANÇADOS no mês (bills da cat Aporte sócio com dueDate no mês).
-    // Conceitualmente são despesa operacional: a loja teve esse custo
-    // (mercadoria/embalagem/frete), quem adiantou o pagamento foi o sócio.
-    // Entra no cálculo do lucro mesmo que ainda não tenha sido devolvido.
-    // EXCLUI a sub "Amortização" — essa é devolução de dívida, não custo.
-    const aportesNoMes =
-      aporteOriginalIds.length > 0
+    // Aportes OPERACIONAIS do mês: embalagem, frete, outros — custos que
+    // não foram contabilizados no CMV. Excluídos: Amortização (não é custo)
+    // e Mercadoria (já entrou como CMV).
+    const aportesOperacionaisBills =
+      aporteOperacionalIds.length > 0
         ? await prisma.bill.findMany({
             where: {
               tenantId,
               type: "payable",
-              billCategoryId: { in: aporteOriginalIds },
+              billCategoryId: { in: aporteOperacionalIds },
               NOT: { status: "cancelled" },
               dueDate: { gte: start, lt: end },
             },
             select: { amount: true },
           })
         : []
-    const aportesNoMesTotal = aportesNoMes.reduce((s, b) => s + b.amount, 0)
+    const aportesOperacionaisNoMes = aportesOperacionaisBills.reduce((s, b) => s + b.amount, 0)
 
-    const custoOperacionalTotal = despesasPagasTotal + aportesNoMesTotal
+    // Total de aportes do mês (mercadoria + operacionais) — só pra display
+    const aportesNoMesTotal = aporteMercadoriaNoMes + aportesOperacionaisNoMes
+
+    const custoOperacionalTotal = despesasPagasTotal + aportesOperacionaisNoMes
     const lucroLiquido = receitaRecebida - custoOperacionalTotal
 
     // ---- RESULTADO ACUMULADO YTD (mês a mês) ----
@@ -310,6 +351,9 @@ export async function GET(req: NextRequest) {
       receitaRecebida: Math.round(receitaRecebida * 100) / 100,
       despesasPagas: Math.round(despesasPagasTotal * 100) / 100,
       aportesNoMes: Math.round(aportesNoMesTotal * 100) / 100,
+      aporteMercadoriaNoMes: Math.round(aporteMercadoriaNoMes * 100) / 100,
+      aportesOperacionaisNoMes: Math.round(aportesOperacionaisNoMes * 100) / 100,
+      cmvSource,
       custoOperacionalTotal: Math.round(custoOperacionalTotal * 100) / 100,
       lucroLiquido: Math.round(lucroLiquido * 100) / 100,
       lucroAcumuladoYTD: Math.round(lucroAcumuladoYTD * 100) / 100,

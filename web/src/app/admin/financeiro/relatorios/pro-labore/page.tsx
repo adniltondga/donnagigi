@@ -33,9 +33,12 @@ interface ProLaboreResponse {
   month: string
   receitaBruta: number
   cmvDoMes: number
+  cmvSource: "productCost" | "aporte" | "none"
   receitaRecebida: number
   despesasPagas: number
   aportesNoMes: number
+  aporteMercadoriaNoMes: number
+  aportesOperacionaisNoMes: number
   custoOperacionalTotal: number
   lucroLiquido: number
   lucroAcumuladoYTD: number
@@ -153,8 +156,8 @@ export default function ProLaborePage() {
               value={formatCurrency(data.receitaRecebida)}
               sub={
                 data.cmvDoMes > 0
-                  ? `receita ${formatCurrency(data.receitaBruta)} − CMV ${formatCurrency(data.cmvDoMes)} · já sem taxas ML`
-                  : "entrada após taxas ML e custo da mercadoria (se cadastrado em Custos ML)"
+                  ? `recebido ${formatCurrency(data.receitaBruta)} − mercadoria ${formatCurrency(data.cmvDoMes)}${data.cmvSource === "aporte" ? " (via aporte)" : " (via Custos ML)"}`
+                  : "já sem taxas ML e sem custo da mercadoria"
               }
               icon={TrendingUp}
               accent="emerald"
@@ -169,7 +172,11 @@ export default function ProLaborePage() {
             <StatCard
               label="Aportes do mês"
               value={formatCurrency(data.aportesNoMes)}
-              sub="o sócio pagou do bolso · entra como custo"
+              sub={
+                data.aporteMercadoriaNoMes > 0
+                  ? `mercadoria ${formatCurrency(data.aporteMercadoriaNoMes)}${data.aportesOperacionaisNoMes > 0 ? ` · outros ${formatCurrency(data.aportesOperacionaisNoMes)}` : ""}`
+                  : "o sócio pagou do bolso · entra como custo"
+              }
               icon={PiggyBank}
               accent="fuchsia"
             />
@@ -178,8 +185,8 @@ export default function ProLaborePage() {
               value={formatCurrency(data.lucroLiquido)}
               sub={
                 data.lucroLiquido >= 0
-                  ? "recebido − (despesas + aportes) · o que sobrou"
-                  : "prejuízo — custo operacional maior que o recebido"
+                  ? "lucro real − despesas − aportes operacionais · o que sobrou"
+                  : "prejuízo — custo operacional maior que o lucro real"
               }
               icon={PiggyBank}
               accent={data.lucroLiquido >= 0 ? "emerald" : "rose"}
