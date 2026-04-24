@@ -25,7 +25,6 @@ import { formatCurrency } from "@/lib/calculations"
 import { PageHeader } from "@/components/ui/page-header"
 import { Card } from "@/components/ui/card"
 import { StatCard } from "@/components/ui/stat-card"
-import { ProductLabel } from "@/components/ProductLabel"
 
 interface Me {
   id: string
@@ -46,13 +45,18 @@ interface V2Response {
   derivados: { margemPct: number; margemPctAnterior: number }
   cancelamentos: { vendas: number; bruto: number; taxaPct: number }
   timeline: Array<{ date: string; vendas: number; bruto: number; lucro: number }>
-  topPorLucro: Array<{ name: string; variation: string | null; mlListingId: string | null; vendas: number; lucro: number; margem: number }>
 }
 
-interface PrevisaoResponse {
+interface MpPendingDay {
+  date: string // YYYY-MM-DD
   total: number
-  totalVendas: number
-  dias: Array<{ dia: number; vendas: number; totalVenda: number }>
+  count: number
+}
+
+interface MpSnapshot {
+  configured: boolean
+  pendingDays?: MpPendingDay[]
+  cachedSyncedAt?: string | null
 }
 
 function firstDayOfMonth(): string {
@@ -89,7 +93,7 @@ export default function Dashboard() {
   const [me, setMe] = useState<Me | null>(null)
   const [mlStatus, setMlStatus] = useState<MLStatus | null>(null)
   const [v2, setV2] = useState<V2Response | null>(null)
-  const [prev, setPrev] = useState<PrevisaoResponse | null>(null)
+  const [mpSnapshot, setMpSnapshot] = useState<MpSnapshot | null>(null)
   const [receivableMonth, setReceivableMonth] = useState<{ count: number; amount: number } | null>(null)
   const [payableMonth, setPayableMonth] = useState<{ count: number; amount: number } | null>(null)
   const [loading, setLoading] = useState(true)
@@ -108,7 +112,7 @@ export default function Dashboard() {
             fetch("/api/ml/status").then((r) => (r.ok ? r.json() : null)),
             fetch(`/api/relatorios/v2?from=${from}&to=${to}`).then((r) => (r.ok ? r.json() : null)),
             fetch(`/api/relatorios/previsao`).then((r) => (r.ok ? r.json() : null)),
-            fetch(`/api/mp/pending-payments`).then((r) => (r.ok ? r.json() : null)),
+            fetch(`/api/mp/snapshot`).then((r) => (r.ok ? r.json() : null)),
             // Manuais: receivable pending, excluindo vendas ML (que já vêm do MP).
             fetch(
               `/api/bills?type=receivable&status=pending&excludeCategory=venda&dueFrom=${from}&dueTo=${monthEnd}&limit=500`
@@ -121,13 +125,17 @@ export default function Dashboard() {
         setMe(meRes)
         setMlStatus(mlRes)
         setV2(v2Res)
-        setPrev(prevRes)
+        setMpSnapshot(mpRes)
+        // prevRes não é mais usado na UI (proximasLiberacoes veio pro MP),
+        // mas mantemos o fetch por enquanto — se não estiver sendo útil,
+        // dá pra remover numa próxima.
+        void prevRes
 
         // Agrega MP (do mês) + manuais. Se MP não configurado/erro, só usa manuais.
         let rxCount = 0
         let rxAmount = 0
-        if (mpRes?.configured && Array.isArray(mpRes?.days)) {
-          for (const d of mpRes.days as Array<{ date: string; total: number; count: number }>) {
+        if (mpRes?.configured && Array.isArray(mpRes?.pendingDays)) {
+          for (const d of mpRes.pendingDays as Array<{ date: string; total: number; count: number }>) {
             if (d.date >= from && d.date <= monthEnd) {
               rxCount += d.count
               rxAmount += d.total
@@ -291,82 +299,52 @@ export default function Dashboard() {
         />
       </div>
 
-      {/* Tendência 7d + Top produtos */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        <Card className="lg:col-span-2 p-5">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="font-bold text-gray-900 flex items-center gap-2">
-              <TrendingUp className="w-5 h-5 text-primary-600" />
-              Últimos 7 dias
-            </h2>
-            <Link
-              href="/admin/relatorios-v2"
-              className="text-sm text-primary-600 hover:text-primary-700 font-medium"
-            >
-              Ver completo →
-            </Link>
+      {/* Tendência 7d */}
+      <Card className="p-5">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="font-bold text-gray-900 flex items-center gap-2">
+            <TrendingUp className="w-5 h-5 text-primary-600" />
+            Últimos 7 dias
+          </h2>
+          <Link
+            href="/admin/relatorios-v2"
+            className="text-sm text-primary-600 hover:text-primary-700 font-medium"
+          >
+            Ver completo →
+          </Link>
+        </div>
+        {timeline7d.length > 0 && timeline7d.some((p) => p.bruto > 0) ? (
+          <div className="h-56">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={timeline7d} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
+                <XAxis
+                  dataKey="date"
+                  tick={{ fontSize: 11 }}
+                  tickFormatter={(v: string) => {
+                    const d = new Date(`${v}T12:00:00`)
+                    return d.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })
+                  }}
+                />
+                <YAxis
+                  tick={{ fontSize: 11 }}
+                  tickFormatter={(v: number) => (v >= 1000 ? `${(v / 1000).toFixed(1)}k` : String(v))}
+                />
+                <Tooltip
+                  formatter={(v: any) => formatCurrency(Number(v))}
+                  labelFormatter={(label: any) => {
+                    const d = new Date(`${String(label)}T12:00:00`)
+                    return d.toLocaleDateString("pt-BR")
+                  }}
+                />
+                <Line type="monotone" dataKey="bruto" stroke="#7c3aed" strokeWidth={2} dot={false} name="Bruto" />
+                <Line type="monotone" dataKey="lucro" stroke="#10b981" strokeWidth={2} dot={false} name="Lucro" />
+              </LineChart>
+            </ResponsiveContainer>
           </div>
-          {timeline7d.length > 0 && timeline7d.some((p) => p.bruto > 0) ? (
-            <div className="h-56">
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={timeline7d} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
-                  <XAxis
-                    dataKey="date"
-                    tick={{ fontSize: 11 }}
-                    tickFormatter={(v: string) => {
-                      const d = new Date(`${v}T12:00:00`)
-                      return d.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })
-                    }}
-                  />
-                  <YAxis
-                    tick={{ fontSize: 11 }}
-                    tickFormatter={(v: number) => (v >= 1000 ? `${(v / 1000).toFixed(1)}k` : String(v))}
-                  />
-                  <Tooltip
-                    formatter={(v: any) => formatCurrency(Number(v))}
-                    labelFormatter={(label: any) => {
-                      const d = new Date(`${String(label)}T12:00:00`)
-                      return d.toLocaleDateString("pt-BR")
-                    }}
-                  />
-                  <Line type="monotone" dataKey="bruto" stroke="#7c3aed" strokeWidth={2} dot={false} name="Bruto" />
-                  <Line type="monotone" dataKey="lucro" stroke="#10b981" strokeWidth={2} dot={false} name="Lucro" />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
-          ) : (
-            <EmptyInline message="Nenhuma venda nos últimos 7 dias" />
-          )}
-        </Card>
-
-        <Card className="p-5">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="font-bold text-gray-900">🏆 Top produtos (mês)</h2>
-          </div>
-          {v2?.topPorLucro && v2.topPorLucro.length > 0 ? (
-            <ul className="space-y-3">
-              {v2.topPorLucro.slice(0, 5).map((p, i) => (
-                <li key={`${p.mlListingId || p.name}-${p.variation || ""}-${i}`} className="flex items-start gap-3">
-                  <div className="w-6 h-6 bg-primary-100 text-primary-700 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0">
-                    {i + 1}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <ProductLabel title={p.name} variation={p.variation} mlListingId={p.mlListingId} size="sm" singleLine />
-                    <div className="flex items-center gap-2 text-xs mt-1">
-                      <span className="text-gray-500">{p.vendas} un.</span>
-                      <span className="text-emerald-600 font-semibold">{formatCurrency(p.lucro)}</span>
-                      <span className="text-gray-400">·</span>
-                      <span className="text-gray-600">{p.margem.toFixed(0)}%</span>
-                    </div>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <EmptyInline message="Sem dados ainda" />
-          )}
-        </Card>
-      </div>
+        ) : (
+          <EmptyInline message="Nenhuma venda nos últimos 7 dias" />
+        )}
+      </Card>
 
       {/* Próximas liberações + Devoluções */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
