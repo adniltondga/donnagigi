@@ -1,3 +1,4 @@
+import crypto from "node:crypto"
 import prisma from "./prisma"
 import type { NextRequest } from "next/server"
 
@@ -88,9 +89,6 @@ export function buildMPAuthUrl(params: {
  * verifier: 43-128 chars base64url; challenge = BASE64URL(SHA256(verifier)).
  */
 export function generatePKCE(): { verifier: string; challenge: string } {
-  // Node 18+ tem crypto global; usamos require pra manter compat com edge.
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const crypto = require("node:crypto") as typeof import("node:crypto")
   const verifier = crypto.randomBytes(32).toString("base64url")
   const challenge = crypto.createHash("sha256").update(verifier).digest("base64url")
   return { verifier, challenge }
