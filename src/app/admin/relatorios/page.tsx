@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { ArrowRight, BarChart3, Calendar, FileText, FolderTree, ShoppingCart, TrendingUp, type LucideIcon } from 'lucide-react';
+import { ArrowRight, BarChart3, Calendar, ShoppingCart, TrendingUp, type LucideIcon } from 'lucide-react';
 import { PageHeader } from '@/components/ui/page-header';
 import { Card, CardContent } from '@/components/ui/card';
 
@@ -13,22 +13,6 @@ interface RelatorioCard {
 }
 
 const CARDS: RelatorioCard[] = [
-  {
-    href: '/admin/relatorios/dre',
-    icon: FileText,
-    title: 'DRE mensal',
-    description: 'Demonstração do resultado do mês: receita, taxas, custo, despesas e lucro líquido com comparativo vs mês anterior.',
-    badge: 'NOVO',
-    accent: 'bg-rose-50 text-rose-700',
-  },
-  {
-    href: '/admin/relatorios/despesas-categoria',
-    icon: FolderTree,
-    title: 'Despesas por categoria',
-    description: 'Onde o dinheiro sai: distribuição das despesas operacionais por categoria e subcategoria, com barras de %.',
-    badge: 'NOVO',
-    accent: 'bg-fuchsia-50 text-fuchsia-700',
-  },
   {
     href: '/admin/relatorios/vendas-ml',
     icon: ShoppingCart,
