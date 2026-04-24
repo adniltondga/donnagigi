@@ -1,11 +1,12 @@
 import { NextResponse } from "next/server"
 import { syncExpiredTrials } from "@/lib/subscription"
+import { checkSystemNotifications } from "@/lib/notifications"
 
 export const dynamic = "force-dynamic"
 
 /**
- * Cron diário que flipa TRIAL → EXPIRED quando trialEndsAt passou.
- * Pode ser invocado por Vercel Cron, QStash, ou manualmente.
+ * Cron diário: flipa TRIAL → EXPIRED quando trialEndsAt passou e dispara
+ * notificações de sistema (token ML expirando, trial acabando).
  *
  * Protege com CRON_SECRET opcional: se a env estiver setada, exige
  * o mesmo valor no header `x-cron-secret`.
@@ -20,10 +21,12 @@ export async function GET(request: Request) {
   }
 
   const expiredTrials = await syncExpiredTrials()
+  const systemNotifs = await checkSystemNotifications()
 
   return NextResponse.json({
     ok: true,
     expiredTrials,
+    systemNotifs,
     ranAt: new Date().toISOString(),
   })
 }

@@ -57,3 +57,105 @@ export async function markAllRead(tenantId: string) {
     data: { read: true },
   })
 }
+
+/**
+ * Cria uma notificação apenas se não existir outra idêntica recente.
+ * Dedup por (tenantId, type, title) nas últimas 23h — evita spam diário
+ * quando o mesmo cron detecta a mesma condição.
+ */
+export async function createNotificationIfNew(
+  input: CreateNotificationInput,
+  dedupHours = 23,
+): Promise<void> {
+  try {
+    const since = new Date(Date.now() - dedupHours * 60 * 60 * 1000)
+    const existing = await prisma.notification.findFirst({
+      where: {
+        tenantId: input.tenantId,
+        type: input.type,
+        title: input.title,
+        createdAt: { gte: since },
+      },
+      select: { id: true },
+    })
+    if (existing) return
+    await createNotification(input)
+  } catch (err) {
+    console.error("[notifications] createIfNew falhou:", err)
+  }
+}
+
+/**
+ * Checa condições de sistema (tokens expirando, assinaturas vencendo) e
+ * cria notificações type=system per-tenant com dedup 23h. Pensado pra
+ * rodar dentro do cron diário.
+ */
+export async function checkSystemNotifications(): Promise<{
+  tokenExpiring: number
+  trialExpiring: number
+  trialExpired: number
+}> {
+  const counters = { tokenExpiring: 0, trialExpiring: 0, trialExpired: 0 }
+  const now = new Date()
+  const in48h = new Date(now.getTime() + 48 * 60 * 60 * 1000)
+  const in2d = new Date(now.getTime() + 2 * 24 * 60 * 60 * 1000)
+  const last24h = new Date(now.getTime() - 24 * 60 * 60 * 1000)
+
+  const expiringTokens = await prisma.mLIntegration.findMany({
+    where: { expiresAt: { gte: now, lte: in48h } },
+    select: { tenantId: true, expiresAt: true },
+  })
+  for (const t of expiringTokens) {
+    const hoursLeft = Math.max(1, Math.round((t.expiresAt.getTime() - now.getTime()) / 3_600_000))
+    await createNotificationIfNew({
+      tenantId: t.tenantId,
+      type: "system",
+      title: `Token do Mercado Livre expira em ${hoursLeft}h`,
+      body: "Reconecte em Configurações > Mercado Livre pra evitar interrupção da sincronização.",
+      link: "/admin/configuracoes?tab=ml",
+    })
+    counters.tokenExpiring++
+  }
+
+  const expiringTrials = await prisma.subscription.findMany({
+    where: {
+      status: "TRIAL",
+      trialEndsAt: { gte: now, lte: in2d },
+    },
+    select: { tenantId: true, trialEndsAt: true },
+  })
+  for (const s of expiringTrials) {
+    const daysLeft = Math.max(
+      1,
+      Math.ceil(((s.trialEndsAt?.getTime() ?? 0) - now.getTime()) / (24 * 60 * 60 * 1000)),
+    )
+    await createNotificationIfNew({
+      tenantId: s.tenantId,
+      type: "system",
+      title: `Período de teste termina em ${daysLeft} dia(s)`,
+      body: "Escolha um plano pra continuar usando o agLivre sem interrupção.",
+      link: "/admin/billing/planos",
+    })
+    counters.trialExpiring++
+  }
+
+  const justExpired = await prisma.subscription.findMany({
+    where: {
+      status: "EXPIRED",
+      trialEndsAt: { gte: last24h, lte: now },
+    },
+    select: { tenantId: true },
+  })
+  for (const s of justExpired) {
+    await createNotificationIfNew({
+      tenantId: s.tenantId,
+      type: "system",
+      title: "Seu teste gratuito expirou",
+      body: "Assine um plano pra manter acesso aos seus dados.",
+      link: "/admin/billing/planos",
+    })
+    counters.trialExpired++
+  }
+
+  return counters
+}

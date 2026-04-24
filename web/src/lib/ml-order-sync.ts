@@ -82,6 +82,17 @@ export async function syncMLOrder(params: {
           where: { id: existing.id },
           data: { status: "cancelled", notes: (existing.notes || "") + refundNote },
         })
+        const formatBRL = new Intl.NumberFormat("pt-BR", {
+          style: "currency",
+          currency: "BRL",
+        }).format
+        await createNotification({
+          tenantId,
+          type: "refund",
+          title: `Venda cancelada: ${formatBRL(existing.amount)}`,
+          body: `Pedido ML #${order.id} · ${order.buyer?.nickname || ""}`.trim(),
+          link: `/admin/relatorios/vendas-ml`,
+        })
         return { ok: true, action: "updated-cancelled", billId: updated.id }
       }
       return { ok: true, action: "skipped", billId: existing.id }
