@@ -99,6 +99,7 @@ export function MercadoPagoClient() {
   const [periodTo, setPeriodTo] = useState<string>(initialPeriod.to)
   const [periodPreset, setPeriodPreset] = useState<PeriodPreset>("mes")
   const [searchQuery, setSearchQuery] = useState("")
+  const [activeTab, setActiveTab] = useState<"programadas" | "liberadas">("programadas")
 
   // Leitura do cache (instantâneo).
   const loadCache = useCallback(async () => {
@@ -397,21 +398,56 @@ export function MercadoPagoClient() {
         </Card>
       )}
 
-      {/* Liberações por dia */}
+      {/* Liberações por dia — abas: Programadas / Já liberado */}
       <Card>
         <CardHeader className="space-y-3">
-          <div className="flex items-center justify-between gap-2 flex-wrap">
-            <CardTitle className="text-base flex items-center gap-2">
-              <Calendar className="w-4 h-4 text-sky-600" />
+          {/* Abas */}
+          <div className="flex items-center gap-1 border-b border-gray-200 -mb-3 -mx-6 px-6">
+            <button
+              onClick={() => setActiveTab("programadas")}
+              className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 ${
+                activeTab === "programadas"
+                  ? "border-sky-600 text-sky-600"
+                  : "border-transparent text-gray-500 hover:text-gray-700"
+              }`}
+            >
+              <Clock className="w-4 h-4" />
               Liberações programadas
-            </CardTitle>
-            {snap?.pendingDays && (
-              <span className="text-xs text-gray-500">
-                No período: <strong className="text-gray-900">{filteredPendingCount}</strong> pagamento
-                {filteredPendingCount === 1 ? "" : "s"} ·{" "}
-                <strong className="text-emerald-600">{formatCurrency(filteredPendingTotal)}</strong>
+              <span className="text-xs text-gray-400 tabular-nums">
+                ({formatCurrency(filteredPendingTotal)})
               </span>
-            )}
+            </button>
+            <button
+              onClick={() => setActiveTab("liberadas")}
+              className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 ${
+                activeTab === "liberadas"
+                  ? "border-emerald-600 text-emerald-600"
+                  : "border-transparent text-gray-500 hover:text-gray-700"
+              }`}
+            >
+              <Calendar className="w-4 h-4" />
+              Já liberado
+              <span className="text-xs text-gray-400 tabular-nums">
+                ({formatCurrency(filteredReleasedTotal)})
+              </span>
+            </button>
+          </div>
+
+          {/* Subtítulo */}
+          <div className="flex items-center justify-between gap-2 flex-wrap pt-3">
+            <span className="text-xs text-gray-500">
+              No período:{" "}
+              <strong className="text-gray-900">
+                {activeTab === "programadas" ? filteredPendingCount : filteredReleasedCount}
+              </strong>{" "}
+              pagamento
+              {(activeTab === "programadas" ? filteredPendingCount : filteredReleasedCount) === 1 ? "" : "s"} ·{" "}
+              <strong className="text-emerald-600">
+                {formatCurrency(
+                  activeTab === "programadas" ? filteredPendingTotal : filteredReleasedTotal
+                )}
+              </strong>
+            </span>
           </div>
 
           {/* Filtros */}
@@ -453,198 +489,132 @@ export function MercadoPagoClient() {
               <Loader className="w-4 h-4 animate-spin mr-2" />
               Carregando...
             </div>
-          ) : !snap?.pendingDays || snap.pendingDays.length === 0 ? (
-            <div className="px-5 py-8 text-center text-gray-500 text-sm">
-              {neverSynced
-                ? "Clique em Atualizar pra buscar os dados do Mercado Pago."
-                : "Nenhum pagamento pendente de liberação."}
-            </div>
-          ) : filteredDays.length === 0 ? (
-            <div className="px-5 py-8 text-center text-gray-500 text-sm">
-              Nenhum pagamento casa com esses filtros.
-            </div>
           ) : (
-            <ul className="divide-y divide-gray-100">
-              {filteredDays.map((day) => {
-                const open = expandedDays.has(day.date)
-                return (
-                  <li key={day.date}>
-                    <button
-                      onClick={() => toggleDay(day.date)}
-                      className="w-full flex items-center gap-3 px-5 py-3 hover:bg-gray-50 text-left"
-                    >
-                      {open ? (
-                        <ChevronDown className="w-4 h-4 text-gray-400 shrink-0" />
-                      ) : (
-                        <ChevronRight className="w-4 h-4 text-gray-400 shrink-0" />
-                      )}
-                      <Clock className="w-4 h-4 text-sky-600 shrink-0" />
-                      <div className="flex-1 min-w-0">
-                        <div className="text-sm font-medium text-gray-900">
-                          {formatDayLabel(day.date)}
-                        </div>
-                        <div className="text-xs text-gray-500">
-                          {day.count} pagamento{day.count === 1 ? "" : "s"}
-                        </div>
-                      </div>
-                      <div className="text-sm font-bold text-emerald-600 tabular-nums whitespace-nowrap">
-                        {formatCurrency(day.total)}
-                      </div>
-                    </button>
-                    {open && (
-                      <ul className="bg-gray-50 divide-y divide-gray-100 border-t border-gray-100">
-                        {day.payments.map((p) => {
-                          const method = p.paymentMethodId
-                            ? METHOD_LABELS[p.paymentMethodId] || p.paymentMethodId
-                            : null
-                          return (
-                            <li
-                              key={p.id}
-                              className="px-12 py-2.5 flex items-center gap-3 flex-wrap"
-                            >
-                              <div className="flex-1 min-w-0">
-                                <div className="text-sm text-gray-900 line-clamp-1">
-                                  {p.description}
-                                </div>
-                                <div className="text-xs text-gray-500 flex items-center gap-2 flex-wrap mt-0.5">
-                                  <span className="font-mono">#{p.id}</span>
-                                  {method && (
-                                    <>
-                                      <span className="text-gray-300">·</span>
-                                      <span>{method}</span>
-                                    </>
-                                  )}
-                                  {p.buyer && (
-                                    <>
-                                      <span className="text-gray-300">·</span>
-                                      <span>{p.buyer}</span>
-                                    </>
-                                  )}
-                                </div>
-                              </div>
-                              <div className="text-right whitespace-nowrap">
-                                <div className="text-sm font-semibold text-emerald-600 tabular-nums">
-                                  {formatCurrency(p.netAmount)}
-                                </div>
-                                {p.grossAmount > p.netAmount && (
-                                  <div className="text-xs text-gray-400 line-through tabular-nums">
-                                    {formatCurrency(p.grossAmount)}
-                                  </div>
-                                )}
-                              </div>
-                            </li>
-                          )
-                        })}
-                      </ul>
-                    )}
-                  </li>
-                )
-              })}
-            </ul>
+            <DayList
+              days={activeTab === "programadas" ? filteredDays : filteredReleased}
+              emptyLabel={
+                activeTab === "programadas"
+                  ? neverSynced
+                    ? "Clique em Atualizar pra buscar os dados do Mercado Pago."
+                    : !snap?.pendingDays || snap.pendingDays.length === 0
+                    ? "Nenhum pagamento pendente de liberação."
+                    : "Nenhum pagamento casa com esses filtros."
+                  : !snap?.releasedDays || snap.releasedDays.length === 0
+                  ? "Nenhuma liberação processada nos últimos 180 dias."
+                  : "Nenhuma liberação casa com esses filtros."
+              }
+              iconColor={activeTab === "programadas" ? "text-sky-600" : "text-emerald-600"}
+              keyPrefix={activeTab === "programadas" ? "pending" : "released"}
+              expandedDays={expandedDays}
+              toggleDay={toggleDay}
+              subLabel={activeTab === "programadas" ? "pagamento(s)" : "pagamento(s) caíram no MP"}
+            />
           )}
         </CardContent>
       </Card>
+    </div>
+  )
+}
 
-      {/* Já liberado (release_date passado) */}
-      {snap?.releasedDays && snap.releasedDays.length > 0 && (
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between gap-2 flex-wrap">
-              <CardTitle className="text-base flex items-center gap-2">
-                <Calendar className="w-4 h-4 text-emerald-600" />
-                Já liberado
-              </CardTitle>
-              <span className="text-xs text-gray-500">
-                No período: <strong className="text-gray-900">{filteredReleasedCount}</strong> pagamento
-                {filteredReleasedCount === 1 ? "" : "s"} ·{" "}
-                <strong className="text-emerald-600">{formatCurrency(filteredReleasedTotal)}</strong>
-              </span>
-            </div>
-          </CardHeader>
-          <CardContent className="p-0">
-            {filteredReleased.length === 0 ? (
-              <div className="px-5 py-8 text-center text-gray-500 text-sm">
-                Nenhuma liberação dentro dos filtros selecionados.
+/* ============================================================
+   Helper component: lista de dias (expansível)
+   ============================================================ */
+
+function DayList({
+  days,
+  emptyLabel,
+  iconColor,
+  keyPrefix,
+  expandedDays,
+  toggleDay,
+  subLabel,
+}: {
+  days: Day[]
+  emptyLabel: string
+  iconColor: string
+  keyPrefix: string
+  expandedDays: Set<string>
+  toggleDay: (key: string) => void
+  subLabel: string
+}) {
+  if (days.length === 0) {
+    return <div className="px-5 py-8 text-center text-gray-500 text-sm">{emptyLabel}</div>
+  }
+  return (
+    <ul className="divide-y divide-gray-100">
+      {days.map((day) => {
+        const key = `${keyPrefix}-${day.date}`
+        const open = expandedDays.has(key)
+        return (
+          <li key={key}>
+            <button
+              onClick={() => toggleDay(key)}
+              className="w-full flex items-center gap-3 px-5 py-3 hover:bg-gray-50 text-left"
+            >
+              {open ? (
+                <ChevronDown className="w-4 h-4 text-gray-400 shrink-0" />
+              ) : (
+                <ChevronRight className="w-4 h-4 text-gray-400 shrink-0" />
+              )}
+              <Clock className={`w-4 h-4 ${iconColor} shrink-0`} />
+              <div className="flex-1 min-w-0">
+                <div className="text-sm font-medium text-gray-900">{formatDayLabel(day.date)}</div>
+                <div className="text-xs text-gray-500">
+                  {day.count} {subLabel}
+                </div>
               </div>
-            ) : (
-              <ul className="divide-y divide-gray-100">
-                {filteredReleased.map((day) => {
-                  const key = `released-${day.date}`
-                  const open = expandedDays.has(key)
+              <div className="text-sm font-bold text-emerald-600 tabular-nums whitespace-nowrap">
+                {formatCurrency(day.total)}
+              </div>
+            </button>
+            {open && (
+              <ul className="bg-gray-50 divide-y divide-gray-100 border-t border-gray-100">
+                {day.payments.map((p) => {
+                  const method = p.paymentMethodId
+                    ? METHOD_LABELS[p.paymentMethodId] || p.paymentMethodId
+                    : null
                   return (
-                    <li key={key}>
-                      <button
-                        onClick={() => toggleDay(key)}
-                        className="w-full flex items-center gap-3 px-5 py-3 hover:bg-gray-50 text-left"
-                      >
-                        {open ? (
-                          <ChevronDown className="w-4 h-4 text-gray-400 shrink-0" />
-                        ) : (
-                          <ChevronRight className="w-4 h-4 text-gray-400 shrink-0" />
+                    <li key={p.id} className="px-12 py-2.5 flex items-center gap-3 flex-wrap">
+                      <div className="flex-1 min-w-0">
+                        <div className="text-sm text-gray-900 line-clamp-1">{p.description}</div>
+                        <div className="text-xs text-gray-500 flex items-center gap-2 flex-wrap mt-0.5">
+                          <span className="font-mono">#{p.id}</span>
+                          {method && (
+                            <>
+                              <span className="text-gray-300">·</span>
+                              <span>{method}</span>
+                            </>
+                          )}
+                          {p.buyer && (
+                            <>
+                              <span className="text-gray-300">·</span>
+                              <span>{p.buyer}</span>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                      <div className="text-right whitespace-nowrap">
+                        <div className="text-sm font-semibold text-emerald-600 tabular-nums">
+                          {formatCurrency(p.netAmount)}
+                        </div>
+                        {p.grossAmount > p.netAmount && (
+                          <div className="text-xs text-gray-400 line-through tabular-nums">
+                            {formatCurrency(p.grossAmount)}
+                          </div>
                         )}
-                        <Clock className="w-4 h-4 text-emerald-600 shrink-0" />
-                        <div className="flex-1 min-w-0">
-                          <div className="text-sm font-medium text-gray-900">
-                            {formatDayLabel(day.date)}
-                          </div>
-                          <div className="text-xs text-gray-500">
-                            {day.count} pagamento{day.count === 1 ? "" : "s"} caíram no MP
-                          </div>
-                        </div>
-                        <div className="text-sm font-bold text-emerald-600 tabular-nums whitespace-nowrap">
-                          {formatCurrency(day.total)}
-                        </div>
-                      </button>
-                      {open && (
-                        <ul className="bg-gray-50 divide-y divide-gray-100 border-t border-gray-100">
-                          {day.payments.map((p) => {
-                            const method = p.paymentMethodId
-                              ? METHOD_LABELS[p.paymentMethodId] || p.paymentMethodId
-                              : null
-                            return (
-                              <li
-                                key={p.id}
-                                className="px-12 py-2.5 flex items-center gap-3 flex-wrap"
-                              >
-                                <div className="flex-1 min-w-0">
-                                  <div className="text-sm text-gray-900 line-clamp-1">{p.description}</div>
-                                  <div className="text-xs text-gray-500 flex items-center gap-2 flex-wrap mt-0.5">
-                                    <span className="font-mono">#{p.id}</span>
-                                    {method && (
-                                      <>
-                                        <span className="text-gray-300">·</span>
-                                        <span>{method}</span>
-                                      </>
-                                    )}
-                                    {p.buyer && (
-                                      <>
-                                        <span className="text-gray-300">·</span>
-                                        <span>{p.buyer}</span>
-                                      </>
-                                    )}
-                                  </div>
-                                </div>
-                                <div className="text-right whitespace-nowrap">
-                                  <div className="text-sm font-semibold text-emerald-600 tabular-nums">
-                                    {formatCurrency(p.netAmount)}
-                                  </div>
-                                </div>
-                              </li>
-                            )
-                          })}
-                        </ul>
-                      )}
+                      </div>
                     </li>
                   )
                 })}
               </ul>
             )}
-          </CardContent>
-        </Card>
-      )}
-    </div>
+          </li>
+        )
+      })}
+    </ul>
   )
 }
+
 
 function SummaryCard({
   tone,
