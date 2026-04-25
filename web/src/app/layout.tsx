@@ -3,6 +3,7 @@ import Script from "next/script";
 import "./globals.css";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { Toaster } from "@/components/ui/toaster";
+import { PwaInstaller } from "@/components/PwaInstaller";
 
 const SITE_URL = "https://aglivre.dgadigital.com.br";
 const SITE_NAME = "agLivre";
@@ -88,6 +89,7 @@ export default function RootLayout({
         <ThemeProvider>
           {children}
           <Toaster />
+          <PwaInstaller />
         </ThemeProvider>
         {plausibleSrc && (
           <>
