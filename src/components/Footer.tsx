@@ -1,5 +1,7 @@
 "use client";
 
+import { Mail } from "lucide-react";
+
 export function Footer() {
   return (
     <footer className="bg-gray-900 text-white mt-16">
@@ -20,10 +22,17 @@ export function Footer() {
             </ul>
           </div>
           <div>
-            <h4 className="font-semibold mb-4">Contato</h4>
-            <ul className="text-muted-foreground space-y-2 text-sm">
-              <li>Email: contato@aglivre.com.br</li>
-            </ul>
+            <h4 className="font-semibold mb-4">Suporte</h4>
+            <p className="text-muted-foreground text-sm mb-3">
+              Dúvida, sugestão ou problema?
+            </p>
+            <a
+              href="mailto:suporte@dgadigital.com.br"
+              className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/15 text-white text-sm font-medium transition border border-white/10"
+            >
+              <Mail size={14} />
+              suporte@dgadigital.com.br
+            </a>
           </div>
           <div>
             <h4 className="font-semibold mb-4">Empresa</h4>
