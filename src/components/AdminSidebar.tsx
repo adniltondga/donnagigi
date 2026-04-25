@@ -7,7 +7,6 @@ import {
   LayoutDashboard,
   BarChart3,
   DollarSign,
-  Tag,
   Settings,
   LogOut,
   ChevronDown,
@@ -41,7 +40,6 @@ const MENU: MenuItem[] = [
       { label: "Relatórios", href: "/admin/financeiro/relatorios" },
     ],
   },
-  { label: "Custos ML", href: "/admin/custos-ml", icon: Tag },
   {
     label: "Produtos",
     icon: ShoppingBag,

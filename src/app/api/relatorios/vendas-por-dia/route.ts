@@ -1,5 +1,6 @@
 import prisma from '@/lib/prisma';
 import { getTenantIdOrDefault } from '@/lib/tenant';
+import { computeSaleNumbers } from '@/lib/sale-notes';
 import { NextRequest, NextResponse } from 'next/server';
 
 export const dynamic = 'force-dynamic';
@@ -66,33 +67,20 @@ export async function GET(req: NextRequest) {
       });
     }
 
-    const parseAmount = (notes: string | null, re: RegExp) => {
-      const m = notes?.match(re);
-      return m ? parseFloat(m[1].replace(',', '.')) : 0;
-    };
-
     for (const b of bills) {
       if (!b.paidDate) continue;
       const dia = b.paidDate.getDate();
       const agg = map.get(dia);
       if (!agg) continue;
 
-      const bruto = parseAmount(b.notes, /Bruto:\s*R\$\s*([\d,\.]+)/);
-      const taxaVenda = parseAmount(b.notes, /Taxa de venda:\s*R\$\s*([\d,\.]+)/);
-      const envio = parseAmount(b.notes, /Taxa de envio:\s*R\$\s*([\d,\.]+)/);
-      const custo = b.productCost ?? 0;
-
-      const brutoReal = bruto > 0 ? bruto : b.amount + taxaVenda + envio;
-      const totalVenda = brutoReal - taxaVenda - envio; // o que efetivamente entra do ML
-      const lucro = totalVenda - custo;
-
+      const s = computeSaleNumbers(b);
       agg.vendas += b.quantity ?? 1;
-      agg.bruto += brutoReal;
-      agg.taxaVenda += taxaVenda;
-      agg.envio += envio;
-      agg.totalVenda += totalVenda;
-      agg.custo += custo;
-      agg.lucro += lucro;
+      agg.bruto += s.bruto;
+      agg.taxaVenda += s.taxaVenda;
+      agg.envio += s.envio;
+      agg.totalVenda += s.totalVenda;
+      agg.custo += s.custo;
+      agg.lucro += s.lucro;
     }
 
     const dias = Array.from(map.values());

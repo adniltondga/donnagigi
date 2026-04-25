@@ -1,9 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
-import { PrismaClient } from "@prisma/client"
+import prisma from "@/lib/prisma"
 import { put } from "@vercel/blob"
 import { AuthError, authErrorResponse, requireRole } from "@/lib/auth"
-
-const prisma = new PrismaClient()
 
 export async function GET(
   _request: NextRequest,

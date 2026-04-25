@@ -1,4 +1,5 @@
 import prisma from "@/lib/prisma"
+import { computeSaleNumbers } from "@/lib/sale-notes"
 
 export interface DespesaCategoria {
   name: string
@@ -22,17 +23,6 @@ export interface DreResult {
 }
 
 export type DreBasis = "caixa" | "competencia"
-
-function parseAmount(notes: string | null, re: RegExp): number {
-  if (!notes) return 0
-  const m = notes.match(re)
-  if (!m) return 0
-  const raw = m[1]
-  if (raw.includes(",")) {
-    return Number(raw.replace(/\./g, "").replace(",", ".")) || 0
-  }
-  return Number(raw) || 0
-}
 
 export async function computeDre(
   tenantId: string,
@@ -59,14 +49,11 @@ export async function computeDre(
   let taxaEnvioML = 0
   let cmv = 0
   for (const v of vendas) {
-    const bruto = parseAmount(v.notes, /Bruto:\s*R\$\s*([\d,.]+)/)
-    const tv = parseAmount(v.notes, /Taxa de venda:\s*R\$\s*([\d,.]+)/)
-    const te = parseAmount(v.notes, /Taxa de envio:\s*R\$\s*([\d,.]+)/)
-    const brutoReal = bruto > 0 ? bruto : v.amount + tv + te
-    receitaBrutaML += brutoReal
-    taxaVendaML += tv
-    taxaEnvioML += te
-    if (v.productCost) cmv += v.productCost
+    const s = computeSaleNumbers(v)
+    receitaBrutaML += s.bruto
+    taxaVendaML += s.taxaVenda
+    taxaEnvioML += s.envio
+    cmv += s.custo
   }
 
   const outras = await prisma.bill.findMany({

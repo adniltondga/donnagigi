@@ -1,6 +1,7 @@
 import prisma from '@/lib/prisma';
 import { getTenantIdOrDefault } from '@/lib/tenant';
 import { normalizeVariationKey, parseSaleDescription } from '@/lib/ml-format';
+import { computeSaleNumbers } from '@/lib/sale-notes';
 import { NextRequest, NextResponse } from 'next/server';
 
 export const dynamic = 'force-dynamic';
@@ -15,7 +16,8 @@ export const dynamic = 'force-dynamic';
  */
 
 type KPIs = {
-  vendas: number;
+  pedidos: number; // contagem de vendas (bills)
+  vendas: number; // soma de unidades
   bruto: number;
   taxaVenda: number;
   envio: number;
@@ -26,7 +28,8 @@ type KPIs = {
 
 type TimelinePoint = {
   date: string; // YYYY-MM-DD
-  vendas: number;
+  pedidos: number; // contagem de vendas (bills)
+  vendas: number; // soma de unidades
   bruto: number;
   totalVenda: number;
   lucro: number;
@@ -57,12 +60,8 @@ type BillRow = {
   product: { id: string; name: string; mlListingId: string | null } | null;
 };
 
-const parseAmount = (notes: string | null, re: RegExp) => {
-  const m = notes?.match(re);
-  return m ? parseFloat(m[1].replace(',', '.')) : 0;
-};
-
 const emptyKPIs = (): KPIs => ({
+  pedidos: 0,
   vendas: 0,
   bruto: 0,
   taxaVenda: 0,
@@ -83,21 +82,15 @@ function extractMlbFromNotes(notes: string | null): string | null {
 function aggregateKPIs(bills: BillRow[]): KPIs {
   const k = emptyKPIs();
   for (const b of bills) {
-    const bruto = parseAmount(b.notes, /Bruto:\s*R\$\s*([\d,\.]+)/);
-    const taxaVenda = parseAmount(b.notes, /Taxa de venda:\s*R\$\s*([\d,\.]+)/);
-    const envio = parseAmount(b.notes, /Taxa de envio:\s*R\$\s*([\d,\.]+)/);
-    const custo = b.productCost ?? 0;
-    const brutoReal = bruto > 0 ? bruto : b.amount + taxaVenda + envio;
-    const totalVenda = brutoReal - taxaVenda - envio;
-    const lucro = totalVenda - custo;
-
+    const s = computeSaleNumbers(b);
+    k.pedidos += 1;
     k.vendas += b.quantity ?? 1;
-    k.bruto += brutoReal;
-    k.taxaVenda += taxaVenda;
-    k.envio += envio;
-    k.totalVenda += totalVenda;
-    k.custo += custo;
-    k.lucro += lucro;
+    k.bruto += s.bruto;
+    k.taxaVenda += s.taxaVenda;
+    k.envio += s.envio;
+    k.totalVenda += s.totalVenda;
+    k.custo += s.custo;
+    k.lucro += s.lucro;
   }
   return k;
 }
@@ -202,6 +195,7 @@ export async function GET(req: NextRequest) {
       const key = dateKey(d);
       timelineMap.set(key, {
         date: key,
+        pedidos: 0,
         vendas: 0,
         bruto: 0,
         totalVenda: 0,
@@ -215,18 +209,12 @@ export async function GET(req: NextRequest) {
       const point = timelineMap.get(key);
       if (!point) continue;
 
-      const bruto = parseAmount(b.notes, /Bruto:\s*R\$\s*([\d,\.]+)/);
-      const taxaVenda = parseAmount(b.notes, /Taxa de venda:\s*R\$\s*([\d,\.]+)/);
-      const envio = parseAmount(b.notes, /Taxa de envio:\s*R\$\s*([\d,\.]+)/);
-      const custo = b.productCost ?? 0;
-      const brutoReal = bruto > 0 ? bruto : b.amount + taxaVenda + envio;
-      const totalVenda = brutoReal - taxaVenda - envio;
-      const lucro = totalVenda - custo;
-
+      const s = computeSaleNumbers(b);
+      point.pedidos += 1;
       point.vendas += b.quantity ?? 1;
-      point.bruto += brutoReal;
-      point.totalVenda += totalVenda;
-      point.lucro += lucro;
+      point.bruto += s.bruto;
+      point.totalVenda += s.totalVenda;
+      point.lucro += s.lucro;
     }
 
     const timeline = Array.from(timelineMap.values());
@@ -273,22 +261,15 @@ export async function GET(req: NextRequest) {
       const productId = b.product?.id ?? fallback?.id ?? null;
       const mlListingId = mlbCanonico ?? null;
 
-      const bruto = parseAmount(b.notes, /Bruto:\s*R\$\s*([\d,\.]+)/);
-      const taxaVenda = parseAmount(b.notes, /Taxa de venda:\s*R\$\s*([\d,\.]+)/);
-      const envio = parseAmount(b.notes, /Taxa de envio:\s*R\$\s*([\d,\.]+)/);
-      const custo = b.productCost ?? 0;
-      const brutoReal = bruto > 0 ? bruto : b.amount + taxaVenda + envio;
-      const totalVenda = brutoReal - taxaVenda - envio;
-      const lucro = totalVenda - custo;
-
+      const s = computeSaleNumbers(b);
       const qty = b.quantity ?? 1;
       const existing = produtosMap.get(key);
       if (existing) {
         existing.vendas += qty;
-        existing.bruto += brutoReal;
-        existing.totalVenda += totalVenda;
-        existing.custo += custo;
-        existing.lucro += lucro;
+        existing.bruto += s.bruto;
+        existing.totalVenda += s.totalVenda;
+        existing.custo += s.custo;
+        existing.lucro += s.lucro;
       } else {
         produtosMap.set(key, {
           productId,
@@ -296,10 +277,10 @@ export async function GET(req: NextRequest) {
           name,
           variation,
           vendas: qty,
-          bruto: brutoReal,
-          totalVenda,
-          custo,
-          lucro,
+          bruto: s.bruto,
+          totalVenda: s.totalVenda,
+          custo: s.custo,
+          lucro: s.lucro,
           margem: 0,
         });
       }

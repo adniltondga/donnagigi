@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
-import { PrismaClient } from "@prisma/client"
+import prisma from "@/lib/prisma"
 import { AuthError, authErrorResponse, requireRole } from "@/lib/auth"
-
-const prisma = new PrismaClient()
 
 export const dynamic = "force-dynamic"
 

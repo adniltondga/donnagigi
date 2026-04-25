@@ -2,13 +2,15 @@
 
 import { useEffect, useState } from 'react';
 import { formatCurrency } from '@/lib/calculations';
-import { Info, ShoppingCart, RefreshCw, Loader } from 'lucide-react';
+import { Info, ShoppingCart, DollarSign, TrendingUp, ShoppingBag, Receipt, Download, Loader2 } from 'lucide-react';
 import { Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from '@/components/ui/table';
 import { PageHeader } from '@/components/ui/page-header';
 import { Card } from '@/components/ui/card';
 import { EmptyState } from '@/components/ui/empty-state';
-import { useUserRole } from '@/lib/useUserRole';
 import { ProductLabel } from '@/components/ProductLabel';
+import { PeriodFilter, resolvePreset, type PeriodPreset } from '@/components/admin/PeriodFilter';
+import { SummaryCard } from '@/components/ui/summary-card';
+import { computeSaleNumbers } from '@/lib/sale-notes';
 
 interface Bill {
   id: string;
@@ -41,8 +43,37 @@ function formatTime(date: string | Date): string {
   return new Date(date).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
 }
 
+interface PeriodTotals {
+  pedidos: number;
+  vendas: number; // unidades
+  bruto: number;
+  taxaVenda: number;
+  envio: number;
+  custo: number;
+  lucro: number;
+  ticketMedio: number;
+}
+
+function parseNotes(notes: string | null): {
+  pedido?: string;
+  pack?: string;
+  comprador?: string;
+  produtoMlb?: string;
+  variacao?: string;
+} {
+  if (!notes) return {};
+  const pick = (re: RegExp) => notes.match(re)?.[1]?.trim();
+  return {
+    pedido: pick(/PEDIDO\s*\n#?([^\n]+)/),
+    pack: pick(/Pack\s*\n#?([^\n]+)/),
+    comprador: pick(/Comprador\s*\n([^\n]+)/),
+    produtoMlb: pick(/Produto\s*\n([^\n]+)/),
+    variacao: pick(/Variação\s*\n([^\n]+)/),
+  };
+}
+
 export default function VendasMLPage() {
-  const { canWrite } = useUserRole();
+  const initialPeriod = resolvePreset('mes');
   const [bills, setBills] = useState<Bill[]>([]);
   const [total, setTotal] = useState(0);
   const [pages, setPages] = useState(1);
@@ -51,12 +82,16 @@ export default function VendasMLPage() {
   const [q, setQ] = useState('');
   const [qInput, setQInput] = useState('');
   const [status, setStatus] = useState<string>('');
+  const [from, setFrom] = useState<string>(initialPeriod.from);
+  const [to, setTo] = useState<string>(initialPeriod.to);
+  const [preset, setPreset] = useState<PeriodPreset>('mes');
   const [notesModal, setNotesModal] = useState<{ isOpen: boolean; bill: Bill | null }>({
     isOpen: false,
     bill: null,
   });
-  const [backfilling, setBackfilling] = useState(false);
-  const [backfillMsg, setBackfillMsg] = useState<string | null>(null);
+  const [totals, setTotals] = useState<PeriodTotals | null>(null);
+  const [totalsLoading, setTotalsLoading] = useState(false);
+  const [exporting, setExporting] = useState(false);
 
   const fetchBills = async () => {
     setLoading(true);
@@ -69,6 +104,8 @@ export default function VendasMLPage() {
       });
       if (q) params.set('q', q);
       if (status) params.set('status', status);
+      if (from) params.set('paidFrom', from);
+      if (to) params.set('paidTo', to);
       const res = await fetch(`/api/bills?${params}`);
       const data = await res.json();
       setBills(data.data || []);
@@ -81,10 +118,53 @@ export default function VendasMLPage() {
     }
   };
 
+  const fetchTotals = async () => {
+    setTotalsLoading(true);
+    try {
+      const params = new URLSearchParams({ from, to });
+      const res = await fetch(`/api/relatorios/v2?${params}`);
+      const data = await res.json();
+      const k = data?.kpisAtual;
+      if (!k) {
+        setTotals(null);
+        return;
+      }
+      setTotals({
+        pedidos: k.pedidos || 0,
+        vendas: k.vendas || 0,
+        bruto: k.bruto || 0,
+        taxaVenda: k.taxaVenda || 0,
+        envio: k.envio || 0,
+        custo: k.custo || 0,
+        lucro: k.lucro || 0,
+        ticketMedio: data?.derivados?.ticketMedio || 0,
+      });
+    } catch (err) {
+      console.error(err);
+      setTotals(null);
+    } finally {
+      setTotalsLoading(false);
+    }
+  };
+
   useEffect(() => {
     fetchBills();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [page, q, status]);
+  }, [page, q, status, from, to]);
+
+  useEffect(() => {
+    fetchTotals();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [from, to]);
+
+  useEffect(() => {
+    if (!notesModal.isOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setNotesModal({ isOpen: false, bill: null });
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [notesModal.isOpen]);
 
   const onSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -98,72 +178,176 @@ export default function VendasMLPage() {
     setPage(1);
   };
 
-  const runBackfill = async () => {
-    if (!confirm('Buscar no Mercado Livre a variação de cada venda antiga e atualizar a descrição?\n\nPode levar alguns minutos se você tem muitas vendas.')) return;
-    setBackfilling(true);
-    setBackfillMsg(null);
+  const handlePeriodChange = (next: { from: string; to: string; preset: PeriodPreset }) => {
+    setFrom(next.from);
+    setTo(next.to);
+    setPreset(next.preset);
+    setPage(1);
+  };
+
+  const exportCSV = async () => {
+    setExporting(true);
     try {
-      const res = await fetch('/api/ml/backfill-variations', { method: 'POST' });
+      const params = new URLSearchParams({
+        category: 'venda',
+        page: '1',
+        limit: '10000',
+        orderBy: 'paidDate_desc',
+      });
+      if (q) params.set('q', q);
+      if (status) params.set('status', status);
+      if (from) params.set('paidFrom', from);
+      if (to) params.set('paidTo', to);
+      const res = await fetch(`/api/bills?${params}`);
       const data = await res.json();
-      if (!res.ok) {
-        setBackfillMsg(`❌ ${data.error || 'Erro no backfill'}`);
-      } else {
-        const s = data.stats;
-        const pend = s?.pendentes ? ' (ainda há mais vendas — rode de novo pra continuar)' : '';
-        setBackfillMsg(
-          `✅ ${s.updated} atualizada(s), ${s.jaOk ?? 0} já consistente(s), ${s.semVariacao} sem variação, ${s.erros} erro(s)${pend}`
+      const rows: Bill[] = data.data || [];
+
+      const csvEscape = (val: string | number | null | undefined): string => {
+        if (val == null) return '';
+        const str = String(val);
+        return /[",\n;]/.test(str) ? `"${str.replace(/"/g, '""')}"` : str;
+      };
+      const headers = [
+        'Data da venda',
+        'Libera em',
+        'Pedido',
+        'Pack',
+        'Comprador',
+        'Anúncio MLB',
+        'Variação',
+        'Quantidade',
+        'Bruto',
+        'Taxa de venda',
+        'Taxa de envio',
+        'Custo mercadoria',
+        'Líquido',
+        'Status',
+      ];
+      const lines = [headers.map(csvEscape).join(';')];
+      for (const b of rows) {
+        const meta = parseNotes(b.notes);
+        const s = computeSaleNumbers(b);
+        const orderId = meta.pedido || b.mlOrderId?.replace(/^order_/, '') || '';
+        lines.push(
+          [
+            b.paidDate ? new Date(b.paidDate).toLocaleString('pt-BR') : '',
+            b.dueDate ? new Date(b.dueDate).toLocaleDateString('pt-BR') : '',
+            orderId,
+            meta.pack || b.mlPackId || '',
+            meta.comprador || '',
+            meta.produtoMlb || '',
+            meta.variacao || '',
+            b.quantity,
+            s.bruto.toFixed(2).replace('.', ','),
+            s.taxaVenda.toFixed(2).replace('.', ','),
+            s.envio.toFixed(2).replace('.', ','),
+            s.custo.toFixed(2).replace('.', ','),
+            s.liquido.toFixed(2).replace('.', ','),
+            statusLabel[b.status] || b.status,
+          ]
+            .map(csvEscape)
+            .join(';')
         );
-        fetchBills();
       }
-    } catch {
-      setBackfillMsg('❌ Erro de conexão');
+
+      // BOM pra Excel reconhecer UTF-8 no Windows
+      const csv = '﻿' + lines.join('\n');
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `vendas-ml_${from}_a_${to}.csv`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('export CSV falhou:', err);
+      alert('Erro ao exportar CSV. Tente novamente.');
     } finally {
-      setBackfilling(false);
-      setTimeout(() => setBackfillMsg(null), 12000);
+      setExporting(false);
     }
-  };
-
-  const bruto = (b: Bill): number => {
-    const m = b.notes?.match(/Bruto:\s*R\$\s*([\d,\.]+)/);
-    if (m) return parseFloat(m[1].replace(',', '.'));
-    const e = b.notes?.match(/Taxa de envio:\s*R\$\s*([\d,\.]+)/);
-    const envio = e ? parseFloat(e[1].replace(',', '.')) : 0;
-    return b.amount + envio;
-  };
-
-  const lucro = (b: Bill): number => {
-    const v = b.notes?.match(/Taxa de venda:\s*R\$\s*([\d,\.]+)/);
-    const e = b.notes?.match(/Taxa de envio:\s*R\$\s*([\d,\.]+)/);
-    const taxaVenda = v ? parseFloat(v[1].replace(',', '.')) : 0;
-    const taxaEnvio = e ? parseFloat(e[1].replace(',', '.')) : 0;
-    return bruto(b) - taxaVenda - taxaEnvio - (b.productCost || 0);
   };
 
   return (
     <div className="space-y-6">
       <PageHeader
         title="🛒 Vendas Mercado Livre"
-        description="Listagem de todas as vendas importadas do ML. Clique no ícone ℹ️ para ver o detalhamento de taxas."
+        description="Listagem de todas as vendas importadas do ML. Clique numa linha para ver o detalhamento."
         actions={
-          canWrite ? (
-            <button
-              onClick={runBackfill}
-              disabled={backfilling}
-              className="inline-flex items-center gap-2 border border-gray-300 hover:bg-gray-50 text-gray-700 font-medium px-3 py-2 rounded-lg text-sm disabled:opacity-50"
-              title="Re-busca no ML as vendas antigas pra preencher a variação (cor/tamanho)"
-            >
-              {backfilling ? <Loader className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
-              {backfilling ? 'Atualizando variações...' : 'Atualizar variações'}
-            </button>
-          ) : null
+          <button
+            onClick={exportCSV}
+            disabled={exporting || total === 0}
+            className="inline-flex items-center gap-2 border border-gray-300 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed text-gray-700 font-medium px-3 py-2 rounded-lg text-sm"
+            title="Baixa um CSV com as vendas do filtro atual (até 10.000 linhas)"
+          >
+            {exporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+            {exporting ? 'Gerando...' : 'Exportar CSV'}
+          </button>
         }
       />
 
-      {backfillMsg && (
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm text-blue-900">
-          {backfillMsg}
-        </div>
-      )}
+      {/* Período */}
+      <Card className="p-4">
+        <PeriodFilter from={from} to={to} preset={preset} onChange={handlePeriodChange} />
+      </Card>
+
+      {/* Totais do período */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+        <SummaryCard
+          label="Bruto"
+          value={totals?.bruto ?? 0}
+          sub="vendas no período"
+          icon={DollarSign}
+          tone="emerald"
+          loading={totalsLoading}
+        />
+        <SummaryCard
+          label="Taxas + custo"
+          value={(totals?.taxaVenda ?? 0) + (totals?.envio ?? 0) + (totals?.custo ?? 0)}
+          sub={
+            totals
+              ? `venda ${formatCurrency(totals.taxaVenda)} · envio ${formatCurrency(totals.envio)} · custo ${formatCurrency(totals.custo)}`
+              : '—'
+          }
+          icon={Receipt}
+          tone="amber"
+          loading={totalsLoading}
+        />
+        <SummaryCard
+          label="Lucro"
+          value={totals?.lucro ?? 0}
+          sub={
+            totals && totals.bruto > 0
+              ? `${((totals.lucro / totals.bruto) * 100).toFixed(1)}% de margem`
+              : 'sem vendas'
+          }
+          icon={TrendingUp}
+          tone={totals && totals.lucro < 0 ? 'rose' : 'primary'}
+          loading={totalsLoading}
+        />
+        <SummaryCard
+          label="Vendas"
+          value={
+            totals
+              ? `${totals.pedidos} venda${totals.pedidos === 1 ? '' : 's'}`
+              : '—'
+          }
+          sub={
+            totals && totals.pedidos > 0
+              ? `ticket médio ${formatCurrency(totals.ticketMedio)}`
+              : 'nenhuma venda'
+          }
+          icon={ShoppingBag}
+          tone="sky"
+          tooltip={
+            totals
+              ? `${totals.vendas} unidade${totals.vendas === 1 ? '' : 's'} vendida${totals.vendas === 1 ? '' : 's'}`
+              : undefined
+          }
+          loading={totalsLoading}
+        />
+      </div>
 
       {/* Filtros */}
       <Card className="p-4 flex flex-wrap gap-4 items-end">
@@ -206,7 +390,6 @@ export default function VendasMLPage() {
           >
             <option value="">Todos</option>
             <option value="pending">A Receber</option>
-            <option value="paid">Pago</option>
             <option value="cancelled">Cancelado</option>
           </select>
         </div>
@@ -217,7 +400,7 @@ export default function VendasMLPage() {
       </div>
 
       {/* Tabela */}
-      <Card className="overflow-hidden">
+      <Card className="overflow-x-auto">
         {bills.length === 0 && !loading ? (
           <EmptyState icon={ShoppingCart} title="Nenhuma venda encontrada" />
         ) : (
@@ -234,9 +417,13 @@ export default function VendasMLPage() {
             </TableHeader>
             <TableBody>
               {bills.map((b) => {
-                const l = lucro(b);
+                const s = computeSaleNumbers(b);
                 return (
-                  <TableRow key={b.id}>
+                  <TableRow
+                    key={b.id}
+                    onClick={() => setNotesModal({ isOpen: true, bill: b })}
+                    className="cursor-pointer hover:bg-gray-50 transition"
+                  >
                     <TableCell className="text-sm whitespace-nowrap">
                       {b.paidDate ? (
                         <div>
@@ -249,31 +436,23 @@ export default function VendasMLPage() {
                       {formatDate(b.dueDate)}
                     </TableCell>
                     <TableCell className="text-sm">
-                      <ProductLabel description={b.description} />
+                      <ProductLabel description={b.description} quantity={b.quantity} />
                       {b.mlPackId && (
                         <div className="text-xs text-gray-500 font-mono mt-0.5">Pack #{b.mlPackId}</div>
                       )}
                     </TableCell>
                     <TableCell className="text-sm font-semibold text-right whitespace-nowrap">
                       <div className="flex items-center gap-2 justify-end">
-                        <span>{formatCurrency(bruto(b))}</span>
-                        {b.notes && (
-                          <button
-                            onClick={() => setNotesModal({ isOpen: true, bill: b })}
-                            className="p-1 hover:bg-blue-100 rounded transition"
-                            title="Ver detalhes"
-                          >
-                            <Info size={16} className="text-blue-500" />
-                          </button>
-                        )}
+                        <span>{formatCurrency(s.bruto)}</span>
+                        <Info size={14} className="text-gray-400 shrink-0" />
                       </div>
                     </TableCell>
                     <TableCell
                       className={`text-sm font-semibold text-right whitespace-nowrap ${
-                        l > 0 ? 'text-emerald-600' : l < 0 ? 'text-red-600' : 'text-gray-400'
+                        s.lucro > 0 ? 'text-emerald-600' : s.lucro < 0 ? 'text-red-600' : 'text-gray-400'
                       }`}
                     >
-                      {formatCurrency(l)}
+                      {formatCurrency(s.lucro)}
                     </TableCell>
                     <TableCell>
                       <span
@@ -323,63 +502,121 @@ export default function VendasMLPage() {
 
       {/* Notes Modal */}
       {notesModal.isOpen && notesModal.bill && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full p-6 space-y-4">
+        <div
+          className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+          role="dialog"
+          aria-modal="true"
+          onClick={() => setNotesModal({ isOpen: false, bill: null })}
+        >
+          <div
+            className="bg-white rounded-lg shadow-xl max-w-2xl w-full p-6 space-y-4"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="flex items-center justify-between">
               <h2 className="text-xl font-bold text-gray-900">📝 Detalhes da venda</h2>
               <button
                 onClick={() => setNotesModal({ isOpen: false, bill: null })}
-                className="text-gray-500 hover:text-gray-700 text-2xl"
+                className="text-gray-500 hover:text-gray-700 text-2xl leading-none"
+                aria-label="Fechar"
               >
                 ×
               </button>
             </div>
-            <div className="bg-gray-50 rounded-lg p-4 max-h-96 overflow-y-auto">
-              <pre className="text-sm text-gray-700 whitespace-pre-wrap font-mono leading-relaxed">
-                {(notesModal.bill.notes || '').replace(/\n*VENDAS\n.*$/s, '').trim()}
-              </pre>
-            </div>
+
             {(() => {
               const b = notesModal.bill!;
-              const br = bruto(b);
-              const v = b.notes?.match(/Taxa de venda:\s*R\$\s*([\d,\.]+)/);
-              const e = b.notes?.match(/Taxa de envio:\s*R\$\s*([\d,\.]+)/);
-              const taxaVenda = v ? parseFloat(v[1].replace(',', '.')) : 0;
-              const taxaEnvio = e ? parseFloat(e[1].replace(',', '.')) : 0;
-              const custo = b.productCost || 0;
-              const totalTaxas = taxaVenda + taxaEnvio + custo;
-              const liquido = br - totalTaxas;
+              const meta = parseNotes(b.notes);
+              const s = computeSaleNumbers(b);
+              const orderId = meta.pedido || b.mlOrderId?.replace(/^order_/, '');
+              const mlbId = meta.produtoMlb;
               return (
-                <div className="bg-white border rounded-lg p-4 space-y-2 text-sm">
-                  <div className="flex justify-between">
-                    <span className="font-medium">💵 Bruto:</span>
-                    <span className="font-semibold">{formatCurrency(br)}</span>
+                <>
+                  {/* Identificação */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+                    {orderId && (
+                      <div>
+                        <div className="text-xs uppercase tracking-wide text-gray-500 font-medium">Pedido</div>
+                        <a
+                          href={`https://www.mercadolivre.com.br/vendas/${orderId}/detalhe`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="font-mono text-gray-900 hover:text-primary-700"
+                        >
+                          #{orderId}
+                        </a>
+                      </div>
+                    )}
+                    {(meta.pack || b.mlPackId) && (
+                      <div>
+                        <div className="text-xs uppercase tracking-wide text-gray-500 font-medium">Pack</div>
+                        <span className="font-mono text-gray-900">#{meta.pack || b.mlPackId}</span>
+                      </div>
+                    )}
+                    {meta.comprador && (
+                      <div>
+                        <div className="text-xs uppercase tracking-wide text-gray-500 font-medium">Comprador</div>
+                        <span className="text-gray-900">{meta.comprador}</span>
+                      </div>
+                    )}
+                    {mlbId && (
+                      <div>
+                        <div className="text-xs uppercase tracking-wide text-gray-500 font-medium">Anúncio</div>
+                        <a
+                          href={`https://produto.mercadolivre.com.br/${mlbId}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="font-mono text-gray-900 hover:text-primary-700"
+                        >
+                          {mlbId}
+                        </a>
+                      </div>
+                    )}
+                    {meta.variacao && (
+                      <div className="sm:col-span-2">
+                        <div className="text-xs uppercase tracking-wide text-gray-500 font-medium">Variação</div>
+                        <span className="text-gray-900">{meta.variacao}</span>
+                      </div>
+                    )}
                   </div>
-                  <div className="flex justify-between text-amber-700">
-                    <span>  • Taxa de venda:</span>
-                    <span>{formatCurrency(taxaVenda)}</span>
-                  </div>
-                  <div className="flex justify-between text-amber-700">
-                    <span>  • Taxa de envio:</span>
-                    <span>{formatCurrency(taxaEnvio)}</span>
-                  </div>
-                  {custo > 0 && (
-                    <div className="flex justify-between text-rose-600">
-                      <span>  • 💰 Custo mercadoria:</span>
-                      <span>{formatCurrency(custo)}</span>
+
+                  {/* Cálculo */}
+                  <div className="bg-white border rounded-lg p-4 space-y-2 text-sm">
+                    {b.quantity > 1 && (
+                      <div className="flex justify-between text-amber-700">
+                        <span className="font-medium">📦 Quantidade:</span>
+                        <span className="font-semibold">{b.quantity} unidades</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between">
+                      <span className="font-medium">💵 Bruto:</span>
+                      <span className="font-semibold">{formatCurrency(s.bruto)}</span>
                     </div>
-                  )}
-                  <div className="border-t pt-2 flex justify-between">
-                    <span className="font-medium">Total taxas + custo:</span>
-                    <span className="font-semibold text-red-600">{formatCurrency(totalTaxas)}</span>
+                    <div className="flex justify-between text-amber-700">
+                      <span>  • Taxa de venda:</span>
+                      <span>{formatCurrency(s.taxaVenda)}</span>
+                    </div>
+                    <div className="flex justify-between text-amber-700">
+                      <span>  • Taxa de envio:</span>
+                      <span>{formatCurrency(s.envio)}</span>
+                    </div>
+                    {s.custo > 0 && (
+                      <div className="flex justify-between text-rose-600">
+                        <span>  • 💰 Custo mercadoria:</span>
+                        <span>{formatCurrency(s.custo)}</span>
+                      </div>
+                    )}
+                    <div className="border-t pt-2 flex justify-between">
+                      <span className="font-medium">Total taxas + custo:</span>
+                      <span className="font-semibold text-red-600">{formatCurrency(s.totalTaxas)}</span>
+                    </div>
+                    <div className="bg-blue-50 rounded p-2 flex justify-between border border-blue-200">
+                      <span className="font-bold text-blue-900">📈 Líquido real:</span>
+                      <span className={`font-bold text-lg ${s.liquido > 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                        {formatCurrency(s.liquido)}
+                      </span>
+                    </div>
                   </div>
-                  <div className="bg-blue-50 rounded p-2 flex justify-between border border-blue-200">
-                    <span className="font-bold text-blue-900">📈 Líquido real:</span>
-                    <span className={`font-bold text-lg ${liquido > 0 ? 'text-emerald-600' : 'text-red-600'}`}>
-                      {formatCurrency(liquido)}
-                    </span>
-                  </div>
-                </div>
+                </>
               );
             })()}
           </div>

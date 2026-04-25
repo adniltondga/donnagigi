@@ -16,6 +16,8 @@ export async function GET(req: NextRequest) {
     const status = searchParams.get('status');
     const dueFrom = searchParams.get('dueFrom'); // YYYY-MM-DD (inclusive)
     const dueTo = searchParams.get('dueTo');     // YYYY-MM-DD (inclusive)
+    const paidFrom = searchParams.get('paidFrom'); // YYYY-MM-DD (inclusive)
+    const paidTo = searchParams.get('paidTo');     // YYYY-MM-DD (inclusive)
     const q = searchParams.get('q')?.trim();
     const orderBy = searchParams.get('orderBy') || 'dueDate_desc';
 
@@ -29,6 +31,11 @@ export async function GET(req: NextRequest) {
       where.dueDate = {};
       if (dueFrom) where.dueDate.gte = new Date(`${dueFrom}T00:00:00.000`);
       if (dueTo) where.dueDate.lte = new Date(`${dueTo}T23:59:59.999`);
+    }
+    if (paidFrom || paidTo) {
+      where.paidDate = {};
+      if (paidFrom) where.paidDate.gte = new Date(`${paidFrom}T00:00:00.000`);
+      if (paidTo) where.paidDate.lte = new Date(`${paidTo}T23:59:59.999`);
     }
     if (q) {
       where.OR = [
@@ -46,8 +53,6 @@ export async function GET(req: NextRequest) {
       prisma.bill.findMany({
         where,
         include: {
-          supplier: true,
-          product: true,
           billCategory: { include: { parent: true } },
         },
         orderBy: orderClause,

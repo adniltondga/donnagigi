@@ -1,5 +1,6 @@
 import prisma from '@/lib/prisma';
 import { getTenantIdOrDefault } from '@/lib/tenant';
+import { computeSaleNumbers } from '@/lib/sale-notes';
 import { NextRequest, NextResponse } from 'next/server';
 
 export const dynamic = 'force-dynamic';
@@ -52,11 +53,6 @@ export async function GET(req: NextRequest) {
       map.set(d, { dia: d, vendas: 0, totalVenda: 0 });
     }
 
-    const parseAmount = (notes: string | null, re: RegExp) => {
-      const m = notes?.match(re);
-      return m ? parseFloat(m[1].replace(',', '.')) : 0;
-    };
-
     for (const b of bills) {
       if (!b.paidDate) continue;
       const expected = new Date(b.paidDate);
@@ -64,17 +60,12 @@ export async function GET(req: NextRequest) {
 
       if (expected < firstDay || expected > lastDay) continue;
 
-      const bruto = parseAmount(b.notes, /Bruto:\s*R\$\s*([\d,\.]+)/);
-      const taxaVenda = parseAmount(b.notes, /Taxa de venda:\s*R\$\s*([\d,\.]+)/);
-      const envio = parseAmount(b.notes, /Taxa de envio:\s*R\$\s*([\d,\.]+)/);
-      const brutoReal = bruto > 0 ? bruto : b.amount + taxaVenda + envio;
-      const totalVenda = brutoReal - taxaVenda - envio;
-
+      const s = computeSaleNumbers(b);
       const dia = expected.getDate();
       const agg = map.get(dia);
       if (!agg) continue;
       agg.vendas += b.quantity ?? 1;
-      agg.totalVenda += totalVenda;
+      agg.totalVenda += s.totalVenda;
     }
 
     const dias = Array.from(map.values());
