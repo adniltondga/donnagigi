@@ -88,7 +88,7 @@ function delta(curr: number, prev: number): { pct: number; up: boolean; neutral:
 function DeltaBadge({ curr, prev, inverso = false }: { curr: number; prev: number; inverso?: boolean }) {
   const d = delta(curr, prev);
   if (d.neutral) {
-    return <span className="text-xs text-gray-400">—</span>;
+    return <span className="text-xs text-muted-foreground">—</span>;
   }
   const positivo = inverso ? !d.up : d.up;
   const cor = positivo ? 'text-emerald-600' : 'text-red-600';
@@ -130,11 +130,11 @@ function KpiCard({
 
   return (
     <Card className="p-4">
-      <p className="text-xs uppercase text-gray-500">{label}</p>
-      <p className={`text-lg font-bold ${accent || 'text-gray-800'}`}>{formatted}</p>
+      <p className="text-xs uppercase text-muted-foreground">{label}</p>
+      <p className={`text-lg font-bold ${accent || 'text-foreground'}`}>{formatted}</p>
       <div className="flex items-center gap-2 mt-1">
         <DeltaBadge curr={value} prev={prev} inverso={inverso} />
-        <span className="text-xs text-gray-400">ant: {prevFormatted}</span>
+        <span className="text-xs text-muted-foreground">ant: {prevFormatted}</span>
       </div>
     </Card>
   );
@@ -216,7 +216,7 @@ export default function RelatoriosV2Page() {
       {/* Filtros */}
       <Card className="p-4 flex flex-wrap gap-4 items-end">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">De</label>
+          <label className="block text-sm font-medium text-foreground mb-1">De</label>
           <input
             type="date"
             value={from}
@@ -225,7 +225,7 @@ export default function RelatoriosV2Page() {
           />
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Até</label>
+          <label className="block text-sm font-medium text-foreground mb-1">Até</label>
           <input
             type="date"
             value={to}
@@ -242,19 +242,19 @@ export default function RelatoriosV2Page() {
         </button>
 
         <div className="flex flex-wrap gap-2 ml-auto">
-          <button onClick={() => setPreset('7d')} className="text-xs px-3 py-1.5 rounded border hover:bg-gray-50">
+          <button onClick={() => setPreset('7d')} className="text-xs px-3 py-1.5 rounded border hover:bg-accent">
             7 dias
           </button>
-          <button onClick={() => setPreset('30d')} className="text-xs px-3 py-1.5 rounded border hover:bg-gray-50">
+          <button onClick={() => setPreset('30d')} className="text-xs px-3 py-1.5 rounded border hover:bg-accent">
             30 dias
           </button>
-          <button onClick={() => setPreset('mes')} className="text-xs px-3 py-1.5 rounded border hover:bg-gray-50">
+          <button onClick={() => setPreset('mes')} className="text-xs px-3 py-1.5 rounded border hover:bg-accent">
             Este mês
           </button>
-          <button onClick={() => setPreset('mes_anterior')} className="text-xs px-3 py-1.5 rounded border hover:bg-gray-50">
+          <button onClick={() => setPreset('mes_anterior')} className="text-xs px-3 py-1.5 rounded border hover:bg-accent">
             Mês anterior
           </button>
-          <button onClick={() => setPreset('ano')} className="text-xs px-3 py-1.5 rounded border hover:bg-gray-50">
+          <button onClick={() => setPreset('ano')} className="text-xs px-3 py-1.5 rounded border hover:bg-accent">
             Ano
           </button>
         </div>
@@ -315,7 +315,7 @@ export default function RelatoriosV2Page() {
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle>Tendência diária</CardTitle>
-              <span className="text-xs text-gray-500">
+              <span className="text-xs text-muted-foreground">
                 {data.timeline.length} dia{data.timeline.length === 1 ? '' : 's'} no período
               </span>
             </CardHeader>
@@ -368,7 +368,7 @@ export default function RelatoriosV2Page() {
 
           {/* Top produtos */}
           <Card className="overflow-hidden">
-            <CardHeader className="border-b border-gray-100 flex flex-row items-center justify-between">
+            <CardHeader className="border-b border-border flex flex-row items-center justify-between">
               <CardTitle>Top 10 produtos</CardTitle>
               <div className="flex gap-2">
                 <button
@@ -376,7 +376,7 @@ export default function RelatoriosV2Page() {
                   className={`text-xs px-3 py-1 rounded ${
                     tab === 'lucro'
                       ? 'bg-primary-500 text-white'
-                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                      : 'bg-muted text-muted-foreground hover:bg-accent'
                   }`}
                 >
                   Por Lucro
@@ -386,7 +386,7 @@ export default function RelatoriosV2Page() {
                   className={`text-xs px-3 py-1 rounded ${
                     tab === 'bruto'
                       ? 'bg-primary-500 text-white'
-                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                      : 'bg-muted text-muted-foreground hover:bg-accent'
                   }`}
                 >
                   Por Bruto
@@ -395,7 +395,7 @@ export default function RelatoriosV2Page() {
             </CardHeader>
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
-                <thead className="bg-gray-50 text-xs uppercase text-gray-500">
+                <thead className="bg-muted text-xs uppercase text-muted-foreground">
                   <tr>
                     <th className="text-left px-4 py-2">#</th>
                     <th className="text-left px-4 py-2">Produto</th>
@@ -410,14 +410,14 @@ export default function RelatoriosV2Page() {
                 <tbody>
                   {topList.length === 0 ? (
                     <tr>
-                      <td colSpan={8} className="text-center text-gray-500 py-6">
+                      <td colSpan={8} className="text-center text-muted-foreground py-6">
                         Nenhuma venda no período
                       </td>
                     </tr>
                   ) : (
                     topList.map((p, i) => (
                       <tr key={`${p.productId ?? p.mlListingId ?? 'sem'}-${p.variation || ''}-${i}`} className="border-t">
-                        <td className="px-4 py-2 text-gray-500 font-mono">{i + 1}</td>
+                        <td className="px-4 py-2 text-muted-foreground font-mono">{i + 1}</td>
                         <td className="px-4 py-2">
                           <ProductLabel title={p.name} variation={p.variation} mlListingId={p.mlListingId} size="sm" />
                         </td>
@@ -429,12 +429,12 @@ export default function RelatoriosV2Page() {
                         </td>
                         <td
                           className={`px-4 py-2 text-right font-semibold ${
-                            p.lucro > 0 ? 'text-emerald-600' : p.lucro < 0 ? 'text-red-600' : 'text-gray-400'
+                            p.lucro > 0 ? 'text-emerald-600' : p.lucro < 0 ? 'text-red-600' : 'text-muted-foreground'
                           }`}
                         >
                           {formatCurrency(p.lucro)}
                         </td>
-                        <td className="px-4 py-2 text-right text-xs text-gray-600">
+                        <td className="px-4 py-2 text-right text-xs text-muted-foreground">
                           {p.margem.toFixed(1)}%
                         </td>
                       </tr>
@@ -446,7 +446,7 @@ export default function RelatoriosV2Page() {
           </Card>
 
           {/* Comparativo vs período anterior */}
-          <Card className="p-4 text-xs text-gray-500">
+          <Card className="p-4 text-xs text-muted-foreground">
             Comparativo: {new Date(data.periodoAnterior.from).toLocaleDateString('pt-BR')} até{' '}
             {new Date(data.periodoAnterior.to).toLocaleDateString('pt-BR')}
           </Card>

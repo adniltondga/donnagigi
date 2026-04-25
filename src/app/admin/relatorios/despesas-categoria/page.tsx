@@ -78,23 +78,23 @@ export default function DespesasCategoriaPage() {
         actions={
           <div className="flex gap-2 items-end">
             <div>
-              <label className="block text-xs text-gray-500 mb-1">Base</label>
+              <label className="block text-xs text-muted-foreground mb-1">Base</label>
               <select
                 value={basis}
                 onChange={(e) => setBasis(e.target.value as "paid" | "due")}
-                className="border border-gray-300 rounded-lg px-2 py-2 text-sm"
+                className="border border-border rounded-lg px-2 py-2 text-sm"
               >
                 <option value="paid">Pagas no mês</option>
                 <option value="due">Com vencimento no mês</option>
               </select>
             </div>
             <div>
-              <label className="block text-xs text-gray-500 mb-1">Mês</label>
+              <label className="block text-xs text-muted-foreground mb-1">Mês</label>
               <input
                 type="month"
                 value={month}
                 onChange={(e) => setMonth(e.target.value)}
-                className="border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                className="border border-border rounded-lg px-3 py-2 text-sm"
               />
             </div>
           </div>
@@ -103,7 +103,7 @@ export default function DespesasCategoriaPage() {
 
       {loading || !data ? (
         <Card>
-          <CardContent className="flex items-center justify-center py-12 text-gray-500">
+          <CardContent className="flex items-center justify-center py-12 text-muted-foreground">
             <Loader className="w-5 h-5 animate-spin mr-2" />
             Calculando...
           </CardContent>
@@ -128,16 +128,16 @@ export default function DespesasCategoriaPage() {
             <CardContent className="pt-5">
               <div className="flex items-baseline justify-between mb-4">
                 <div>
-                  <p className="text-sm text-gray-500">Total de despesas</p>
+                  <p className="text-sm text-muted-foreground">Total de despesas</p>
                   <p className="text-3xl font-bold text-rose-600">{formatCurrency(data.total)}</p>
                 </div>
-                <p className="text-xs text-gray-500">
+                <p className="text-xs text-muted-foreground">
                   {data.items.length} categoria{data.items.length === 1 ? "" : "s"}
                 </p>
               </div>
 
               {/* Barra empilhada */}
-              <div className="flex w-full h-4 rounded-full overflow-hidden bg-gray-100">
+              <div className="flex w-full h-4 rounded-full overflow-hidden bg-muted">
                 {data.items.map((it, idx) => (
                   <div
                     key={it.id || it.name}
@@ -151,8 +151,8 @@ export default function DespesasCategoriaPage() {
                 {data.items.map((it, idx) => (
                   <div key={it.id || it.name} className="flex items-center gap-1.5">
                     <span className={`w-2.5 h-2.5 rounded-full ${COLORS[idx % COLORS.length]}`} />
-                    <span className="text-gray-700">{it.name}</span>
-                    <span className="text-gray-400">{it.pct.toFixed(1)}%</span>
+                    <span className="text-foreground">{it.name}</span>
+                    <span className="text-muted-foreground">{it.pct.toFixed(1)}%</span>
                   </div>
                 ))}
               </div>
@@ -162,7 +162,7 @@ export default function DespesasCategoriaPage() {
           <Card className="overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
-                <thead className="bg-gray-50 text-xs uppercase tracking-wide text-gray-500">
+                <thead className="bg-muted text-xs uppercase tracking-wide text-muted-foreground">
                   <tr>
                     <th className="px-4 py-3 text-left">Categoria</th>
                     <th className="px-4 py-3 text-right">Contas</th>
@@ -177,11 +177,11 @@ export default function DespesasCategoriaPage() {
                     const canExpand = it.subs.length > 0
                     return (
                       <>
-                        <tr key={key} className="hover:bg-gray-50">
+                        <tr key={key} className="hover:bg-accent">
                           <td className="px-4 py-3">
                             <button
                               onClick={() => canExpand && toggle(key)}
-                              className="flex items-center gap-1 font-medium text-gray-900"
+                              className="flex items-center gap-1 font-medium text-foreground"
                               disabled={!canExpand}
                             >
                               {canExpand ? (
@@ -192,19 +192,19 @@ export default function DespesasCategoriaPage() {
                               {it.name}
                             </button>
                           </td>
-                          <td className="px-4 py-3 text-right text-gray-600">{it.count}</td>
+                          <td className="px-4 py-3 text-right text-muted-foreground">{it.count}</td>
                           <td className="px-4 py-3 text-right font-semibold text-rose-600 whitespace-nowrap">
                             {formatCurrency(it.total)}
                           </td>
                           <td className="px-4 py-3">
                             <div className="flex items-center gap-2">
-                              <div className="flex-1 h-2 bg-gray-100 rounded-full overflow-hidden">
+                              <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
                                 <div
                                   className={`h-full ${COLORS[idx % COLORS.length]}`}
                                   style={{ width: `${Math.min(it.pct, 100)}%` }}
                                 />
                               </div>
-                              <span className="text-xs text-gray-600 tabular-nums w-14 text-right">
+                              <span className="text-xs text-muted-foreground tabular-nums w-14 text-right">
                                 {it.pct.toFixed(1)}%
                               </span>
                             </div>
@@ -212,13 +212,13 @@ export default function DespesasCategoriaPage() {
                         </tr>
                         {open &&
                           it.subs.map((sub) => (
-                            <tr key={`${key}-${sub.id || sub.name}`} className="bg-gray-50/50">
-                              <td className="px-4 py-2 pl-12 text-sm text-gray-700">{sub.name}</td>
-                              <td className="px-4 py-2 text-right text-xs text-gray-500">{sub.count}</td>
+                            <tr key={`${key}-${sub.id || sub.name}`} className="bg-muted/50">
+                              <td className="px-4 py-2 pl-12 text-sm text-foreground">{sub.name}</td>
+                              <td className="px-4 py-2 text-right text-xs text-muted-foreground">{sub.count}</td>
                               <td className="px-4 py-2 text-right text-sm text-rose-500 whitespace-nowrap">
                                 {formatCurrency(sub.total)}
                               </td>
-                              <td className="px-4 py-2 text-xs text-gray-500">{sub.pct.toFixed(1)}%</td>
+                              <td className="px-4 py-2 text-xs text-muted-foreground">{sub.pct.toFixed(1)}%</td>
                             </tr>
                           ))}
                       </>

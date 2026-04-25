@@ -52,7 +52,7 @@ function calcLucro(price: number, productCost: number | null): number | null {
 }
 
 function LucroCell({ value }: { value: number | null }) {
-  if (value == null) return <span className="text-gray-400">—</span>;
+  if (value == null) return <span className="text-muted-foreground">—</span>;
   return (
     <span className={value >= 0 ? 'text-green-600 font-semibold' : 'text-red-600 font-semibold'}>
       {formatCurrency(value)}
@@ -183,7 +183,7 @@ export default function ProdutosCustoPage() {
     <button
       onClick={() => setFiltro(value)}
       className={`px-3 py-1.5 rounded-lg text-sm font-semibold transition ${
-        filtro === value ? 'bg-primary-500 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+        filtro === value ? 'bg-primary-500 text-white' : 'bg-muted text-foreground hover:bg-accent'
       }`}
     >
       {label} <span className="opacity-80">({count})</span>
@@ -211,7 +211,7 @@ export default function ProdutosCustoPage() {
       )}
 
       <Card className="overflow-hidden">
-        <div className="p-4 border-b border-gray-100 flex items-center justify-between flex-wrap gap-3">
+        <div className="p-4 border-b border-border flex items-center justify-between flex-wrap gap-3">
           <div className="flex items-center gap-2 flex-wrap">
             {filtroBtn('todos', 'Todos', counts.total)}
             {filtroBtn('sem', 'Sem custo', counts.sem)}
@@ -228,7 +228,7 @@ export default function ProdutosCustoPage() {
 
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
-            <thead className="bg-gray-50 text-gray-600">
+            <thead className="bg-muted text-muted-foreground">
               <tr>
                 <th className="text-left px-2 py-3 w-8" />
                 <th className="text-left px-4 py-3">Anúncio</th>
@@ -242,7 +242,7 @@ export default function ProdutosCustoPage() {
             <tbody>
               {loading && items.length === 0 && (
                 <tr>
-                  <td colSpan={7} className="px-4 py-8 text-center text-gray-400 text-sm">
+                  <td colSpan={7} className="px-4 py-8 text-center text-muted-foreground text-sm">
                     Buscando anúncios no Mercado Livre...
                   </td>
                 </tr>
@@ -258,17 +258,17 @@ export default function ProdutosCustoPage() {
 
                 return (
                   <Fragment key={rowKey}>
-                    <tr className={`border-t ${semCusto ? 'bg-amber-50/50' : isGroup ? 'bg-gray-50' : ''}`}>
+                    <tr className={`border-t ${semCusto ? 'bg-amber-50/50' : isGroup ? 'bg-muted' : ''}`}>
                       <td className="px-2 py-3 text-center">
                         {hasVariations && (
                           <button
                             type="button"
                             onClick={() => toggleExpand(rowKey)}
-                            className="p-1 hover:bg-gray-100 rounded"
+                            className="p-1 hover:bg-muted rounded"
                           >
                             {isOpen
-                              ? <ChevronDown className="w-4 h-4 text-gray-500" />
-                              : <ChevronRight className="w-4 h-4 text-gray-500" />}
+                              ? <ChevronDown className="w-4 h-4 text-muted-foreground" />
+                              : <ChevronRight className="w-4 h-4 text-muted-foreground" />}
                           </button>
                         )}
                       </td>
@@ -284,7 +284,7 @@ export default function ProdutosCustoPage() {
                               {it.mlListingId}
                             </a>
                           ) : (
-                            <span className="text-gray-400 italic text-[10px]">catálogo</span>
+                            <span className="text-muted-foreground italic text-[10px]">catálogo</span>
                           )}
                           {semCusto && (
                             <span className="bg-amber-200 text-amber-900 text-[10px] font-bold px-1.5 py-0.5 rounded">
@@ -298,8 +298,8 @@ export default function ProdutosCustoPage() {
                           )}
                         </div>
                       </td>
-                      <td className="px-4 py-3 text-gray-700 font-medium">{it.title || '—'}</td>
-                      <td className="px-4 py-3 text-right text-gray-700">
+                      <td className="px-4 py-3 text-foreground font-medium">{it.title || '—'}</td>
+                      <td className="px-4 py-3 text-right text-foreground">
                         {isGroup ? '—' : formatCurrency(it.price)}
                       </td>
                       <td className="px-4 py-3 text-right">
@@ -311,11 +311,11 @@ export default function ProdutosCustoPage() {
                             className="w-28 border rounded px-2 py-1 text-right focus:outline-none focus:ring-2 focus:ring-primary-600"
                           />
                         ) : (
-                          <span className="text-gray-400">—</span>
+                          <span className="text-muted-foreground">—</span>
                         )}
                       </td>
                       <td className="px-4 py-3 text-right">
-                        {isGroup ? <span className="text-gray-400">—</span> : <LucroCell value={lucro} />}
+                        {isGroup ? <span className="text-muted-foreground">—</span> : <LucroCell value={lucro} />}
                       </td>
                       <td className="px-4 py-3 text-right">
                         {!isGroup && canWrite && (
@@ -332,13 +332,13 @@ export default function ProdutosCustoPage() {
 
                     {isOpen && hasVariations && (
                       <tr>
-                        <td colSpan={7} className="bg-gray-50/50 px-0 py-0">
+                        <td colSpan={7} className="bg-muted/50 px-0 py-0">
                           <div className="px-6 py-3">
-                            <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
+                            <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">
                               Variações ({it.variations.length})
                             </div>
                             <table className="w-full text-sm">
-                              <thead className="text-gray-500 text-xs">
+                              <thead className="text-muted-foreground text-xs">
                                 <tr>
                                   <th className="text-left px-3 py-2">Variação</th>
                                   <th className="text-right px-3 py-2">Valor Bruto</th>
@@ -358,14 +358,14 @@ export default function ProdutosCustoPage() {
                                   return (
                                     <tr
                                       key={k}
-                                      className={`border-t border-gray-200 ${semV ? 'bg-amber-50/30' : ''}`}
+                                      className={`border-t border-border ${semV ? 'bg-amber-50/30' : ''}`}
                                     >
                                       <td className="px-3 py-2">
                                         <span className="inline-block bg-primary-50 text-primary-700 border border-primary-100 rounded px-2 py-0.5 text-xs">
                                           {label}
                                         </span>
                                       </td>
-                                      <td className="px-3 py-2 text-right text-gray-700">{formatCurrency(v.price)}</td>
+                                      <td className="px-3 py-2 text-right text-foreground">{formatCurrency(v.price)}</td>
                                       <td className="px-3 py-2 text-right">
                                         {canWrite ? (
                                           <CurrencyInput

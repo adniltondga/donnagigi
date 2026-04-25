@@ -12,53 +12,53 @@ type Tone = "emerald" | "sky" | "amber" | "rose" | "fuchsia" | "primary" | "gray
 
 const TONES: Record<Tone, { bg: string; border: string; iconBg: string; valueColor: string; labelColor: string }> = {
   emerald: {
-    bg: "bg-white",
-    border: "border-gray-200",
-    iconBg: "bg-emerald-100 text-emerald-700",
-    valueColor: "text-gray-900",
-    labelColor: "text-emerald-700",
+    bg: "bg-card",
+    border: "border-border",
+    iconBg: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300",
+    valueColor: "text-foreground",
+    labelColor: "text-emerald-700 dark:text-emerald-400",
   },
   sky: {
-    bg: "bg-gradient-to-br from-sky-50 to-white",
-    border: "border-sky-200",
-    iconBg: "bg-sky-100 text-sky-700",
-    valueColor: "text-gray-900",
-    labelColor: "text-sky-700",
+    bg: "bg-gradient-to-br from-sky-50 to-card dark:bg-none dark:bg-card",
+    border: "border-sky-200 dark:border-sky-900/50",
+    iconBg: "bg-sky-100 text-sky-700 dark:bg-sky-900/40 dark:text-sky-300",
+    valueColor: "text-foreground",
+    labelColor: "text-sky-700 dark:text-sky-400",
   },
   amber: {
-    bg: "bg-gradient-to-br from-amber-50 to-white",
-    border: "border-amber-200",
-    iconBg: "bg-amber-100 text-amber-700",
-    valueColor: "text-amber-700",
-    labelColor: "text-amber-800",
+    bg: "bg-gradient-to-br from-amber-50 to-card dark:bg-none dark:bg-card",
+    border: "border-amber-200 dark:border-amber-900/50",
+    iconBg: "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300",
+    valueColor: "text-amber-700 dark:text-amber-300",
+    labelColor: "text-amber-800 dark:text-amber-400",
   },
   rose: {
-    bg: "bg-gradient-to-br from-rose-50 to-white",
-    border: "border-rose-200",
-    iconBg: "bg-rose-100 text-rose-700",
-    valueColor: "text-rose-700",
-    labelColor: "text-rose-800",
+    bg: "bg-gradient-to-br from-rose-50 to-card dark:bg-none dark:bg-card",
+    border: "border-rose-200 dark:border-rose-900/50",
+    iconBg: "bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-300",
+    valueColor: "text-rose-700 dark:text-rose-300",
+    labelColor: "text-rose-800 dark:text-rose-400",
   },
   fuchsia: {
-    bg: "bg-gradient-to-br from-fuchsia-50 to-white",
-    border: "border-fuchsia-200",
-    iconBg: "bg-fuchsia-100 text-fuchsia-700",
-    valueColor: "text-gray-900",
-    labelColor: "text-fuchsia-700",
+    bg: "bg-gradient-to-br from-fuchsia-50 to-card dark:bg-none dark:bg-card",
+    border: "border-fuchsia-200 dark:border-fuchsia-900/50",
+    iconBg: "bg-fuchsia-100 text-fuchsia-700 dark:bg-fuchsia-900/40 dark:text-fuchsia-300",
+    valueColor: "text-foreground",
+    labelColor: "text-fuchsia-700 dark:text-fuchsia-400",
   },
   primary: {
-    bg: "bg-gradient-to-br from-primary-50 to-white",
-    border: "border-primary-200",
-    iconBg: "bg-primary-100 text-primary-700",
-    valueColor: "text-gray-900",
-    labelColor: "text-primary-700",
+    bg: "bg-gradient-to-br from-primary-50 to-card dark:bg-none dark:bg-card",
+    border: "border-primary-200 dark:border-primary-900/50",
+    iconBg: "bg-primary-100 text-primary-700 dark:bg-primary-900/40 dark:text-primary-300",
+    valueColor: "text-foreground",
+    labelColor: "text-primary-700 dark:text-primary-400",
   },
   gray: {
-    bg: "bg-white",
-    border: "border-gray-200",
-    iconBg: "bg-gray-100 text-gray-600",
-    valueColor: "text-gray-900",
-    labelColor: "text-gray-600",
+    bg: "bg-card",
+    border: "border-border",
+    iconBg: "bg-muted text-muted-foreground",
+    valueColor: "text-foreground",
+    labelColor: "text-muted-foreground",
   },
 }
 
@@ -118,14 +118,14 @@ export function SummaryCard({
                 {displayValue}
               </p>
               {(sub || tooltip) && (
-                <div className="text-xs text-gray-600 mt-1 flex items-center gap-1.5">
+                <div className="text-xs text-muted-foreground mt-1 flex items-center gap-1.5">
                   {sub && <span>{sub}</span>}
                   {tooltip && (
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <button
                           type="button"
-                          className="text-gray-400 hover:text-gray-600 shrink-0"
+                          className="text-muted-foreground/70 hover:text-foreground shrink-0"
                           aria-label="Detalhes"
                         >
                           <Info className="w-3.5 h-3.5" />

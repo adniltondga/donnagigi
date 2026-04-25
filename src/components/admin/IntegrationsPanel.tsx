@@ -167,7 +167,7 @@ function IntegrationCard({
           </div>
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-1 flex-wrap">
-              <h3 className="text-base font-semibold text-gray-900 group-hover:text-primary-600 transition">
+              <h3 className="text-base font-semibold text-foreground group-hover:text-primary-600 transition">
                 {title}
               </h3>
               {loading ? (
@@ -188,9 +188,9 @@ function IntegrationCard({
                 </Badge>
               )}
             </div>
-            <p className="text-sm text-gray-600 leading-relaxed line-clamp-2">{subtitle}</p>
+            <p className="text-sm text-muted-foreground leading-relaxed line-clamp-2">{subtitle}</p>
             {status?.configured && status.identifier && (
-              <p className="text-xs text-gray-400 mt-2 font-mono">
+              <p className="text-xs text-muted-foreground mt-2 font-mono">
                 {identifierLabel}: {status.identifier}
               </p>
             )}
@@ -294,7 +294,7 @@ function MercadoLivreDialog({
         ) : (
           <div className="space-y-6">
             <MLCredentialsSection data={creds} onChanged={load} onFlash={onFlash} />
-            <div className="border-t border-gray-100" />
+            <div className="border-t border-border" />
             <MLConnectionSection
               integration={integration}
               webhookUrl={creds?.webhookUrl}
@@ -371,8 +371,8 @@ function MLCredentialsSection({
     <section className="space-y-3">
       <div className="flex items-center justify-between">
         <div>
-          <h4 className="text-sm font-semibold text-gray-900">App Mercado Livre</h4>
-          <p className="text-xs text-gray-500">Credenciais do app registrado no ML DevCenter.</p>
+          <h4 className="text-sm font-semibold text-foreground">App Mercado Livre</h4>
+          <p className="text-xs text-muted-foreground">Credenciais do app registrado no ML DevCenter.</p>
         </div>
         {!editing && data?.configured && (
           <Badge variant={hasOwn ? "default" : "secondary"} className="text-xs">
@@ -385,7 +385,7 @@ function MLCredentialsSection({
         <form onSubmit={save} className="space-y-3">
           <Field label="Client ID" value={clientId} onChange={setClientId} placeholder="1234567890123456" mono />
           <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">Client Secret</label>
+            <label className="block text-xs font-medium text-foreground mb-1">Client Secret</label>
             <div className="relative">
               <input
                 type={showSecret ? "text" : "password"}
@@ -393,12 +393,12 @@ function MLCredentialsSection({
                 onChange={(e) => setClientSecret(e.target.value)}
                 required
                 placeholder="••••••••••••••••"
-                className="w-full px-3 py-2 pr-10 border border-gray-300 rounded-lg font-mono text-sm focus:ring-2 focus:ring-primary-600 outline-none"
+                className="w-full px-3 py-2 pr-10 border border-border rounded-lg font-mono text-sm focus:ring-2 focus:ring-primary-600 outline-none"
               />
               <button
                 type="button"
                 onClick={() => setShowSecret((v) => !v)}
-                className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 p-1"
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-muted-foreground p-1"
               >
                 {showSecret ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
               </button>
@@ -411,7 +411,7 @@ function MLCredentialsSection({
             placeholder={data?.redirectUri || "https://seudominio/api/ml/oauth/callback"}
             mono
           />
-          <p className="text-xs text-gray-500">
+          <p className="text-xs text-muted-foreground">
             Esta URI precisa estar cadastrada no app do ML DevCenter. Padrão:{" "}
             <code className="font-mono">{data?.redirectUri || "—"}</code>
           </p>
@@ -429,17 +429,17 @@ function MLCredentialsSection({
         <div className="space-y-3">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
             <div>
-              <div className="text-xs text-gray-500 uppercase tracking-wide">Client ID</div>
-              <div className="font-mono text-gray-900 mt-1">{data.clientId}</div>
+              <div className="text-xs text-muted-foreground uppercase tracking-wide">Client ID</div>
+              <div className="font-mono text-foreground mt-1">{data.clientId}</div>
             </div>
             <div>
-              <div className="text-xs text-gray-500 uppercase tracking-wide">Secret</div>
-              <div className="font-mono text-gray-900 mt-1">{data.clientSecretMasked}</div>
+              <div className="text-xs text-muted-foreground uppercase tracking-wide">Secret</div>
+              <div className="font-mono text-foreground mt-1">{data.clientSecretMasked}</div>
             </div>
           </div>
           <div>
-            <div className="text-xs text-gray-500 mb-1">Redirect URI (cadastre no DevCenter)</div>
-            <div className="flex items-center gap-2 bg-gray-50 px-3 py-2 rounded-lg border border-gray-200">
+            <div className="text-xs text-muted-foreground mb-1">Redirect URI (cadastre no DevCenter)</div>
+            <div className="flex items-center gap-2 bg-muted px-3 py-2 rounded-lg border border-border">
               <code className="flex-1 text-xs font-mono break-all">{data.redirectUri}</code>
               <button
                 onClick={() => copy(data.redirectUri)}
@@ -460,7 +460,7 @@ function MLCredentialsSection({
         </div>
       ) : (
         <div className="space-y-3">
-          <div className="rounded-lg border border-gray-200 bg-gray-50 p-3 text-xs text-gray-600">
+          <div className="rounded-lg border border-border bg-muted p-3 text-xs text-muted-foreground">
             {data?.configured
               ? "Usando o app padrão do agLivre. Cadastre seu app pra ter cotas isoladas."
               : "Nenhum app cadastrado. Registre no ML DevCenter e cole as credenciais."}
@@ -514,8 +514,8 @@ function MLConnectionSection({
   if (!integration?.configured) {
     return (
       <section className="space-y-3">
-        <h4 className="text-sm font-semibold text-gray-900">Conectar conta</h4>
-        <p className="text-xs text-gray-500">
+        <h4 className="text-sm font-semibold text-foreground">Conectar conta</h4>
+        <p className="text-xs text-muted-foreground">
           Autorize o agLivre a acessar sua conta ML. Você será redirecionado pro site do Mercado Livre.
         </p>
         <Button className="w-full" onClick={() => (window.location.href = "/api/ml/oauth/login")}>
@@ -529,17 +529,17 @@ function MLConnectionSection({
   const expired = integration.isExpired
   return (
     <section className="space-y-3">
-      <h4 className="text-sm font-semibold text-gray-900">Conexão ativa</h4>
+      <h4 className="text-sm font-semibold text-foreground">Conexão ativa</h4>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
         <div>
-          <div className="text-xs text-gray-500 uppercase tracking-wide">Seller ID</div>
-          <div className="font-mono font-semibold text-gray-900 mt-1">{integration.sellerID}</div>
+          <div className="text-xs text-muted-foreground uppercase tracking-wide">Seller ID</div>
+          <div className="font-mono font-semibold text-foreground mt-1">{integration.sellerID}</div>
         </div>
         <div>
-          <div className="text-xs text-gray-500 uppercase tracking-wide">
+          <div className="text-xs text-muted-foreground uppercase tracking-wide">
             {expired ? "Expirou em" : "Válido até"}
           </div>
-          <div className="font-medium text-gray-900 mt-1">
+          <div className="font-medium text-foreground mt-1">
             {integration.expiresAt ? new Date(integration.expiresAt).toLocaleString("pt-BR") : "—"}
           </div>
         </div>
@@ -702,7 +702,7 @@ function MercadoPagoDialog({
         ) : (
           <div className="space-y-6">
             <MPCredentialsSection data={creds} onChanged={load} onFlash={onFlash} />
-            <div className="border-t border-gray-100" />
+            <div className="border-t border-border" />
             <MPConnectionSection
               integration={integration}
               webhookUrl={creds?.webhookUrl}
@@ -778,8 +778,8 @@ function MPCredentialsSection({
     <section className="space-y-3">
       <div className="flex items-center justify-between">
         <div>
-          <h4 className="text-sm font-semibold text-gray-900">App Mercado Pago</h4>
-          <p className="text-xs text-gray-500">Credenciais do app registrado no MP DevCenter.</p>
+          <h4 className="text-sm font-semibold text-foreground">App Mercado Pago</h4>
+          <p className="text-xs text-muted-foreground">Credenciais do app registrado no MP DevCenter.</p>
         </div>
         {!editing && data?.configured && (
           <Badge variant={hasOwn ? "default" : "secondary"} className="text-xs">
@@ -792,7 +792,7 @@ function MPCredentialsSection({
         <form onSubmit={save} className="space-y-3">
           <Field label="APP ID / Client ID" value={clientId} onChange={setClientId} placeholder="1234567890123456" mono />
           <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">Secret Key / Client Secret</label>
+            <label className="block text-xs font-medium text-foreground mb-1">Secret Key / Client Secret</label>
             <div className="relative">
               <input
                 type={showSecret ? "text" : "password"}
@@ -800,12 +800,12 @@ function MPCredentialsSection({
                 onChange={(e) => setClientSecret(e.target.value)}
                 required
                 placeholder="••••••••••••••••"
-                className="w-full px-3 py-2 pr-10 border border-gray-300 rounded-lg font-mono text-sm focus:ring-2 focus:ring-primary-600 outline-none"
+                className="w-full px-3 py-2 pr-10 border border-border rounded-lg font-mono text-sm focus:ring-2 focus:ring-primary-600 outline-none"
               />
               <button
                 type="button"
                 onClick={() => setShowSecret((v) => !v)}
-                className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 p-1"
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-muted-foreground p-1"
               >
                 {showSecret ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
               </button>
@@ -818,7 +818,7 @@ function MPCredentialsSection({
             placeholder={data?.redirectUri || "https://seudominio/api/mp/oauth/callback"}
             mono
           />
-          <p className="text-xs text-gray-500">
+          <p className="text-xs text-muted-foreground">
             Cadastre essa URI no seu app MP. Padrão:{" "}
             <code className="font-mono">{data?.redirectUri || "—"}</code>
           </p>
@@ -836,17 +836,17 @@ function MPCredentialsSection({
         <div className="space-y-3">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
             <div>
-              <div className="text-xs text-gray-500 uppercase tracking-wide">APP ID</div>
-              <div className="font-mono text-gray-900 mt-1">{data.clientId}</div>
+              <div className="text-xs text-muted-foreground uppercase tracking-wide">APP ID</div>
+              <div className="font-mono text-foreground mt-1">{data.clientId}</div>
             </div>
             <div>
-              <div className="text-xs text-gray-500 uppercase tracking-wide">Secret</div>
-              <div className="font-mono text-gray-900 mt-1">{data.clientSecretMasked}</div>
+              <div className="text-xs text-muted-foreground uppercase tracking-wide">Secret</div>
+              <div className="font-mono text-foreground mt-1">{data.clientSecretMasked}</div>
             </div>
           </div>
           <div>
-            <div className="text-xs text-gray-500 mb-1">Redirect URI (cadastre no MP)</div>
-            <div className="flex items-center gap-2 bg-gray-50 px-3 py-2 rounded-lg border border-gray-200">
+            <div className="text-xs text-muted-foreground mb-1">Redirect URI (cadastre no MP)</div>
+            <div className="flex items-center gap-2 bg-muted px-3 py-2 rounded-lg border border-border">
               <code className="flex-1 text-xs font-mono break-all">{data.redirectUri}</code>
               <button
                 onClick={() => copy(data.redirectUri)}
@@ -867,7 +867,7 @@ function MPCredentialsSection({
         </div>
       ) : (
         <div className="space-y-3">
-          <div className="rounded-lg border border-gray-200 bg-gray-50 p-3 text-xs text-gray-600">
+          <div className="rounded-lg border border-border bg-muted p-3 text-xs text-muted-foreground">
             Nenhum app cadastrado. Cadastre APP ID + Secret Key do seu app MP.
           </div>
           <Button size="sm" onClick={startEdit}>
@@ -891,8 +891,8 @@ function MPConnectionSection({
   if (!integration?.configured) {
     return (
       <section className="space-y-3">
-        <h4 className="text-sm font-semibold text-gray-900">Conectar conta</h4>
-        <p className="text-xs text-gray-500">
+        <h4 className="text-sm font-semibold text-foreground">Conectar conta</h4>
+        <p className="text-xs text-muted-foreground">
           Autorize o agLivre a acessar sua conta MP. Você será redirecionado pro site do Mercado Pago.
         </p>
         <Button className="w-full" onClick={() => (window.location.href = "/api/mp/oauth/login")}>
@@ -905,17 +905,17 @@ function MPConnectionSection({
 
   return (
     <section className="space-y-3">
-      <h4 className="text-sm font-semibold text-gray-900">Conexão ativa</h4>
+      <h4 className="text-sm font-semibold text-foreground">Conexão ativa</h4>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
         <div>
-          <div className="text-xs text-gray-500 uppercase tracking-wide">User ID MP</div>
-          <div className="font-mono font-semibold text-gray-900 mt-1">{integration.mpUserId}</div>
+          <div className="text-xs text-muted-foreground uppercase tracking-wide">User ID MP</div>
+          <div className="font-mono font-semibold text-foreground mt-1">{integration.mpUserId}</div>
         </div>
         <div>
-          <div className="text-xs text-gray-500 uppercase tracking-wide">
+          <div className="text-xs text-muted-foreground uppercase tracking-wide">
             {integration.isExpired ? "Expirou em" : "Válido até"}
           </div>
-          <div className="font-medium text-gray-900 mt-1">
+          <div className="font-medium text-foreground mt-1">
             {integration.expiresAt ? new Date(integration.expiresAt).toLocaleString("pt-BR") : "—"}
           </div>
         </div>
@@ -969,10 +969,10 @@ function WebhookHint({
     }
   }
   return (
-    <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 text-xs text-gray-700 space-y-2">
-      <p className="font-semibold text-gray-900">📡 {label}</p>
+    <div className="bg-muted border border-border rounded-lg p-3 text-xs text-foreground space-y-2">
+      <p className="font-semibold text-foreground">📡 {label}</p>
       <div className="flex items-center gap-2">
-        <code className="flex-1 bg-white border border-gray-200 rounded px-2 py-1 text-[11px] font-mono break-all">
+        <code className="flex-1 bg-card border border-border rounded px-2 py-1 text-[11px] font-mono break-all">
           {url}
         </code>
         <button
@@ -982,7 +982,7 @@ function WebhookHint({
           {copied ? "Copiado" : "Copiar"}
         </button>
       </div>
-      <p className="text-[11px] text-gray-600 leading-relaxed">{instructions}</p>
+      <p className="text-[11px] text-muted-foreground leading-relaxed">{instructions}</p>
     </div>
   )
 }
@@ -1006,13 +1006,13 @@ function Field({
 }) {
   return (
     <div>
-      <label className="block text-xs font-medium text-gray-700 mb-1">{label}</label>
+      <label className="block text-xs font-medium text-foreground mb-1">{label}</label>
       <input
         type="text"
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
-        className={`w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-600 outline-none ${mono ? "font-mono" : ""}`}
+        className={`w-full px-3 py-2 border border-border rounded-lg text-sm focus:ring-2 focus:ring-primary-600 outline-none ${mono ? "font-mono" : ""}`}
       />
     </div>
   )
@@ -1020,7 +1020,7 @@ function Field({
 
 function LoadingBox() {
   return (
-    <div className="flex items-center justify-center py-8 text-gray-500">
+    <div className="flex items-center justify-center py-8 text-muted-foreground">
       <Loader className="w-5 h-5 animate-spin mr-2" />
       Carregando...
     </div>

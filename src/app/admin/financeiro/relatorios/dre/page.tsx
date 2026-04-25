@@ -65,7 +65,7 @@ export default function DrePage() {
         }
         actions={
           <div className="flex items-center gap-2">
-            <div className="flex items-center gap-1 bg-gray-100 rounded-lg p-0.5">
+            <div className="flex items-center gap-1 bg-muted rounded-lg p-0.5">
               {([
                 { key: "competencia", label: "Competência" },
                 { key: "caixa", label: "Caixa" },
@@ -76,7 +76,7 @@ export default function DrePage() {
                     key={opt.key}
                     onClick={() => setBasis(opt.key)}
                     className={`px-3 py-1.5 text-xs font-medium rounded-md transition ${
-                      active ? "bg-white text-gray-900 shadow-sm" : "text-gray-600 hover:text-gray-900"
+                      active ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
                     }`}
                   >
                     {opt.label}
@@ -88,7 +88,7 @@ export default function DrePage() {
               type="month"
               value={month}
               onChange={(e) => setMonth(e.target.value)}
-              className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary-600 outline-none"
+              className="border border-border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary-600 outline-none"
             />
           </div>
         }
@@ -96,7 +96,7 @@ export default function DrePage() {
 
       {loading || !data ? (
         <Card>
-          <CardContent className="flex items-center justify-center py-12 text-gray-500">
+          <CardContent className="flex items-center justify-center py-12 text-muted-foreground">
             <Loader className="w-5 h-5 animate-spin mr-2" />
             Calculando...
           </CardContent>
@@ -134,7 +134,7 @@ export default function DrePage() {
             </CardContent>
           </Card>
 
-          <p className="text-xs text-gray-500">
+          <p className="text-xs text-muted-foreground">
             Comparativo vs <strong>{formatMonthLabel(data.previousMonth)}</strong>. Despesas operacionais
             agrupadas pela categoria-raiz cadastrada na aba Categorias do Financeiro.
           </p>
@@ -166,14 +166,14 @@ function KpiCard({
   return (
     <Card className={highlight ? "border-primary-200 bg-primary-50/30" : ""}>
       <CardContent className="pt-5">
-        <p className="text-sm text-gray-500 mb-1">{label}</p>
+        <p className="text-sm text-muted-foreground mb-1">{label}</p>
         <p
           className={`text-2xl font-bold ${
             highlight
               ? current >= 0
                 ? "text-emerald-600"
                 : "text-red-600"
-              : "text-gray-900"
+              : "text-foreground"
           }`}
         >
           {value}
@@ -181,8 +181,8 @@ function KpiCard({
         <div className="flex items-center gap-1 text-xs mt-1">
           {positive && <TrendingUp className="w-3.5 h-3.5 text-emerald-600" />}
           {negative && <TrendingDown className="w-3.5 h-3.5 text-red-600" />}
-          {!positive && !negative && <Minus className="w-3.5 h-3.5 text-gray-400" />}
-          <span className={positive ? "text-emerald-600" : negative ? "text-red-600" : "text-gray-500"}>
+          {!positive && !negative && <Minus className="w-3.5 h-3.5 text-muted-foreground" />}
+          <span className={positive ? "text-emerald-600" : negative ? "text-red-600" : "text-muted-foreground"}>
             {deltaPct == null
               ? "—"
               : `${positive ? "+" : ""}${deltaPct.toFixed(1)}% vs mês anterior`}
@@ -215,7 +215,7 @@ function DreTable({ current, previous }: { current: DreResult; previous: DreResu
   return (
     <div className="overflow-x-auto">
       <table className="w-full text-sm">
-        <thead className="bg-gray-50 text-xs uppercase tracking-wide text-gray-500">
+        <thead className="bg-muted text-xs uppercase tracking-wide text-muted-foreground">
           <tr>
             <th className="px-4 py-3 text-left">Conta</th>
             <th className="px-4 py-3 text-right">Mês atual</th>
@@ -236,24 +236,24 @@ function DreTable({ current, previous }: { current: DreResult; previous: DreResu
             return (
               <tr
                 key={i}
-                className={row.emphasis ? "bg-gray-50 font-semibold border-t border-b border-gray-200" : ""}
+                className={row.emphasis ? "bg-muted font-semibold border-t border-b border-border" : ""}
               >
                 <td
-                  className={`px-4 py-2 ${row.indent ? "pl-10" : ""} ${row.emphasis ? "text-gray-900" : "text-gray-700"}`}
+                  className={`px-4 py-2 ${row.indent ? "pl-10" : ""} ${row.emphasis ? "text-foreground" : "text-foreground"}`}
                 >
                   {row.label}
                 </td>
                 <td
                   className={`px-4 py-2 text-right whitespace-nowrap ${
-                    row.sign === "-" ? "text-rose-600" : row.emphasis ? "text-gray-900" : "text-gray-800"
+                    row.sign === "-" ? "text-rose-600" : row.emphasis ? "text-foreground" : "text-foreground"
                   }`}
                 >
                   {formatCurrency(row.value)}
                 </td>
-                <td className="px-4 py-2 text-right text-xs text-gray-500">
+                <td className="px-4 py-2 text-right text-xs text-muted-foreground">
                   {current.receitaBruta > 0 ? `${pct.toFixed(1)}%` : "—"}
                 </td>
-                <td className="px-4 py-2 text-right text-xs text-gray-500">
+                <td className="px-4 py-2 text-right text-xs text-muted-foreground">
                   {formatCurrency(row.previous)}
                 </td>
               </tr>
@@ -262,13 +262,13 @@ function DreTable({ current, previous }: { current: DreResult; previous: DreResu
 
           {/* Despesas por categoria, agrupadas */}
           <tr>
-            <td colSpan={4} className="px-4 pt-4 pb-1 text-xs font-semibold text-gray-500 uppercase tracking-wide">
+            <td colSpan={4} className="px-4 pt-4 pb-1 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
               Despesas operacionais (pagas no mês)
             </td>
           </tr>
           {current.despesasPorCategoria.length === 0 ? (
             <tr>
-              <td colSpan={4} className="px-4 py-2 text-sm text-gray-400 italic pl-10">
+              <td colSpan={4} className="px-4 py-2 text-sm text-muted-foreground italic pl-10">
                 Nenhuma despesa no mês
               </td>
             </tr>
@@ -278,29 +278,29 @@ function DreTable({ current, previous }: { current: DreResult; previous: DreResu
               const prevCat = previous.despesasPorCategoria.find((p) => p.name === cat.name)
               return (
                 <tr key={cat.name}>
-                  <td className="px-4 py-2 pl-10 text-gray-700">(−) {cat.name}</td>
+                  <td className="px-4 py-2 pl-10 text-foreground">(−) {cat.name}</td>
                   <td className="px-4 py-2 text-right text-rose-600 whitespace-nowrap">{formatCurrency(cat.total)}</td>
-                  <td className="px-4 py-2 text-right text-xs text-gray-500">
+                  <td className="px-4 py-2 text-right text-xs text-muted-foreground">
                     {current.receitaBruta > 0 ? `${pct.toFixed(1)}%` : "—"}
                   </td>
-                  <td className="px-4 py-2 text-right text-xs text-gray-500">
+                  <td className="px-4 py-2 text-right text-xs text-muted-foreground">
                     {prevCat ? formatCurrency(prevCat.total) : "—"}
                   </td>
                 </tr>
               )
             })
           )}
-          <tr className="bg-gray-50 font-semibold border-t border-b border-gray-200">
+          <tr className="bg-muted font-semibold border-t border-b border-border">
             <td className="px-4 py-2">= Total despesas</td>
             <td className="px-4 py-2 text-right text-rose-600 whitespace-nowrap">
               {formatCurrency(current.totalDespesas)}
             </td>
-            <td className="px-4 py-2 text-right text-xs text-gray-500">
+            <td className="px-4 py-2 text-right text-xs text-muted-foreground">
               {current.receitaBruta > 0
                 ? `${((current.totalDespesas / current.receitaBruta) * 100).toFixed(1)}%`
                 : "—"}
             </td>
-            <td className="px-4 py-2 text-right text-xs text-gray-500">
+            <td className="px-4 py-2 text-right text-xs text-muted-foreground">
               {formatCurrency(previous.totalDespesas)}
             </td>
           </tr>
@@ -314,7 +314,7 @@ function DreTable({ current, previous }: { current: DreResult; previous: DreResu
               current.lucroLiquido >= 0 ? "bg-emerald-50 border-emerald-200" : "bg-rose-50 border-rose-200"
             }`}
           >
-            <td className="px-4 py-3 text-gray-900">= Lucro Líquido</td>
+            <td className="px-4 py-3 text-foreground">= Lucro Líquido</td>
             <td
               className={`px-4 py-3 text-right whitespace-nowrap ${
                 current.lucroLiquido >= 0 ? "text-emerald-600" : "text-red-600"
@@ -322,10 +322,10 @@ function DreTable({ current, previous }: { current: DreResult; previous: DreResu
             >
               {formatCurrency(current.lucroLiquido)}
             </td>
-            <td className="px-4 py-3 text-right text-xs text-gray-600">
+            <td className="px-4 py-3 text-right text-xs text-muted-foreground">
               {current.margemLiquidaPct.toFixed(1)}%
             </td>
-            <td className="px-4 py-3 text-right text-xs text-gray-600">
+            <td className="px-4 py-3 text-right text-xs text-muted-foreground">
               {formatCurrency(previous.lucroLiquido)}
             </td>
           </tr>

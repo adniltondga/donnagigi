@@ -248,7 +248,7 @@ export function BillsTab({ type }: { type: BillType }) {
 
       <div className="flex gap-2 items-end">
         <div>
-          <label className="block text-xs font-medium text-gray-500 mb-1">Status</label>
+          <label className="block text-xs font-medium text-muted-foreground mb-1">Status</label>
           <select
             value={statusFilter}
             onChange={(e) => {
@@ -267,7 +267,7 @@ export function BillsTab({ type }: { type: BillType }) {
 
       <Card className="overflow-hidden">
         {loading ? (
-          <div className="flex items-center justify-center py-12 text-gray-500">
+          <div className="flex items-center justify-center py-12 text-muted-foreground">
             <Loader className="w-5 h-5 animate-spin mr-2" />
             Carregando...
           </div>
@@ -298,7 +298,7 @@ export function BillsTab({ type }: { type: BillType }) {
                   <TableRow key={b.id}>
                     <TableCell className="text-sm whitespace-nowrap">{formatDate(b.dueDate)}</TableCell>
                     <TableCell className="text-sm">{b.description}</TableCell>
-                    <TableCell className="text-sm text-gray-600">
+                    <TableCell className="text-sm text-muted-foreground">
                       {b.billCategory ? (
                         <span className="inline-block text-xs text-primary-700 bg-primary-50 border border-primary-100 rounded px-1.5 py-0.5">
                           {catLabel}
@@ -380,7 +380,7 @@ export function BillsTab({ type }: { type: BillType }) {
           <Button onClick={() => setPage(Math.max(1, page - 1))} disabled={page === 1} variant="outline" size="sm">
             ← Anterior
           </Button>
-          <span className="px-4 py-2 text-gray-700">
+          <span className="px-4 py-2 text-foreground">
             Página {page} de {pages} · {total} conta(s)
           </span>
           <Button
@@ -489,13 +489,13 @@ function BillForm({
       </CardHeader>
       <CardContent>
         {categories.length === 0 ? (
-          <div className="text-sm text-gray-500">
+          <div className="text-sm text-muted-foreground">
             Nenhuma categoria cadastrada. Vá em <strong>Financeiro &gt; Categorias</strong> e crie uma primeiro.
           </div>
         ) : (
           <form onSubmit={submit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Categoria</label>
+              <label className="block text-sm font-medium text-foreground mb-1">Categoria</label>
               <select
                 value={rootId}
                 onChange={(e) => setRootId(e.target.value)}
@@ -512,14 +512,14 @@ function BillForm({
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Subcategoria <span className="text-gray-400 font-normal">(opcional)</span>
+              <label className="block text-sm font-medium text-foreground mb-1">
+                Subcategoria <span className="text-muted-foreground font-normal">(opcional)</span>
               </label>
               <select
                 value={subId}
                 onChange={(e) => setSubId(e.target.value)}
                 disabled={subs.length === 0}
-                className="w-full border rounded-lg px-3 py-2 disabled:bg-gray-50 disabled:text-gray-400"
+                className="w-full border rounded-lg px-3 py-2 disabled:bg-muted disabled:text-muted-foreground"
               >
                 <option value="">{subs.length === 0 ? 'Sem subcategorias' : 'Selecione...'}</option>
                 {subs.map((s) => (
@@ -531,7 +531,7 @@ function BillForm({
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Valor (R$)</label>
+              <label className="block text-sm font-medium text-foreground mb-1">Valor (R$)</label>
               <CurrencyInput
                 value={amount === '' ? 0 : parseFloat(amount)}
                 onChange={(v) => setAmount(v > 0 ? String(v) : '')}
@@ -542,7 +542,7 @@ function BillForm({
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Vencimento</label>
+              <label className="block text-sm font-medium text-foreground mb-1">Vencimento</label>
               <input
                 type="date"
                 value={dueDate}
@@ -554,7 +554,7 @@ function BillForm({
 
             {editing && (
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                <label className="block text-sm font-medium text-foreground mb-1">Status</label>
                 <select value={status} onChange={(e) => setStatus(e.target.value)} className="w-full border rounded-lg px-3 py-2">
                   <option value="pending">Pendente</option>
                   <option value="paid">{type === 'payable' ? 'Pago' : 'Recebido'}</option>
@@ -617,7 +617,7 @@ export function CategoriasTab() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-12 text-gray-500">
+      <div className="flex items-center justify-center py-12 text-muted-foreground">
         <Loader className="w-5 h-5 animate-spin mr-2" />
         Carregando categorias...
       </div>
@@ -793,7 +793,7 @@ function CategoryTree({
         )}
 
         {nodes.length === 0 ? (
-          <div className="text-sm text-gray-500 py-4 text-center">Sem categorias ainda.</div>
+          <div className="text-sm text-muted-foreground py-4 text-center">Sem categorias ainda.</div>
         ) : (
           <ul className="divide-y divide-gray-100">
             {nodes.map((root) => {
@@ -804,7 +804,7 @@ function CategoryTree({
                   <div className="flex items-center gap-2">
                     <button
                       onClick={() => toggle(root.id)}
-                      className="p-1 hover:bg-gray-100 rounded"
+                      className="p-1 hover:bg-muted rounded"
                       disabled={root.children.length === 0}
                     >
                       {root.children.length > 0 ? (
@@ -832,10 +832,10 @@ function CategoryTree({
                         className="flex-1 border rounded px-2 py-1 text-sm"
                       />
                     ) : (
-                      <span className="flex-1 font-medium text-gray-900">{root.name}</span>
+                      <span className="flex-1 font-medium text-foreground">{root.name}</span>
                     )}
 
-                    <span className="text-xs text-gray-400">
+                    <span className="text-xs text-muted-foreground">
                       {totalBills} conta{totalBills === 1 ? '' : 's'}
                     </span>
 
@@ -872,7 +872,7 @@ function CategoryTree({
                   </div>
 
                   {isExp && (
-                    <ul className="ml-8 mt-2 space-y-1 border-l border-gray-200 pl-4">
+                    <ul className="ml-8 mt-2 space-y-1 border-l border-border pl-4">
                       {root.children.map((sub) => (
                         <li key={sub.id} className="flex items-center gap-2 py-1">
                           {editingId === sub.id ? (
@@ -893,9 +893,9 @@ function CategoryTree({
                               className="flex-1 border rounded px-2 py-1 text-sm"
                             />
                           ) : (
-                            <span className="flex-1 text-sm text-gray-800">{sub.name}</span>
+                            <span className="flex-1 text-sm text-foreground">{sub.name}</span>
                           )}
-                          <span className="text-xs text-gray-400">
+                          <span className="text-xs text-muted-foreground">
                             {sub._count.bills} conta{sub._count.bills === 1 ? '' : 's'}
                           </span>
                           {canWrite && editingId !== sub.id && (

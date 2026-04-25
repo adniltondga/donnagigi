@@ -278,7 +278,7 @@ export default function VendasMLPage() {
           <button
             onClick={exportCSV}
             disabled={exporting || total === 0}
-            className="inline-flex items-center gap-2 border border-gray-300 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed text-gray-700 font-medium px-3 py-2 rounded-lg text-sm"
+            className="inline-flex items-center gap-2 border border-border hover:bg-accent disabled:opacity-50 disabled:cursor-not-allowed text-foreground font-medium px-3 py-2 rounded-lg text-sm"
             title="Baixa um CSV com as vendas do filtro atual (até 10.000 linhas)"
           >
             {exporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
@@ -353,7 +353,7 @@ export default function VendasMLPage() {
       <Card className="p-4 flex flex-wrap gap-4 items-end">
         <form onSubmit={onSearch} className="flex-1 min-w-[280px] flex gap-2 items-end">
           <div className="flex-1">
-            <label className="block text-sm font-medium text-gray-700 mb-1">Busca</label>
+            <label className="block text-sm font-medium text-foreground mb-1">Busca</label>
             <input
               type="text"
               placeholder="Descrição, MLB, order_id, pack_id, comprador…"
@@ -372,14 +372,14 @@ export default function VendasMLPage() {
             <button
               type="button"
               onClick={clearSearch}
-              className="bg-gray-200 hover:bg-gray-300 text-gray-700 px-3 py-2 rounded"
+              className="bg-gray-200 hover:bg-gray-300 text-foreground px-3 py-2 rounded"
             >
               Limpar
             </button>
           )}
         </form>
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
+          <label className="block text-sm font-medium text-foreground mb-1">Status</label>
           <select
             value={status}
             onChange={(e) => {
@@ -395,7 +395,7 @@ export default function VendasMLPage() {
         </div>
       </Card>
 
-      <div className="text-sm text-gray-600">
+      <div className="text-sm text-muted-foreground">
         {loading ? 'Carregando...' : `${total} venda${total === 1 ? '' : 's'} encontrada${total === 1 ? '' : 's'}`}
       </div>
 
@@ -422,34 +422,34 @@ export default function VendasMLPage() {
                   <TableRow
                     key={b.id}
                     onClick={() => setNotesModal({ isOpen: true, bill: b })}
-                    className="cursor-pointer hover:bg-gray-50 transition"
+                    className="cursor-pointer hover:bg-accent transition"
                   >
                     <TableCell className="text-sm whitespace-nowrap">
                       {b.paidDate ? (
                         <div>
                           <div>{formatDate(b.paidDate)}</div>
-                          <div className="text-xs text-gray-500">{formatTime(b.paidDate)}</div>
+                          <div className="text-xs text-muted-foreground">{formatTime(b.paidDate)}</div>
                         </div>
                       ) : '—'}
                     </TableCell>
-                    <TableCell className="text-sm whitespace-nowrap text-gray-600">
+                    <TableCell className="text-sm whitespace-nowrap text-muted-foreground">
                       {formatDate(b.dueDate)}
                     </TableCell>
                     <TableCell className="text-sm">
                       <ProductLabel description={b.description} quantity={b.quantity} />
                       {b.mlPackId && (
-                        <div className="text-xs text-gray-500 font-mono mt-0.5">Pack #{b.mlPackId}</div>
+                        <div className="text-xs text-muted-foreground font-mono mt-0.5">Pack #{b.mlPackId}</div>
                       )}
                     </TableCell>
                     <TableCell className="text-sm font-semibold text-right whitespace-nowrap">
                       <div className="flex items-center gap-2 justify-end">
                         <span>{formatCurrency(s.bruto)}</span>
-                        <Info size={14} className="text-gray-400 shrink-0" />
+                        <Info size={14} className="text-muted-foreground shrink-0" />
                       </div>
                     </TableCell>
                     <TableCell
                       className={`text-sm font-semibold text-right whitespace-nowrap ${
-                        s.lucro > 0 ? 'text-emerald-600' : s.lucro < 0 ? 'text-red-600' : 'text-gray-400'
+                        s.lucro > 0 ? 'text-emerald-600' : s.lucro < 0 ? 'text-red-600' : 'text-muted-foreground'
                       }`}
                     >
                       {formatCurrency(s.lucro)}
@@ -483,17 +483,17 @@ export default function VendasMLPage() {
           <button
             onClick={() => setPage(Math.max(1, page - 1))}
             disabled={page === 1}
-            className="px-4 py-2 border rounded disabled:opacity-50 hover:bg-gray-50"
+            className="px-4 py-2 border rounded disabled:opacity-50 hover:bg-accent"
           >
             ← Anterior
           </button>
-          <span className="px-4 py-2 text-gray-700">
+          <span className="px-4 py-2 text-foreground">
             Página {page} de {pages}
           </span>
           <button
             onClick={() => setPage(Math.min(pages, page + 1))}
             disabled={page === pages}
-            className="px-4 py-2 border rounded disabled:opacity-50 hover:bg-gray-50"
+            className="px-4 py-2 border rounded disabled:opacity-50 hover:bg-accent"
           >
             Próxima →
           </button>
@@ -509,14 +509,14 @@ export default function VendasMLPage() {
           onClick={() => setNotesModal({ isOpen: false, bill: null })}
         >
           <div
-            className="bg-white rounded-lg shadow-xl max-w-2xl w-full p-6 space-y-4"
+            className="bg-card rounded-lg shadow-xl max-w-2xl w-full p-6 space-y-4"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between">
-              <h2 className="text-xl font-bold text-gray-900">📝 Detalhes da venda</h2>
+              <h2 className="text-xl font-bold text-foreground">📝 Detalhes da venda</h2>
               <button
                 onClick={() => setNotesModal({ isOpen: false, bill: null })}
-                className="text-gray-500 hover:text-gray-700 text-2xl leading-none"
+                className="text-muted-foreground hover:text-foreground text-2xl leading-none"
                 aria-label="Fechar"
               >
                 ×
@@ -535,12 +535,12 @@ export default function VendasMLPage() {
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
                     {orderId && (
                       <div>
-                        <div className="text-xs uppercase tracking-wide text-gray-500 font-medium">Pedido</div>
+                        <div className="text-xs uppercase tracking-wide text-muted-foreground font-medium">Pedido</div>
                         <a
                           href={`https://www.mercadolivre.com.br/vendas/${orderId}/detalhe`}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="font-mono text-gray-900 hover:text-primary-700"
+                          className="font-mono text-foreground hover:text-primary-700"
                         >
                           #{orderId}
                         </a>
@@ -548,24 +548,24 @@ export default function VendasMLPage() {
                     )}
                     {(meta.pack || b.mlPackId) && (
                       <div>
-                        <div className="text-xs uppercase tracking-wide text-gray-500 font-medium">Pack</div>
-                        <span className="font-mono text-gray-900">#{meta.pack || b.mlPackId}</span>
+                        <div className="text-xs uppercase tracking-wide text-muted-foreground font-medium">Pack</div>
+                        <span className="font-mono text-foreground">#{meta.pack || b.mlPackId}</span>
                       </div>
                     )}
                     {meta.comprador && (
                       <div>
-                        <div className="text-xs uppercase tracking-wide text-gray-500 font-medium">Comprador</div>
-                        <span className="text-gray-900">{meta.comprador}</span>
+                        <div className="text-xs uppercase tracking-wide text-muted-foreground font-medium">Comprador</div>
+                        <span className="text-foreground">{meta.comprador}</span>
                       </div>
                     )}
                     {mlbId && (
                       <div>
-                        <div className="text-xs uppercase tracking-wide text-gray-500 font-medium">Anúncio</div>
+                        <div className="text-xs uppercase tracking-wide text-muted-foreground font-medium">Anúncio</div>
                         <a
                           href={`https://produto.mercadolivre.com.br/${mlbId}`}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="font-mono text-gray-900 hover:text-primary-700"
+                          className="font-mono text-foreground hover:text-primary-700"
                         >
                           {mlbId}
                         </a>
@@ -573,14 +573,14 @@ export default function VendasMLPage() {
                     )}
                     {meta.variacao && (
                       <div className="sm:col-span-2">
-                        <div className="text-xs uppercase tracking-wide text-gray-500 font-medium">Variação</div>
-                        <span className="text-gray-900">{meta.variacao}</span>
+                        <div className="text-xs uppercase tracking-wide text-muted-foreground font-medium">Variação</div>
+                        <span className="text-foreground">{meta.variacao}</span>
                       </div>
                     )}
                   </div>
 
                   {/* Cálculo */}
-                  <div className="bg-white border rounded-lg p-4 space-y-2 text-sm">
+                  <div className="bg-card border rounded-lg p-4 space-y-2 text-sm">
                     {b.quantity > 1 && (
                       <div className="flex justify-between text-amber-700">
                         <span className="font-medium">📦 Quantidade:</span>

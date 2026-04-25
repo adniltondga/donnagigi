@@ -50,8 +50,8 @@ export function ProductLabel({
 
   const titleCls =
     size === "sm"
-      ? "text-sm font-medium text-gray-900"
-      : "text-sm font-semibold text-gray-900"
+      ? "text-sm font-medium text-foreground"
+      : "text-sm font-semibold text-foreground"
   const clampCls = singleLine ? "line-clamp-1" : "line-clamp-2"
 
   const showQty = typeof quantity === "number" && quantity > 1
@@ -74,7 +74,7 @@ export function ProductLabel({
         </div>
       )}
       {!hideMlb && resolvedMlb && (
-        <div className="text-xs text-gray-500 font-mono mt-0.5">{resolvedMlb}</div>
+        <div className="text-xs text-muted-foreground font-mono mt-0.5">{resolvedMlb}</div>
       )}
     </div>
   )

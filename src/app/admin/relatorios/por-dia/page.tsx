@@ -75,7 +75,7 @@ export default function RelatoriosPage() {
 
       <Card className="p-4 flex flex-wrap gap-4 items-end">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">De</label>
+          <label className="block text-sm font-medium text-foreground mb-1">De</label>
           <input
             type="date"
             value={from}
@@ -84,7 +84,7 @@ export default function RelatoriosPage() {
           />
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Até</label>
+          <label className="block text-sm font-medium text-foreground mb-1">Até</label>
           <input
             type="date"
             value={to}
@@ -105,24 +105,24 @@ export default function RelatoriosPage() {
         <>
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
             <Card className="p-4">
-              <p className="text-xs uppercase text-gray-500">💵 Bruto</p>
-              <p className="text-lg font-bold text-gray-800">{formatCurrency(data.totalBruto)}</p>
+              <p className="text-xs uppercase text-muted-foreground">💵 Bruto</p>
+              <p className="text-lg font-bold text-foreground">{formatCurrency(data.totalBruto)}</p>
             </Card>
             <Card className="p-4">
-              <p className="text-xs uppercase text-gray-500">🛒 Total Venda</p>
+              <p className="text-xs uppercase text-muted-foreground">🛒 Total Venda</p>
               <p className="text-lg font-bold text-blue-600">{formatCurrency(data.totalTotalVenda)}</p>
             </Card>
             <Card className="p-4">
-              <p className="text-xs uppercase text-gray-500">💰 Custo</p>
+              <p className="text-xs uppercase text-muted-foreground">💰 Custo</p>
               <p className="text-lg font-bold text-rose-600">{formatCurrency(data.totalCusto)}</p>
             </Card>
             <Card className="p-4">
-              <p className="text-xs uppercase text-gray-500">📈 Lucro</p>
+              <p className="text-xs uppercase text-muted-foreground">📈 Lucro</p>
               <p className="text-lg font-bold text-emerald-600">{formatCurrency(data.totalLucro)}</p>
             </Card>
             <Card className="p-4">
-              <p className="text-xs uppercase text-gray-500">Qtd.</p>
-              <p className="text-lg font-bold text-gray-800">{data.totalVendas}</p>
+              <p className="text-xs uppercase text-muted-foreground">Qtd.</p>
+              <p className="text-lg font-bold text-foreground">{data.totalVendas}</p>
             </Card>
             <div className="bg-gradient-to-br from-primary-500 to-fuchsia-600 rounded-xl shadow-sm p-4 text-white">
               <p className="text-xs uppercase opacity-90">🏆 Melhor dia</p>
@@ -141,11 +141,11 @@ export default function RelatoriosPage() {
           </div>
 
           <Card className="overflow-hidden">
-            <CardHeader className="border-b border-gray-100">
+            <CardHeader className="border-b border-border">
               <CardTitle>Faturamento por dia do mês</CardTitle>
             </CardHeader>
             <CardContent className="space-y-2 overflow-x-auto">
-              <div className="flex items-center gap-3 text-xs text-gray-500 font-semibold uppercase pb-1 border-b min-w-[1050px]">
+              <div className="flex items-center gap-3 text-xs text-muted-foreground font-semibold uppercase pb-1 border-b min-w-[1050px]">
                 <div className="w-10 text-right">Dia</div>
                 <div className="flex-1" />
                 <div className="w-24 text-right">Bruto</div>
@@ -161,10 +161,10 @@ export default function RelatoriosPage() {
                 const pct = (d.bruto / maxBruto) * 100;
                 return (
                   <div key={d.dia} className="flex items-center gap-3 min-w-[1050px]">
-                    <div className="w-10 text-right text-sm text-gray-600 font-mono">
+                    <div className="w-10 text-right text-sm text-muted-foreground font-mono">
                       {String(d.dia).padStart(2, '0')}
                     </div>
-                    <div className="flex-1 bg-gray-100 rounded h-6 relative overflow-hidden">
+                    <div className="flex-1 bg-muted rounded h-6 relative overflow-hidden">
                       <div
                         className={`h-full ${isBest ? 'bg-gradient-to-r from-primary-500 to-fuchsia-600' : 'bg-admin-400'}`}
                         style={{ width: `${pct}%` }}
@@ -187,12 +187,12 @@ export default function RelatoriosPage() {
                     </div>
                     <div
                       className={`w-24 text-right text-sm font-semibold ${
-                        d.lucro > 0 ? 'text-emerald-600' : d.lucro < 0 ? 'text-red-600' : 'text-gray-400'
+                        d.lucro > 0 ? 'text-emerald-600' : d.lucro < 0 ? 'text-red-600' : 'text-muted-foreground'
                       }`}
                     >
                       {d.lucro !== 0 ? formatCurrency(d.lucro) : '—'}
                     </div>
-                    <div className="w-14 text-right text-xs text-gray-500">
+                    <div className="w-14 text-right text-xs text-muted-foreground">
                       {d.vendas > 0 ? `${d.vendas}` : ''}
                     </div>
                   </div>

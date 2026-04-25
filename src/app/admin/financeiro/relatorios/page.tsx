@@ -89,10 +89,10 @@ export default function FinanceiroRelatoriosPage() {
                     <Icon className="w-6 h-6" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <h2 className="text-base font-bold text-gray-900 group-hover:text-primary-600 transition mb-1">
+                    <h2 className="text-base font-bold text-foreground group-hover:text-primary-600 transition mb-1">
                       {card.title}
                     </h2>
-                    <p className="text-sm text-gray-600 leading-relaxed">{card.description}</p>
+                    <p className="text-sm text-muted-foreground leading-relaxed">{card.description}</p>
                     <div className="mt-3 inline-flex items-center gap-1 text-xs text-primary-600 font-semibold opacity-0 group-hover:opacity-100 transition">
                       Abrir <ArrowRight className="w-3 h-3" />
                     </div>

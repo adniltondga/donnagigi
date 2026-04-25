@@ -123,7 +123,7 @@ export default function ProLaborePage() {
               type="month"
               value={month}
               onChange={(e) => setMonth(e.target.value)}
-              className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary-600 outline-none"
+              className="border border-border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary-600 outline-none"
             />
             <Button variant="outline" size="sm" onClick={() => setShowSettings(true)}>
               <Settings className="w-4 h-4 mr-1" />
@@ -145,7 +145,7 @@ export default function ProLaborePage() {
 
       {loading || !data ? (
         <Card>
-          <CardContent className="flex items-center justify-center py-12 text-gray-500">
+          <CardContent className="flex items-center justify-center py-12 text-muted-foreground">
             <Loader className="w-5 h-5 animate-spin mr-2" />
             Calculando...
           </CardContent>
@@ -186,7 +186,7 @@ export default function ProLaborePage() {
           </div>
 
           {data.cmvFaltando && (
-            <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 flex items-start gap-2 text-sm text-amber-900">
+            <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-900/50 rounded-lg p-3 flex items-start gap-2 text-sm text-amber-900 dark:text-amber-200">
               <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
               <div>
                 <strong>Cadastre o custo dos anúncios em Custos ML</strong> — você tem{" "}
@@ -197,7 +197,7 @@ export default function ProLaborePage() {
           )}
 
           {/* Sugestão principal */}
-          <Card className="border-primary-200 bg-gradient-to-br from-primary-50 to-white">
+          <Card className="border-primary-200 dark:border-primary-900/50 bg-gradient-to-br from-primary-50 to-white dark:bg-none dark:bg-card">
             <CardContent className="pt-6">
               <div className="flex items-start gap-4 flex-wrap">
                 <div className="w-14 h-14 rounded-xl bg-primary-600 text-white flex items-center justify-center shrink-0">
@@ -207,17 +207,17 @@ export default function ProLaborePage() {
                   <p className="text-xs font-medium text-primary-700 uppercase tracking-wide">
                     Pró-labore sugerido este mês
                   </p>
-                  <p className="text-4xl font-bold text-gray-900 mt-1 tabular-nums">
+                  <p className="text-4xl font-bold text-foreground mt-1 tabular-nums">
                     {formatCurrency(data.proLaboreSeguro)}
                   </p>
                   <div className="flex items-center gap-1.5 mt-1">
-                    <span className="text-sm text-gray-600">
-                      lucro acumulado: <strong className="text-gray-900">{formatCurrency(data.lucroAcumuladoYTD)}</strong>
+                    <span className="text-sm text-muted-foreground">
+                      lucro acumulado: <strong className="text-foreground">{formatCurrency(data.lucroAcumuladoYTD)}</strong>
                     </span>
                     <TooltipProvider delayDuration={150}>
                       <Tooltip>
                         <TooltipTrigger asChild>
-                          <button type="button" className="text-gray-400 hover:text-gray-600">
+                          <button type="button" className="text-muted-foreground hover:text-muted-foreground">
                             <Info className="w-3.5 h-3.5" />
                           </button>
                         </TooltipTrigger>
@@ -229,31 +229,31 @@ export default function ProLaborePage() {
                           {data.proLaboresYTD > 0 && (
                             <>
                               <div className="flex justify-between gap-4">
-                                <span className="text-gray-400">− Pró-labores tirados</span>
+                                <span className="text-muted-foreground">− Pró-labores tirados</span>
                                 <span className="font-medium">{formatCurrency(data.proLaboresYTD)}</span>
                               </div>
-                              <div className="border-t border-gray-200 pt-1 flex justify-between gap-4 font-semibold">
+                              <div className="border-t border-border pt-1 flex justify-between gap-4 font-semibold">
                                 <span>= Base disponível</span>
                                 <span>{formatCurrency(data.baseDisponivel)}</span>
                               </div>
                             </>
                           )}
-                          <div className="border-t border-gray-200 pt-1 space-y-1">
-                            <p className="text-gray-400 text-[11px] uppercase tracking-wide">deduzido para chegar no pró-labore</p>
+                          <div className="border-t border-border pt-1 space-y-1">
+                            <p className="text-muted-foreground text-[11px] uppercase tracking-wide">deduzido para chegar no pró-labore</p>
                             {data.aportesADevolver.amortizacaoSugerida > 0 && (
                               <div className="flex justify-between gap-4">
-                                <span className="text-gray-400">− Amortização aportes</span>
+                                <span className="text-muted-foreground">− Amortização aportes</span>
                                 <span className="font-medium">{formatCurrency(data.aportesADevolver.amortizacaoSugerida)}</span>
                               </div>
                             )}
                             {data.reserva.falta > 0 && (
                               <div className="flex justify-between gap-4">
-                                <span className="text-gray-400">− Reserva pendente</span>
+                                <span className="text-muted-foreground">− Reserva pendente</span>
                                 <span className="font-medium">{formatCurrency(data.reserva.falta)}</span>
                               </div>
                             )}
                             <div className="flex justify-between gap-4">
-                              <span className="text-gray-400">− Reinvestimento ({data.reinvestimento.pct}%)</span>
+                              <span className="text-muted-foreground">− Reinvestimento ({data.reinvestimento.pct}%)</span>
                               <span className="font-medium">{formatCurrency(data.reinvestimento.sugerido)}</span>
                             </div>
                             <div className="flex justify-between gap-4 font-semibold text-primary-700">
@@ -266,7 +266,7 @@ export default function ProLaborePage() {
                     </TooltipProvider>
                   </div>
                   {data.baseDisponivel === 0 && data.lucroLiquido > 0 && (
-                    <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded px-2 py-1 mt-2 inline-block">
+                    <p className="text-xs text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-900/50 rounded px-2 py-1 mt-2 inline-block">
                       ⚠️ Mês lucrativo, mas o ano ainda acumula prejuízo. O lucro deste mês está cobrindo
                       o déficit antes de liberar pró-labore.
                     </p>
@@ -364,8 +364,8 @@ export default function ProLaborePage() {
                 <ul className="divide-y divide-gray-100">
                   {data.historicoPorMes.map((h) => (
                     <li key={h.month} className="py-2 flex items-center justify-between">
-                      <span className="text-sm text-gray-700">{formatMonth(h.month)}</span>
-                      <span className="text-sm font-semibold text-gray-900 tabular-nums">
+                      <span className="text-sm text-foreground">{formatMonth(h.month)}</span>
+                      <span className="text-sm font-semibold text-foreground tabular-nums">
                         {formatCurrency(h.total)}
                       </span>
                     </li>
@@ -447,11 +447,11 @@ function BucketRow({
   action?: React.ReactNode
 }) {
   const toneCls: Record<string, string> = {
-    amber: "bg-amber-50 text-amber-700",
-    fuchsia: "bg-fuchsia-50 text-fuchsia-700",
-    sky: "bg-sky-50 text-sky-700",
-    emerald: "bg-emerald-50 text-emerald-700",
-    primary: "bg-primary-50 text-primary-700",
+    amber: "bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300",
+    fuchsia: "bg-fuchsia-50 text-fuchsia-700 dark:bg-fuchsia-900/30 dark:text-fuchsia-300",
+    sky: "bg-sky-50 text-sky-700 dark:bg-sky-900/30 dark:text-sky-300",
+    emerald: "bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300",
+    primary: "bg-primary-50 text-primary-700 dark:bg-primary-900/30 dark:text-primary-300",
   }
   const progressFill: Record<string, string> = {
     amber: "bg-amber-500",
@@ -463,14 +463,14 @@ function BucketRow({
   return (
     <li className="px-5 py-4 flex items-start gap-4 flex-wrap">
       <div className="flex items-center gap-3">
-        <span className="text-xs font-bold text-gray-400 w-6">{String(index).padStart(2, "0")}</span>
+        <span className="text-xs font-bold text-muted-foreground w-6">{String(index).padStart(2, "0")}</span>
         <div className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${toneCls[tone]}`}>
           {icon}
         </div>
       </div>
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 flex-wrap">
-          <span className="text-sm font-semibold text-gray-900">{title}</span>
+          <span className="text-sm font-semibold text-foreground">{title}</span>
           {warning && (
             <span className="inline-flex items-center gap-1 text-xs bg-amber-100 text-amber-800 px-2 py-0.5 rounded">
               <AlertTriangle className="w-3 h-3" />
@@ -484,15 +484,15 @@ function BucketRow({
             </span>
           )}
           {pending && (
-            <span className="inline-flex items-center gap-1 text-xs bg-gray-100 text-gray-700 px-2 py-0.5 rounded">
+            <span className="inline-flex items-center gap-1 text-xs bg-muted text-foreground px-2 py-0.5 rounded">
               Pendente
             </span>
           )}
         </div>
-        <div className="text-xs text-gray-500 mt-0.5">{sub}</div>
+        <div className="text-xs text-muted-foreground mt-0.5">{sub}</div>
         {info && <div className="text-xs text-sky-700 mt-1">💡 {info}</div>}
         {progressPct !== undefined && (
-          <div className="mt-2 h-1.5 bg-gray-100 rounded-full overflow-hidden max-w-sm">
+          <div className="mt-2 h-1.5 bg-muted rounded-full overflow-hidden max-w-sm">
             <div
               className={`h-full ${progressFill[tone]}`}
               style={{ width: `${Math.min(100, progressPct)}%` }}
@@ -501,7 +501,7 @@ function BucketRow({
         )}
       </div>
       <div className="text-right shrink-0 flex flex-col items-end gap-1">
-        <div className="text-base font-bold text-gray-900 tabular-nums whitespace-nowrap">
+        <div className="text-base font-bold text-foreground tabular-nums whitespace-nowrap">
           {formatCurrency(amount)}
         </div>
         {action}
@@ -589,25 +589,25 @@ function LancarProLaboreDialog({
         </DialogHeader>
         <form onSubmit={submit} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Valor (R$)</label>
+            <label className="block text-sm font-medium text-foreground mb-1">Valor (R$)</label>
             <CurrencyInput
               value={valor}
               onChange={setValor}
               placeholder="R$ 0,00"
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-600 outline-none"
+              className="w-full px-3 py-2 border border-border rounded-lg focus:ring-2 focus:ring-primary-600 outline-none"
             />
-            <p className="text-xs text-gray-500 mt-1">
+            <p className="text-xs text-muted-foreground mt-1">
               Sugestão: {formatCurrency(sugestao)} (o cálculo considera suas prioridades)
             </p>
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Data</label>
+            <label className="block text-sm font-medium text-foreground mb-1">Data</label>
             <input
               type="date"
               value={date}
               onChange={(e) => setDate(e.target.value)}
               required
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+              className="w-full px-3 py-2 border border-border rounded-lg"
             />
           </div>
           <DialogFooter>
@@ -685,14 +685,14 @@ function AmortizeAporteDialog({
         </DialogHeader>
         <form onSubmit={submit} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Valor (R$)</label>
+            <label className="block text-sm font-medium text-foreground mb-1">Valor (R$)</label>
             <CurrencyInput
               value={valor}
               onChange={setValor}
               placeholder="R$ 0,00"
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-600 outline-none"
+              className="w-full px-3 py-2 border border-border rounded-lg focus:ring-2 focus:ring-primary-600 outline-none"
             />
-            <div className="text-xs text-gray-500 mt-1 space-y-0.5">
+            <div className="text-xs text-muted-foreground mt-1 space-y-0.5">
               <p>
                 Saldo devedor: <strong>{saldoDevedor.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</strong>
               </p>
@@ -701,7 +701,7 @@ function AmortizeAporteDialog({
               </p>
             </div>
           </div>
-          <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-xs text-amber-900">
+          <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-900/50 rounded-lg p-3 text-xs text-amber-900 dark:text-amber-200">
             ⚠️ Essa ação marca as bills mais antigas de <strong>Aporte sócio</strong> como pagas, na
             data de hoje. Se quiser reverter, vá em Contas a pagar e volte o status pra pendente.
           </div>
@@ -770,7 +770,7 @@ function SettingsDialog({ open, onClose }: { open: boolean; onClose: () => void 
         </DialogHeader>
         <form onSubmit={save} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-foreground mb-1">
               Reserva de emergência (meses de despesa fixa)
             </label>
             <input
@@ -779,12 +779,12 @@ function SettingsDialog({ open, onClose }: { open: boolean; onClose: () => void 
               max="24"
               value={meses}
               onChange={(e) => setMeses(Number(e.target.value))}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+              className="w-full px-3 py-2 border border-border rounded-lg"
             />
-            <p className="text-xs text-gray-500 mt-1">Padrão indústria: 3 meses (mínimo), 6 meses (conservador)</p>
+            <p className="text-xs text-muted-foreground mt-1">Padrão indústria: 3 meses (mínimo), 6 meses (conservador)</p>
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-foreground mb-1">
               Reinvestimento (% do lucro líquido)
             </label>
             <input
@@ -794,23 +794,23 @@ function SettingsDialog({ open, onClose }: { open: boolean; onClose: () => void 
               step="0.5"
               value={pct}
               onChange={(e) => setPct(Number(e.target.value))}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+              className="w-full px-3 py-2 border border-border rounded-lg"
             />
-            <p className="text-xs text-gray-500 mt-1">
+            <p className="text-xs text-muted-foreground mt-1">
               Padrão e-commerce: 20% (crescimento), 10% (maduro), 30%+ (bootstrap agressivo)
             </p>
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-foreground mb-1">
               Saldo em caixa atual (R$)
             </label>
             <CurrencyInput
               value={saldo}
               onChange={setSaldo}
               placeholder="R$ 0,00"
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-600 outline-none"
+              className="w-full px-3 py-2 border border-border rounded-lg focus:ring-2 focus:ring-primary-600 outline-none"
             />
-            <p className="text-xs text-gray-500 mt-1">
+            <p className="text-xs text-muted-foreground mt-1">
               Quanto você tem disponível hoje (conta bancária + MP disponível). Usado pra calcular se a reserva tá
               cumprida.
               {settings?.saldoAtualizadoEm && (

@@ -63,7 +63,7 @@ export function SubscriptionGuard({ children }: { children: React.ReactNode }) {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[50vh] text-gray-500">
+      <div className="flex items-center justify-center min-h-[50vh] text-muted-foreground">
         <Loader2 className="w-6 h-6 animate-spin mr-2" />
         Carregando...
       </div>
@@ -76,13 +76,13 @@ export function SubscriptionGuard({ children }: { children: React.ReactNode }) {
   if (!data.canUse) {
     return (
       <div className="flex items-center justify-center min-h-[50vh] p-6">
-        <div className="bg-white rounded-xl border border-red-200 p-8 max-w-md text-center space-y-4">
+        <div className="bg-card rounded-xl border border-red-200 p-8 max-w-md text-center space-y-4">
           <div className="w-12 h-12 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto">
             <AlertCircle className="w-6 h-6" />
           </div>
           <div>
-            <h2 className="text-xl font-bold text-gray-900">Assinatura expirada</h2>
-            <p className="text-sm text-gray-600 mt-1">
+            <h2 className="text-xl font-bold text-foreground">Assinatura expirada</h2>
+            <p className="text-sm text-muted-foreground mt-1">
               Seu trial ou assinatura não está mais ativo. Escolha um plano pra continuar usando o agLivre.
             </p>
           </div>

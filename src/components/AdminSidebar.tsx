@@ -129,7 +129,7 @@ export function AdminSidebar({ isOpen, onClose }: AdminSidebarProps) {
 
       <aside
         className={`
-          fixed inset-y-0 left-0 z-50 w-64 bg-white border-r border-gray-200
+          fixed inset-y-0 left-0 z-50 w-64 bg-card border-r border-border
           flex flex-col
           transform transition-transform duration-300 ease-in-out
           ${isOpen ? "translate-x-0" : "-translate-x-full"}
@@ -137,18 +137,18 @@ export function AdminSidebar({ isOpen, onClose }: AdminSidebarProps) {
         `}
       >
         {/* Logo */}
-        <div className="h-16 flex items-center justify-between px-4 border-b border-gray-200">
+        <div className="h-16 flex items-center justify-between px-4 border-b border-border">
           <Link href="/admin/dashboard" className="flex items-center gap-2" onClick={onClose}>
             <div className="bg-primary-600 p-2 rounded-lg">
               <span className="text-white font-bold text-sm">aL</span>
             </div>
-            <span className="text-lg font-bold text-gray-900 tracking-tight">
-              ag<span className="text-primary-600">Livre</span>
+            <span className="text-lg font-bold text-foreground tracking-tight">
+              ag<span className="text-primary-600 dark:text-primary-400">Livre</span>
             </span>
           </Link>
           <button
             onClick={onClose}
-            className="lg:hidden p-1.5 rounded-lg hover:bg-gray-100 text-gray-500"
+            className="lg:hidden p-1.5 rounded-lg hover:bg-accent text-muted-foreground"
             aria-label="Fechar menu"
           >
             <X className="w-5 h-5" />
@@ -173,19 +173,19 @@ export function AdminSidebar({ isOpen, onClose }: AdminSidebarProps) {
                       w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all duration-200
                       ${
                         active
-                          ? "bg-primary-50 text-primary-700 font-medium"
-                          : "text-gray-700 hover:bg-gray-50 hover:text-gray-900"
+                          ? "bg-primary-50 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300 font-medium"
+                          : "text-foreground hover:bg-accent hover:text-foreground"
                       }
                     `}
                   >
-                    <Icon className={`w-5 h-5 flex-shrink-0 ${active ? "text-primary-600" : "text-gray-400"}`} />
+                    <Icon className={`w-5 h-5 flex-shrink-0 ${active ? "text-primary-600 dark:text-primary-400" : "text-muted-foreground"}`} />
                     <span className="flex-1 text-left">{item.label}</span>
                     <ChevronDown
-                      className={`w-4 h-4 text-gray-400 transition-transform ${isOpenGroup ? "rotate-180" : ""}`}
+                      className={`w-4 h-4 text-muted-foreground transition-transform ${isOpenGroup ? "rotate-180" : ""}`}
                     />
                   </button>
                   {isOpenGroup && (
-                    <div className="mt-1 ml-4 pl-3 border-l border-gray-200 space-y-1">
+                    <div className="mt-1 ml-4 pl-3 border-l border-border space-y-1">
                       {item.children.map((child) => {
                         const childActive = pathname.startsWith(child.href)
                         return (
@@ -197,8 +197,8 @@ export function AdminSidebar({ isOpen, onClose }: AdminSidebarProps) {
                               block px-3 py-2 rounded-lg text-sm transition-colors
                               ${
                                 childActive
-                                  ? "bg-primary-50 text-primary-700 font-medium"
-                                  : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+                                  ? "bg-primary-50 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300 font-medium"
+                                  : "text-muted-foreground hover:bg-accent hover:text-foreground"
                               }
                             `}
                           >
@@ -222,12 +222,12 @@ export function AdminSidebar({ isOpen, onClose }: AdminSidebarProps) {
                   relative flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all duration-200
                   ${
                     active
-                      ? "bg-primary-50 text-primary-700 font-medium"
-                      : "text-gray-700 hover:bg-gray-50 hover:text-gray-900"
+                      ? "bg-primary-50 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300 font-medium"
+                      : "text-foreground hover:bg-accent hover:text-foreground"
                   }
                 `}
               >
-                <Icon className={`w-5 h-5 flex-shrink-0 ${active ? "text-primary-600" : "text-gray-400"}`} />
+                <Icon className={`w-5 h-5 flex-shrink-0 ${active ? "text-primary-600 dark:text-primary-400" : "text-muted-foreground"}`} />
                 <span className="flex-1">{item.label}</span>
                 {active && (
                   <span className="absolute right-2 top-1/2 -translate-y-1/2 w-1 h-6 bg-primary-600 rounded-full" />
@@ -238,7 +238,7 @@ export function AdminSidebar({ isOpen, onClose }: AdminSidebarProps) {
         </nav>
 
         {/* Footer menu (Configurações) */}
-        <div className="border-t border-gray-200 p-4 space-y-1">
+        <div className="border-t border-border p-4 space-y-1">
           {FOOTER_MENU.map((item) => {
             const Icon = item.icon
             const active = item.isActive ? item.isActive(pathname) : pathname === item.href
@@ -251,12 +251,12 @@ export function AdminSidebar({ isOpen, onClose }: AdminSidebarProps) {
                   relative flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all duration-200
                   ${
                     active
-                      ? "bg-primary-50 text-primary-700 font-medium"
-                      : "text-gray-700 hover:bg-gray-50 hover:text-gray-900"
+                      ? "bg-primary-50 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300 font-medium"
+                      : "text-foreground hover:bg-accent hover:text-foreground"
                   }
                 `}
               >
-                <Icon className={`w-5 h-5 flex-shrink-0 ${active ? "text-primary-600" : "text-gray-400"}`} />
+                <Icon className={`w-5 h-5 flex-shrink-0 ${active ? "text-primary-600 dark:text-primary-400" : "text-muted-foreground"}`} />
                 <span className="flex-1">{item.label}</span>
                 {active && (
                   <span className="absolute right-2 top-1/2 -translate-y-1/2 w-1 h-6 bg-primary-600 rounded-full" />
@@ -266,7 +266,7 @@ export function AdminSidebar({ isOpen, onClose }: AdminSidebarProps) {
           })}
           <button
             onClick={handleLogout}
-            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-red-600 hover:bg-red-50 hover:text-red-700 transition-colors"
+            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-700 dark:hover:text-red-300 transition-colors"
           >
             <LogOut className="w-5 h-5" />
             <span>Sair</span>
@@ -274,12 +274,12 @@ export function AdminSidebar({ isOpen, onClose }: AdminSidebarProps) {
         </div>
 
         {/* Status */}
-        <div className="border-t border-gray-200 p-4">
+        <div className="border-t border-border dark:border-gray-800 p-4">
           <div className="flex items-center gap-2">
             <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-            <span className="text-xs text-gray-500">Sistema online</span>
+            <span className="text-xs text-muted-foreground">Sistema online</span>
           </div>
-          <p className="text-xs text-gray-400 mt-1">v0.1.0</p>
+          <p className="text-xs text-muted-foreground mt-1">v0.1.0</p>
         </div>
       </aside>
     </>

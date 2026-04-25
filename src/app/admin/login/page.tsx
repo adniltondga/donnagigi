@@ -18,7 +18,7 @@ const SAVED_EMAIL_KEY = "aglivre_saved_email"
 
 export default function LoginPage() {
   return (
-    <Suspense fallback={<div className="min-h-screen flex items-center justify-center text-gray-400">Carregando...</div>}>
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center text-muted-foreground">Carregando...</div>}>
       <LoginInner />
     </Suspense>
   )
@@ -146,22 +146,22 @@ function LoginInner() {
   return (
     <div className="min-h-screen flex">
       {/* Coluna esquerda — form */}
-      <div className="flex-1 flex items-center justify-center p-8 bg-white">
+      <div className="flex-1 flex items-center justify-center p-8 bg-card">
         <div className="w-full max-w-md">
           <Link href="/" className="flex items-center gap-2 mb-8">
             <div className="bg-primary-600 p-2 rounded-lg">
               <span className="text-white font-bold text-lg">aL</span>
             </div>
-            <span className="text-xl font-bold text-gray-900">
+            <span className="text-xl font-bold text-foreground">
               ag<span className="text-primary-600">Livre</span>
             </span>
           </Link>
 
           <div className="mb-6">
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">
+            <h1 className="text-3xl font-bold text-foreground mb-2">
               {isRegisterMode ? "Criar conta" : "Bem-vindo de volta"}
             </h1>
-            <p className="text-gray-600">
+            <p className="text-muted-foreground">
               {isRegisterMode
                 ? "Cadastre sua conta e conecte seu Mercado Livre"
                 : "Entre para acessar o painel do seu negócio"}
@@ -169,14 +169,14 @@ function LoginInner() {
           </div>
 
           {/* Tab toggle */}
-          <div className="flex bg-gray-100 rounded-lg p-1 mb-6">
+          <div className="flex bg-muted rounded-lg p-1 mb-6">
             <button
               type="button"
               onClick={() => isRegisterMode && switchMode()}
               className={`flex-1 py-2.5 text-sm font-semibold rounded-md transition-all ${
                 !isRegisterMode
-                  ? "bg-white text-gray-900 shadow-sm"
-                  : "text-gray-500 hover:text-gray-700"
+                  ? "bg-card text-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground"
               }`}
             >
               Entrar
@@ -186,8 +186,8 @@ function LoginInner() {
               onClick={() => !isRegisterMode && switchMode()}
               className={`flex-1 py-2.5 text-sm font-semibold rounded-md transition-all ${
                 isRegisterMode
-                  ? "bg-white text-gray-900 shadow-sm"
-                  : "text-gray-500 hover:text-gray-700"
+                  ? "bg-card text-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground"
               }`}
             >
               Criar conta
@@ -230,9 +230,9 @@ function LoginInner() {
                     type="checkbox"
                     checked={rememberMe}
                     onChange={(e) => setRememberMe(e.target.checked)}
-                    className="w-4 h-4 rounded border-gray-300 text-primary-600 focus:ring-primary-600"
+                    className="w-4 h-4 rounded border-border text-primary-600 focus:ring-primary-600"
                   />
-                  <span className="text-sm text-gray-600">Lembrar de mim</span>
+                  <span className="text-sm text-muted-foreground">Lembrar de mim</span>
                 </label>
                 <Link
                   href="/forgot-password"
@@ -319,7 +319,7 @@ function LoginInner() {
           )}
 
           <div className="mt-6 text-center">
-            <Link href="/" className="text-sm text-gray-500 hover:text-gray-700">
+            <Link href="/" className="text-sm text-muted-foreground hover:text-foreground">
               ← Voltar ao site
             </Link>
           </div>
@@ -380,12 +380,12 @@ function Field({
 }) {
   return (
     <div>
-      <label htmlFor={id} className="block text-sm font-medium text-gray-700 mb-2">
+      <label htmlFor={id} className="block text-sm font-medium text-foreground mb-2">
         {label}
-        {hint && <span className="text-gray-400 font-normal ml-1">{hint}</span>}
+        {hint && <span className="text-muted-foreground font-normal ml-1">{hint}</span>}
       </label>
       <div className="relative">
-        <div className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400">
+        <div className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground">
           {icon}
         </div>
         <input
@@ -396,7 +396,7 @@ function Field({
           required={required}
           minLength={minLength}
           onChange={(e) => onChange(e.target.value)}
-          className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-600 focus:border-transparent outline-none transition-all text-gray-900"
+          className="w-full pl-10 pr-4 py-3 border border-border rounded-lg focus:ring-2 focus:ring-primary-600 focus:border-transparent outline-none transition-all text-foreground"
         />
       </div>
     </div>
@@ -426,11 +426,11 @@ function PasswordField({
 }) {
   return (
     <div>
-      <label htmlFor={id} className="block text-sm font-medium text-gray-700 mb-2">
+      <label htmlFor={id} className="block text-sm font-medium text-foreground mb-2">
         {label}
       </label>
       <div className="relative">
-        <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+        <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
         <input
           id={id}
           type={show ? "text" : "password"}
@@ -439,12 +439,12 @@ function PasswordField({
           required={required}
           minLength={minLength}
           onChange={(e) => onChange(e.target.value)}
-          className="w-full pl-10 pr-12 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-600 focus:border-transparent outline-none transition-all text-gray-900"
+          className="w-full pl-10 pr-12 py-3 border border-border rounded-lg focus:ring-2 focus:ring-primary-600 focus:border-transparent outline-none transition-all text-foreground"
         />
         <button
           type="button"
           onClick={toggleShow}
-          className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+          className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-muted-foreground"
         >
           {show ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
         </button>

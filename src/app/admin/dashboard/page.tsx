@@ -178,7 +178,7 @@ export default function Dashboard() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-20 text-gray-500">
+      <div className="flex items-center justify-center py-20 text-muted-foreground">
         <Loader2 className="w-6 h-6 animate-spin mr-2" />
         Carregando dashboard...
       </div>
@@ -302,7 +302,7 @@ export default function Dashboard() {
       {/* Tendência 7d */}
       <Card className="p-5">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="font-bold text-gray-900 flex items-center gap-2">
+          <h2 className="font-bold text-foreground flex items-center gap-2">
             <TrendingUp className="w-5 h-5 text-primary-600" />
             Últimos 7 dias
           </h2>
@@ -350,7 +350,7 @@ export default function Dashboard() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <Card className="lg:col-span-2 p-5">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="font-bold text-gray-900 flex items-center gap-2">
+            <h2 className="font-bold text-foreground flex items-center gap-2">
               <Calendar className="w-5 h-5 text-primary-600" />
               Próximas liberações Mercado Pago
             </h2>
@@ -373,10 +373,10 @@ export default function Dashboard() {
                       <span className="text-base font-bold">{String(d.dia).padStart(2, "0")}</span>
                     </div>
                     <div>
-                      <p className="text-sm font-medium text-gray-900">
+                      <p className="text-sm font-medium text-foreground">
                         {d.vendas} pagamento{d.vendas === 1 ? "" : "s"}
                       </p>
-                      <p className="text-xs text-gray-500">libera no Mercado Pago</p>
+                      <p className="text-xs text-muted-foreground">libera no Mercado Pago</p>
                     </div>
                   </div>
                   <div className="text-right">
@@ -393,18 +393,18 @@ export default function Dashboard() {
         </Card>
 
         <Card className="p-5">
-          <h2 className="font-bold text-gray-900 mb-4">↩️ Devoluções (mês)</h2>
+          <h2 className="font-bold text-foreground mb-4">↩️ Devoluções (mês)</h2>
           {v2?.cancelamentos ? (
             <div className="space-y-3">
               <div>
-                <p className="text-3xl font-bold text-gray-900">{v2.cancelamentos.vendas}</p>
-                <p className="text-xs text-gray-500">unidade(s) devolvida(s)</p>
+                <p className="text-3xl font-bold text-foreground">{v2.cancelamentos.vendas}</p>
+                <p className="text-xs text-muted-foreground">unidade(s) devolvida(s)</p>
               </div>
-              <div className="pt-3 border-t border-gray-100">
+              <div className="pt-3 border-t border-border">
                 <p className="text-sm text-red-600 font-semibold">
                   - {formatCurrency(v2.cancelamentos.bruto)}
                 </p>
-                <p className="text-xs text-gray-500">
+                <p className="text-xs text-muted-foreground">
                   {v2.cancelamentos.taxaPct.toFixed(1)}% das vendas do mês
                 </p>
               </div>
@@ -420,5 +420,5 @@ export default function Dashboard() {
 }
 
 function EmptyInline({ message }: { message: string }) {
-  return <div className="text-center text-sm text-gray-400 py-8">{message}</div>
+  return <div className="text-center text-sm text-muted-foreground py-8">{message}</div>
 }

@@ -299,7 +299,7 @@ export default function ProductFormDialog({ product, onClose }: ProductFormDialo
 
               {/* Grid de imagens */}
               {loadingImages ? (
-                <div className="flex items-center justify-center py-8 text-gray-500">
+                <div className="flex items-center justify-center py-8 text-muted-foreground">
                   <Loader size={20} className="animate-spin mr-2" />
                   Carregando imagens...
                 </div>
@@ -323,7 +323,7 @@ export default function ProductFormDialog({ product, onClose }: ProductFormDialo
                   ))}
                 </div>
               ) : (
-                <div className="py-6 text-center text-gray-500">Nenhuma imagem ainda</div>
+                <div className="py-6 text-center text-muted-foreground">Nenhuma imagem ainda</div>
               )}
 
               {/* Upload manual */}
@@ -344,7 +344,7 @@ export default function ProductFormDialog({ product, onClose }: ProductFormDialo
                   <span className="text-sm font-medium">
                     {loadingImages ? 'Enviando...' : 'Clique ou arraste uma imagem'}
                   </span>
-                  <span className="text-xs text-gray-500">Máximo 5MB</span>
+                  <span className="text-xs text-muted-foreground">Máximo 5MB</span>
                 </label>
               </div>
             </div>

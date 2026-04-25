@@ -2,6 +2,51 @@
 @tailwind components;
 @tailwind utilities;
 
+/*
+ * Tokens semânticos (estilo shadcn). Usar `bg-background`, `text-foreground`,
+ * `bg-card`, `text-muted-foreground`, `border-border` etc nas páginas em vez
+ * de `bg-white` + `dark:bg-gray-900`. Toggle de tema só troca os valores
+ * abaixo — o resto do código não precisa saber.
+ *
+ * Cores são guardadas como `H S% L%` (sem hsl(...)) pra Tailwind suportar
+ * opacidade via `bg-card/50`, `text-foreground/80` etc.
+ */
+@layer base {
+  :root {
+    --background: 0 0% 100%;            /* gray-50ish bg */
+    --foreground: 222 47% 11%;          /* gray-900 */
+    --card: 0 0% 100%;                  /* white */
+    --card-foreground: 222 47% 11%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 47% 11%;
+    --muted: 210 40% 96%;               /* gray-50 */
+    --muted-foreground: 215 16% 47%;    /* gray-500/600 */
+    --accent: 210 40% 96%;
+    --accent-foreground: 222 47% 11%;
+    --border: 214 32% 91%;              /* gray-200 */
+    --input: 214 32% 91%;
+    --ring: 263 70% 50%;                /* primary-600 */
+    --app-bg: 210 40% 98%;              /* bg do shell admin (gray-50) */
+  }
+
+  html.dark {
+    --background: 222 30% 7%;           /* near-black */
+    --foreground: 210 20% 92%;          /* gray-100 */
+    --card: 222 25% 11%;                /* gray-900 */
+    --card-foreground: 210 20% 92%;
+    --popover: 222 25% 11%;
+    --popover-foreground: 210 20% 92%;
+    --muted: 217 19% 18%;               /* gray-800 */
+    --muted-foreground: 215 16% 65%;    /* gray-400 */
+    --accent: 217 19% 18%;
+    --accent-foreground: 210 20% 92%;
+    --border: 217 19% 22%;              /* gray-800 */
+    --input: 217 19% 22%;
+    --ring: 263 70% 60%;
+    --app-bg: 222 30% 5%;
+  }
+}
+
 * {
   margin: 0;
   padding: 0;
@@ -10,31 +55,31 @@
 
 body {
   font-family: inherit;
-  background-color: #ffffff;
-  color: #1f2937;
+  background-color: hsl(var(--background));
+  color: hsl(var(--foreground));
 }
 
 html {
   scroll-behavior: smooth;
 }
 
-/* Custom scrollbar */
+/* Custom scrollbar — usa tokens */
 ::-webkit-scrollbar {
   width: 8px;
   height: 8px;
 }
 
 ::-webkit-scrollbar-track {
-  background: #f1f5f9;
+  background: hsl(var(--muted));
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
+  background: hsl(var(--border));
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #94a3b8;
+  background: hsl(var(--muted-foreground) / 0.5);
 }
 
 /* Line clamp utilities */

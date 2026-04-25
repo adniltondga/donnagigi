@@ -11,7 +11,7 @@ const buttonVariants = cva(
       variant: {
         default: "bg-primary-600 text-white hover:bg-primary-700 focus-visible:ring-primary-600",
         destructive: "bg-red-600 text-white hover:bg-red-700 focus-visible:ring-red-600",
-        outline: "border border-admin-300 bg-white hover:bg-admin-50 focus-visible:ring-primary-600",
+        outline: "border border-admin-300 bg-card hover:bg-admin-50 focus-visible:ring-primary-600",
         secondary: "bg-admin-200 text-admin-900 hover:bg-admin-300 focus-visible:ring-admin-600",
         ghost: "hover:bg-admin-100 hover:text-admin-900 focus-visible:ring-primary-600",
         link: "text-primary-600 underline-offset-4 hover:underline focus-visible:ring-primary-600",

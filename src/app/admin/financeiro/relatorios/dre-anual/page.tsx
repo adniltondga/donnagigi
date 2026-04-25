@@ -118,7 +118,7 @@ export default function DreAnualPage() {
         }
         actions={
           <div className="flex items-center gap-2 flex-wrap">
-            <div className="flex items-center gap-1 bg-gray-100 rounded-lg p-0.5">
+            <div className="flex items-center gap-1 bg-muted rounded-lg p-0.5">
               {([
                 { key: "competencia", label: "Competência" },
                 { key: "caixa", label: "Caixa" },
@@ -129,7 +129,7 @@ export default function DreAnualPage() {
                     key={opt.key}
                     onClick={() => setBasis(opt.key)}
                     className={`px-3 py-1.5 text-xs font-medium rounded-md transition ${
-                      active ? "bg-white text-gray-900 shadow-sm" : "text-gray-600 hover:text-gray-900"
+                      active ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
                     }`}
                   >
                     {opt.label}
@@ -140,7 +140,7 @@ export default function DreAnualPage() {
             <select
               value={year}
               onChange={(e) => setYear(Number(e.target.value))}
-              className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary-600 outline-none"
+              className="border border-border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary-600 outline-none"
             >
               {(data?.availableYears ?? [year]).map((y) => (
                 <option key={y} value={y}>
@@ -158,7 +158,7 @@ export default function DreAnualPage() {
 
       {loading || !data ? (
         <Card>
-          <CardContent className="flex items-center justify-center py-12 text-gray-500">
+          <CardContent className="flex items-center justify-center py-12 text-muted-foreground">
             <Loader className="w-5 h-5 animate-spin mr-2" />
             Calculando 12 meses...
           </CardContent>
@@ -167,9 +167,9 @@ export default function DreAnualPage() {
         <Card className="overflow-hidden">
           <div className="overflow-x-auto">
             <table className="text-xs min-w-full">
-              <thead className="bg-gray-50 text-[11px] uppercase tracking-wide text-gray-500">
+              <thead className="bg-muted text-[11px] uppercase tracking-wide text-muted-foreground">
                 <tr>
-                  <th className="sticky left-0 bg-gray-50 z-10 px-3 py-2 text-left border-r border-gray-200 min-w-[200px]">
+                  <th className="sticky left-0 bg-muted z-10 px-3 py-2 text-left border-r border-border min-w-[200px]">
                     Conta
                   </th>
                   {MONTH_LABELS.map((m) => (
@@ -177,7 +177,7 @@ export default function DreAnualPage() {
                       {m}
                     </th>
                   ))}
-                  <th className="px-3 py-2 text-right whitespace-nowrap bg-gray-100 min-w-[110px] border-l-2 border-gray-300">
+                  <th className="px-3 py-2 text-right whitespace-nowrap bg-muted min-w-[110px] border-l-2 border-border">
                     Total
                   </th>
                 </tr>
@@ -240,14 +240,14 @@ export default function DreAnualPage() {
                 <tr>
                   <td
                     colSpan={14}
-                    className="sticky left-0 bg-white px-3 pt-3 pb-1 text-[10px] font-semibold text-gray-500 uppercase tracking-wide"
+                    className="sticky left-0 bg-card px-3 pt-3 pb-1 text-[10px] font-semibold text-muted-foreground uppercase tracking-wide"
                   >
                     Despesas operacionais
                   </td>
                 </tr>
                 {allCategories.length === 0 ? (
                   <tr>
-                    <td colSpan={14} className="sticky left-0 bg-white px-3 py-2 text-gray-400 italic pl-8">
+                    <td colSpan={14} className="sticky left-0 bg-card px-3 py-2 text-muted-foreground italic pl-8">
                       Nenhuma despesa no ano
                     </td>
                   </tr>
@@ -283,7 +283,7 @@ export default function DreAnualPage() {
         </Card>
       )}
 
-      <p className="text-xs text-gray-500">
+      <p className="text-xs text-muted-foreground">
         Total = soma dos 12 meses do ano selecionado. Meses sem lançamentos aparecem zerados. Clique em
         Exportar CSV pra abrir no Excel (separador <code>;</code>, UTF-8).
       </p>
@@ -321,7 +321,7 @@ function Row({
       ? "bg-emerald-50 font-bold border-t-2 border-emerald-200"
       : "bg-rose-50 font-bold border-t-2 border-rose-200"
     : emphasis
-    ? "bg-gray-50 font-semibold border-t border-b border-gray-200"
+    ? "bg-muted font-semibold border-t border-b border-border"
     : ""
 
   const cellBase = highlight
@@ -331,15 +331,15 @@ function Row({
     : negative
     ? "text-rose-600"
     : emphasis
-    ? "text-gray-900"
-    : "text-gray-800"
+    ? "text-foreground"
+    : "text-foreground"
 
   return (
     <tr className={rowClass}>
       <td
-        className={`sticky left-0 z-10 px-3 py-1.5 border-r border-gray-100 whitespace-nowrap ${
+        className={`sticky left-0 z-10 px-3 py-1.5 border-r border-border whitespace-nowrap ${
           indent ? "pl-8" : ""
-        } ${rowClass || "bg-white"} ${emphasis || highlight ? "text-gray-900" : "text-gray-700"}`}
+        } ${rowClass || "bg-card"} ${emphasis || highlight ? "text-foreground" : "text-foreground"}`}
       >
         {label}
       </td>
@@ -349,7 +349,7 @@ function Row({
           <td
             key={i}
             className={`px-3 py-1.5 text-right tabular-nums whitespace-nowrap ${cellBase} ${
-              v === 0 ? "text-gray-300" : ""
+              v === 0 ? "text-muted-foreground/60" : ""
             }`}
           >
             {v === 0 ? "—" : formatCurrency(v)}
@@ -357,7 +357,7 @@ function Row({
         )
       })}
       <td
-        className={`px-3 py-1.5 text-right tabular-nums whitespace-nowrap bg-gray-100 border-l-2 border-gray-300 font-semibold ${cellBase}`}
+        className={`px-3 py-1.5 text-right tabular-nums whitespace-nowrap bg-muted border-l-2 border-border font-semibold ${cellBase}`}
       >
         {total === 0 ? "—" : formatCurrency(total)}
       </td>

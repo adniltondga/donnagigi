@@ -102,7 +102,7 @@ export default function LivroCaixaPage() {
 
       {loading || !data ? (
         <Card>
-          <CardContent className="flex items-center justify-center py-12 text-gray-500">
+          <CardContent className="flex items-center justify-center py-12 text-muted-foreground">
             <Loader className="w-5 h-5 animate-spin mr-2" />
             Carregando...
           </CardContent>
@@ -136,7 +136,7 @@ export default function LivroCaixaPage() {
           <Card className="overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
-                <thead className="bg-gray-50 text-xs uppercase tracking-wide text-gray-500">
+                <thead className="bg-muted text-xs uppercase tracking-wide text-muted-foreground">
                   <tr>
                     <th className="px-4 py-3 text-left whitespace-nowrap">Data</th>
                     <th className="px-4 py-3 text-left">Histórico</th>
@@ -149,23 +149,23 @@ export default function LivroCaixaPage() {
                 <tbody className="divide-y divide-gray-100">
                   {data.linhas.length === 0 ? (
                     <tr>
-                      <td colSpan={6} className="px-4 py-8 text-center text-gray-500">
+                      <td colSpan={6} className="px-4 py-8 text-center text-muted-foreground">
                         Nenhum lançamento no período.
                       </td>
                     </tr>
                   ) : (
                     data.linhas.map((l) => (
-                      <tr key={l.id} className="hover:bg-gray-50">
-                        <td className="px-4 py-2 whitespace-nowrap text-gray-700">
+                      <tr key={l.id} className="hover:bg-accent">
+                        <td className="px-4 py-2 whitespace-nowrap text-foreground">
                           {new Date(`${l.date}T12:00:00`).toLocaleDateString("pt-BR")}
                         </td>
                         <td className="px-4 py-2 max-w-md">
                           <div className="truncate" title={l.historico}>
                             {l.historico}
                           </div>
-                          {l.supplier && <div className="text-xs text-gray-400">{l.supplier}</div>}
+                          {l.supplier && <div className="text-xs text-muted-foreground">{l.supplier}</div>}
                         </td>
-                        <td className="px-4 py-2 text-xs text-gray-600">{l.categoria}</td>
+                        <td className="px-4 py-2 text-xs text-muted-foreground">{l.categoria}</td>
                         <td className="px-4 py-2 text-right tabular-nums text-emerald-600 whitespace-nowrap">
                           {l.entrada > 0 ? formatCurrency(l.entrada) : ""}
                         </td>
@@ -174,7 +174,7 @@ export default function LivroCaixaPage() {
                         </td>
                         <td
                           className={`px-4 py-2 text-right tabular-nums font-medium whitespace-nowrap ${
-                            l.saldo >= 0 ? "text-gray-900" : "text-rose-600"
+                            l.saldo >= 0 ? "text-foreground" : "text-rose-600"
                           }`}
                         >
                           {formatCurrency(l.saldo)}
@@ -184,7 +184,7 @@ export default function LivroCaixaPage() {
                   )}
                 </tbody>
                 {data.linhas.length > 0 && (
-                  <tfoot className="bg-gray-50 font-semibold text-gray-900">
+                  <tfoot className="bg-muted font-semibold text-foreground">
                     <tr>
                       <td className="px-4 py-3" colSpan={3}>
                         TOTAIS
@@ -197,7 +197,7 @@ export default function LivroCaixaPage() {
                       </td>
                       <td
                         className={`px-4 py-3 text-right tabular-nums ${
-                          data.resumo.saldoPeriodo >= 0 ? "text-gray-900" : "text-rose-600"
+                          data.resumo.saldoPeriodo >= 0 ? "text-foreground" : "text-rose-600"
                         }`}
                       >
                         {formatCurrency(data.resumo.saldoPeriodo)}

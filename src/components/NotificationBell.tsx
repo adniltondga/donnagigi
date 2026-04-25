@@ -32,7 +32,7 @@ function colorFor(type: string) {
   if (type === "sale") return "text-emerald-600 bg-emerald-50"
   if (type === "mp_release") return "text-sky-600 bg-sky-50"
   if (type === "refund") return "text-rose-600 bg-rose-50"
-  return "text-gray-600 bg-gray-100"
+  return "text-muted-foreground bg-muted"
 }
 
 function formatTime(iso: string): string {
@@ -95,7 +95,7 @@ export function NotificationBell() {
     <div ref={wrapperRef} className="relative">
       <button
         onClick={() => setOpen((v) => !v)}
-        className="relative p-2 rounded-lg hover:bg-gray-100 text-gray-700"
+        className="relative p-2 rounded-lg hover:bg-muted text-foreground"
         aria-label="Notificações"
       >
         <Bell className="w-5 h-5" />
@@ -107,9 +107,9 @@ export function NotificationBell() {
       </button>
 
       {open && (
-        <div className="absolute right-0 mt-2 w-80 md:w-96 bg-white rounded-lg shadow-lg border border-gray-200 z-50 overflow-hidden">
-          <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
-            <p className="text-sm font-semibold text-gray-900">Notificações</p>
+        <div className="absolute right-0 mt-2 w-80 md:w-96 bg-card rounded-lg shadow-lg border border-border z-50 overflow-hidden">
+          <div className="flex items-center justify-between px-4 py-3 border-b border-border">
+            <p className="text-sm font-semibold text-foreground">Notificações</p>
             {unread > 0 && (
               <button
                 onClick={markAll}
@@ -123,7 +123,7 @@ export function NotificationBell() {
 
           <div className="max-h-96 overflow-y-auto">
             {items.length === 0 ? (
-              <div className="px-4 py-8 text-center text-sm text-gray-500">
+              <div className="px-4 py-8 text-center text-sm text-muted-foreground">
                 Nenhuma notificação ainda
               </div>
             ) : (
@@ -132,7 +132,7 @@ export function NotificationBell() {
                 const iconClass = colorFor(n.type)
                 const content = (
                   <div
-                    className={`px-4 py-3 border-b border-gray-50 hover:bg-gray-50 cursor-pointer transition ${
+                    className={`px-4 py-3 border-b border-gray-50 hover:bg-accent cursor-pointer transition ${
                       !n.read ? "bg-blue-50/30" : ""
                     }`}
                     onClick={() => !n.read && markOne(n.id)}
@@ -142,13 +142,13 @@ export function NotificationBell() {
                         <Icon className="w-4 h-4" />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className={`text-sm leading-snug ${!n.read ? "font-semibold text-gray-900" : "text-gray-700"}`}>
+                        <p className={`text-sm leading-snug ${!n.read ? "font-semibold text-foreground" : "text-foreground"}`}>
                           {n.title}
                         </p>
                         {n.body && (
-                          <p className="text-xs text-gray-500 mt-0.5 truncate">{n.body}</p>
+                          <p className="text-xs text-muted-foreground mt-0.5 truncate">{n.body}</p>
                         )}
-                        <p className="text-[11px] text-gray-400 mt-1">{formatTime(n.createdAt)}</p>
+                        <p className="text-[11px] text-muted-foreground mt-1">{formatTime(n.createdAt)}</p>
                       </div>
                       {!n.read && <div className="w-2 h-2 rounded-full bg-primary-600 shrink-0 mt-2" />}
                     </div>

@@ -34,7 +34,7 @@ export default function CurrencyInput({
   onChange,
   placeholder = 'R$ 0,00',
   disabled = false,
-  className = 'w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-600',
+  className = 'w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-600',
   id,
   required,
 }: CurrencyInputProps) {

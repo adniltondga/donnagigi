@@ -59,7 +59,7 @@ function ConfigInner() {
       <PageHeader title="Configurações" description="Gerencie seu perfil, senha, integrações e assinatura." />
 
       {/* Tabs */}
-      <div className="border-b border-gray-200 flex flex-wrap gap-1">
+      <div className="border-b border-border flex flex-wrap gap-1">
         {visibleTabs.map((t) => {
           const Icon = t.icon
           const active = tab === t.key
@@ -70,7 +70,7 @@ function ConfigInner() {
               className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 ${
                 active
                   ? "border-primary-600 text-primary-600"
-                  : "border-transparent text-gray-500 hover:text-gray-700"
+                  : "border-transparent text-muted-foreground hover:text-foreground"
               }`}
             >
               <Icon className="w-4 h-4" />
@@ -164,38 +164,38 @@ function PerfilPanel() {
 
         <form onSubmit={onSave} className="space-y-4 max-w-xl">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Nome completo</label>
+            <label className="block text-sm font-medium text-foreground mb-1">Nome completo</label>
             <input
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
               required
               minLength={2}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-600 focus:border-transparent outline-none"
+              className="w-full px-3 py-2 border border-border rounded-lg focus:ring-2 focus:ring-primary-600 focus:border-transparent outline-none"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Email <span className="text-gray-400 font-normal">(não editável)</span>
+            <label className="block text-sm font-medium text-foreground mb-1">
+              Email <span className="text-muted-foreground font-normal">(não editável)</span>
             </label>
             <input
               type="email"
               value={email}
               disabled
-              className="w-full px-3 py-2 border border-gray-200 rounded-lg bg-gray-50 text-gray-500 cursor-not-allowed"
+              className="w-full px-3 py-2 border border-border rounded-lg bg-muted text-muted-foreground cursor-not-allowed"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Nome do negócio</label>
+            <label className="block text-sm font-medium text-foreground mb-1">Nome do negócio</label>
             <input
               type="text"
               value={tenantName}
               onChange={(e) => setTenantName(e.target.value)}
               required
               minLength={2}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-600 focus:border-transparent outline-none"
+              className="w-full px-3 py-2 border border-border rounded-lg focus:ring-2 focus:ring-primary-600 focus:border-transparent outline-none"
             />
           </div>
 
@@ -310,7 +310,7 @@ function PasswordField({
 }) {
   return (
     <div>
-      <label className="block text-sm font-medium text-gray-700 mb-1">{label}</label>
+      <label className="block text-sm font-medium text-foreground mb-1">{label}</label>
       <div className="relative">
         <input
           type={show ? "text" : "password"}
@@ -318,17 +318,17 @@ function PasswordField({
           onChange={(e) => onChange(e.target.value)}
           required={required}
           minLength={minLength}
-          className="w-full pr-10 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-600 focus:border-transparent outline-none"
+          className="w-full pr-10 px-3 py-2 border border-border rounded-lg focus:ring-2 focus:ring-primary-600 focus:border-transparent outline-none"
         />
         <button
           type="button"
           onClick={toggleShow}
-          className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 p-1"
+          className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-muted-foreground p-1"
         >
           {show ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
         </button>
       </div>
-      {hint && <p className="text-xs text-gray-500 mt-1">{hint}</p>}
+      {hint && <p className="text-xs text-muted-foreground mt-1">{hint}</p>}
     </div>
   )
 }
@@ -349,8 +349,8 @@ const STATUS_STYLES: Record<Status, string> = {
   ACTIVE: "bg-green-100 text-green-800",
   PENDING: "bg-amber-100 text-amber-800",
   OVERDUE: "bg-red-100 text-red-800",
-  CANCELED: "bg-gray-100 text-gray-800",
-  EXPIRED: "bg-gray-100 text-gray-800",
+  CANCELED: "bg-muted text-foreground",
+  EXPIRED: "bg-muted text-foreground",
 }
 const BILLING_LABELS: Record<string, string> = { PIX: "PIX", BOLETO: "Boleto", CREDIT_CARD: "Cartão de crédito" }
 
@@ -398,7 +398,7 @@ function AssinaturaPanel() {
   }
 
   if (loading) return <LoadingBox />
-  if (!data) return <div className="text-gray-500 text-sm p-4">Nenhuma assinatura encontrada.</div>
+  if (!data) return <div className="text-muted-foreground text-sm p-4">Nenhuma assinatura encontrada.</div>
 
   const { subscription, plan, trialDaysLeft } = data
   const isPaid = subscription.plan !== "FREE"
@@ -416,10 +416,10 @@ function AssinaturaPanel() {
         <CardContent className="space-y-4">
           <div className="flex items-start justify-between flex-wrap gap-3">
             <div>
-              <div className="text-sm text-gray-500">Plano</div>
-              <div className="text-2xl font-bold text-gray-900">{plan.name}</div>
+              <div className="text-sm text-muted-foreground">Plano</div>
+              <div className="text-2xl font-bold text-foreground">{plan.name}</div>
               {subscription.value != null && (
-                <div className="text-sm text-gray-600">{formatCurrency(Number(subscription.value))} / mês</div>
+                <div className="text-sm text-muted-foreground">{formatCurrency(Number(subscription.value))} / mês</div>
               )}
             </div>
             <span className={`px-3 py-1 rounded-full text-xs font-semibold ${STATUS_STYLES[subscription.status as Status]}`}>
@@ -442,18 +442,18 @@ function AssinaturaPanel() {
             </div>
           )}
 
-          <div className="grid grid-cols-2 gap-4 pt-3 border-t border-gray-100">
+          <div className="grid grid-cols-2 gap-4 pt-3 border-t border-border">
             <div>
-              <div className="text-xs text-gray-500">Forma de pagamento</div>
-              <div className="text-sm font-medium text-gray-900 mt-1">
+              <div className="text-xs text-muted-foreground">Forma de pagamento</div>
+              <div className="text-sm font-medium text-foreground mt-1">
                 {subscription.billingType ? BILLING_LABELS[subscription.billingType] : "—"}
               </div>
             </div>
             <div>
-              <div className="text-xs text-gray-500">
+              <div className="text-xs text-muted-foreground">
                 {subscription.status === "TRIAL" ? "Trial até" : "Próxima cobrança"}
               </div>
-              <div className="text-sm font-medium text-gray-900 mt-1">
+              <div className="text-sm font-medium text-foreground mt-1">
                 {formatDate(subscription.status === "TRIAL" ? subscription.trialEndsAt : subscription.currentPeriodEnd)}
               </div>
             </div>
@@ -469,7 +469,7 @@ function AssinaturaPanel() {
             </Link>
             <Link
               href="/admin/billing/faturas"
-              className="border border-gray-300 text-gray-700 font-semibold px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-gray-50"
+              className="border border-border text-foreground font-semibold px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-accent"
             >
               <FileText className="w-4 h-4" />
               Ver faturas
@@ -495,7 +495,7 @@ function AssinaturaPanel() {
 
 function LoadingBox() {
   return (
-    <div className="flex items-center justify-center py-8 text-gray-500">
+    <div className="flex items-center justify-center py-8 text-muted-foreground">
       <Loader className="animate-spin w-5 h-5 mr-2" />
       Carregando...
     </div>
