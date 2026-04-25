@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { Footer } from "@/components/Footer";
 import {
   TrendingUp,
@@ -13,9 +14,62 @@ import {
 import { PLANS } from "@/lib/plans";
 import { formatCurrency } from "@/lib/calculations";
 
+const SITE_URL = "https://aglivre.dgadigital.com.br";
+
+const jsonLd = {
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Organization",
+      "@id": `${SITE_URL}/#organization`,
+      name: "agLivre",
+      url: SITE_URL,
+      logo: `${SITE_URL}/icon.png`,
+      description:
+        "Painel financeiro para vendedores do Mercado Livre. Lucro real, taxas e liberações do Mercado Pago num só lugar.",
+      foundingDate: "2026",
+      parentOrganization: {
+        "@type": "Organization",
+        name: "DGA Digital",
+        url: "https://dgadigital.com.br",
+      },
+    },
+    {
+      "@type": "WebSite",
+      "@id": `${SITE_URL}/#website`,
+      url: SITE_URL,
+      name: "agLivre",
+      inLanguage: "pt-BR",
+      publisher: { "@id": `${SITE_URL}/#organization` },
+    },
+    {
+      "@type": "SoftwareApplication",
+      "@id": `${SITE_URL}/#software`,
+      name: "agLivre",
+      applicationCategory: "BusinessApplication",
+      operatingSystem: "Web",
+      description:
+        "Gestão financeira para vendedores do Mercado Livre: controle de vendas, taxas, lucro real, devoluções e liberações do Mercado Pago.",
+      url: SITE_URL,
+      inLanguage: "pt-BR",
+      offers: Object.values(PLANS).map((p) => ({
+        "@type": "Offer",
+        name: p.name,
+        price: p.priceBRL,
+        priceCurrency: "BRL",
+        category: p.tagline,
+      })),
+    },
+  ],
+};
+
 export default function Home() {
   return (
     <div className="min-h-screen flex flex-col bg-white">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
       {/* Topbar */}
       <header className="border-b bg-white sticky top-0 z-10">
         <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
@@ -52,37 +106,57 @@ export default function Home() {
       </header>
 
       {/* Hero */}
-      <section className="bg-gradient-to-br from-primary-600 via-primary-700 to-fuchsia-700 text-white">
-        <div className="max-w-6xl mx-auto px-4 py-24 text-center">
-          <div className="inline-block bg-white/10 backdrop-blur px-3 py-1 rounded-full text-xs font-medium mb-6 border border-white/20">
-            🔒 Feito para vendedores do Mercado Livre
+      <section className="bg-gradient-to-br from-primary-600 via-primary-700 to-fuchsia-700 text-white overflow-hidden">
+        <div className="max-w-7xl mx-auto px-4 py-20 lg:py-24">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16 items-center">
+            {/* Coluna esquerda — texto */}
+            <div className="text-center lg:text-left">
+              <div className="inline-block bg-white/10 backdrop-blur px-3 py-1 rounded-full text-xs font-medium mb-6 border border-white/20">
+                🔒 Feito para vendedores do Mercado Livre
+              </div>
+              <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold mb-6 leading-tight">
+                O painel financeiro <br />
+                que o Mercado Livre não te dá.
+              </h1>
+              <p className="text-lg lg:text-xl text-white/90 mb-10 max-w-xl mx-auto lg:mx-0">
+                Veja quando cada venda libera, quanto fica de lucro real depois das taxas
+                e acompanhe o dinheiro do seu Mercado Pago — tudo num painel só.
+              </p>
+              <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
+                <Link
+                  href="/admin/login?register=1"
+                  className="bg-white text-primary-700 px-8 py-3 rounded-lg font-bold hover:bg-primary-50 transition inline-flex items-center justify-center gap-2"
+                >
+                  Criar conta grátis
+                  <ArrowRight size={18} />
+                </Link>
+                <Link
+                  href="/admin/login"
+                  className="bg-white/10 backdrop-blur border border-white/30 text-white px-8 py-3 rounded-lg font-semibold hover:bg-white/20 transition text-center"
+                >
+                  Já tenho conta
+                </Link>
+              </div>
+              <p className="text-sm text-white/70 mt-6">
+                Cadastro com email e senha · 14 dias grátis · Sem cartão de crédito
+              </p>
+            </div>
+
+            {/* Coluna direita — screenshot do produto */}
+            <div className="relative lg:scale-110 lg:translate-x-4">
+              <div className="absolute -inset-4 bg-white/5 blur-3xl rounded-3xl" aria-hidden />
+              <div className="relative rounded-xl overflow-hidden shadow-2xl ring-1 ring-white/20">
+                <Image
+                  src="/screenshots/dashboard.png"
+                  alt="Painel do agLivre mostrando vendas, lucro e liberações do Mercado Pago"
+                  width={1600}
+                  height={900}
+                  priority
+                  className="w-full h-auto"
+                />
+              </div>
+            </div>
           </div>
-          <h1 className="text-5xl md:text-6xl font-bold mb-6 leading-tight">
-            O painel financeiro <br />
-            que o ML não te dá.
-          </h1>
-          <p className="text-xl text-white/90 mb-10 max-w-2xl mx-auto">
-            Veja quando cada venda libera, quanto fica de lucro real depois das taxas
-            e sincronize automaticamente o dinheiro que pinga no seu Mercado Pago.
-          </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link
-              href="/admin/login?register=1"
-              className="bg-white text-primary-700 px-8 py-3 rounded-lg font-bold hover:bg-primary-50 transition inline-flex items-center justify-center gap-2"
-            >
-              Criar conta grátis
-              <ArrowRight size={18} />
-            </Link>
-            <Link
-              href="/admin/login"
-              className="bg-white/10 backdrop-blur border border-white/30 text-white px-8 py-3 rounded-lg font-semibold hover:bg-white/20 transition"
-            >
-              Já tenho conta
-            </Link>
-          </div>
-          <p className="text-sm text-white/70 mt-6">
-            Sem cartão de crédito · 1 minuto pra conectar seu ML
-          </p>
         </div>
       </section>
 
@@ -105,12 +179,12 @@ export default function Home() {
           <FeatureCard
             icon={<Calendar />}
             title="Previsão de caixa"
-            desc="Saiba quanto o ML vai te pagar nos próximos 30 dias, por dia, com data exata."
+            desc="Saiba quanto o Mercado Livre vai te pagar nos próximos 30 dias, por dia, com data exata."
           />
           <FeatureCard
             icon={<DollarSign />}
-            title="Sincroniza com MP"
-            desc="O que o ML libera pro seu Mercado Pago aparece aqui — sem precisar conferir manualmente."
+            title="Sincroniza com Mercado Pago"
+            desc="O que o Mercado Livre libera pro seu Mercado Pago aparece aqui — sem precisar conferir manualmente."
           />
           <FeatureCard
             icon={<Package />}
@@ -132,17 +206,17 @@ export default function Home() {
             <Step
               n={1}
               title="Cria sua conta"
-              desc="Email, senha e nome do seu negócio. Sem cartão."
+              desc="Email, senha e nome do seu negócio. Cadastro próprio do agLivre — sem login social."
             />
             <Step
               n={2}
-              title="Conecta o Mercado Livre"
-              desc="OAuth oficial do ML — não armazenamos sua senha."
+              title="Conecta Mercado Livre e Mercado Pago"
+              desc="OAuth oficial das duas plataformas. Não armazenamos sua senha — só os tokens necessários."
             />
             <Step
               n={3}
               title="Acompanha tudo"
-              desc="Seus pedidos, lucros e recebimentos aparecem em segundos."
+              desc="Pedidos, lucros, taxas e liberações do Mercado Pago aparecem no painel em segundos."
             />
           </div>
         </div>
@@ -234,7 +308,7 @@ export default function Home() {
             Pronto pra ver seu lucro real?
           </h2>
           <p className="text-gray-600 mb-8">
-            Leva 1 minuto pra criar conta e conectar seu ML.
+            Leva 1 minuto pra criar conta e conectar Mercado Livre e Mercado Pago.
           </p>
           <Link
             href="/admin/login?register=1"

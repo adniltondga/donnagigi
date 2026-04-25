@@ -26,18 +26,34 @@ export function Footer() {
             </ul>
           </div>
           <div>
-            <h4 className="font-semibold mb-4">Redes</h4>
+            <h4 className="font-semibold mb-4">Empresa</h4>
             <ul className="text-muted-foreground space-y-2 text-sm">
               <li>
-                <a href="#" className="hover:text-white transition">
-                  Instagram
+                <a
+                  href="https://dgadigital.com.br"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="hover:text-white transition"
+                >
+                  DGA Digital
                 </a>
               </li>
             </ul>
           </div>
         </div>
-        <div className="border-t border-gray-700 pt-8 text-center text-muted-foreground text-sm">
+        <div className="border-t border-gray-700 pt-8 text-center text-muted-foreground text-sm space-y-2">
           <p>&copy; 2026 agLivre. Todos os direitos reservados.</p>
+          <p>
+            Sistema desenvolvido pela{" "}
+            <a
+              href="https://dgadigital.com.br"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-semibold text-white hover:text-primary-400 transition"
+            >
+              DGA Digital
+            </a>
+          </p>
         </div>
       </div>
     </footer>
