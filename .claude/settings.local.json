@@ -53,7 +53,8 @@
       "Bash(yarn add *)",
       "Bash(xargs -0 sed -i '' -e s/text-gray-900/text-foreground/g -e s/text-gray-600/text-muted-foreground/g -e s/text-gray-500/text-muted-foreground/g -e s/border-gray-100/border-border/g -e s/border-gray-200/border-border/g -e s/border-gray-300/border-border/g -e s/bg-white/bg-card/g -e s/hover:bg-gray-50/hover:bg-accent/g)",
       "Bash(xargs -0 sed -i '' -e 's/ dark:text-muted-foreground\\\\/60//g' -e 's/ dark:hover:bg-gray-800//g' -e 's/ dark:hover:text-white//g' -e 's/ dark:bg-gray-800//g')",
-      "Bash(yarn remove *)"
+      "Bash(yarn remove *)",
+      "Bash(grep -E \"robots|sitemap|favicon|og-|opengraph\" echo \"---\" find src/app -name \"robots*\" -o -name \"sitemap*\" -o -name \"icon*\" -o -name \"opengraph*\" echo \"---\" grep -l \"metadata\" src/app/forgot-password/page.tsx src/app/reset-password/page.tsx src/app/verify-email/page.tsx src/app/convite/\\\\[token\\\\]/page.tsx)"
     ]
   }
 }

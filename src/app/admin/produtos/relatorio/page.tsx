@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { ArrowRight, Package, type LucideIcon } from 'lucide-react'
+import { ArrowRight, Package, ShoppingCart, type LucideIcon } from 'lucide-react'
 import { PageHeader } from '@/components/ui/page-header'
 import { Card, CardContent } from '@/components/ui/card'
 
@@ -13,6 +13,13 @@ interface RelatorioCard {
 }
 
 const CARDS: RelatorioCard[] = [
+  {
+    href: '/admin/relatorios/vendas-ml',
+    icon: ShoppingCart,
+    title: 'Vendas Mercado Livre',
+    description: 'Listagem de todas as vendas ML com filtros, busca por pedido/pack e drill-down nas notas.',
+    accent: 'bg-amber-50 text-amber-700',
+  },
   {
     href: '/admin/relatorios/potencial-estoque',
     icon: Package,

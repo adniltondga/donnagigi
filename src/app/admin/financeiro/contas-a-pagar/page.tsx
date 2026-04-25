@@ -1,11 +1,5 @@
-import { PageHeader } from "@/components/ui/page-header"
-import { BillsTab } from "../_components"
+import { redirect } from "next/navigation"
 
-export default function ContasAPagarPage() {
-  return (
-    <div className="space-y-6">
-      <PageHeader title="💸 Contas a pagar" description="Despesas, impostos, fornecedores e marketplace." />
-      <BillsTab type="payable" />
-    </div>
-  )
+export default function ContasAPagarRedirect() {
+  redirect("/admin/financeiro/contas?tab=payable")
 }

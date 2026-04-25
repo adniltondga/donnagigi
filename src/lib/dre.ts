@@ -67,6 +67,20 @@ export async function computeDre(
   })
   const receitaBrutaOutras = outras.reduce((s, b) => s + b.amount, 0)
 
+  // "Aporte sócio" (raiz + filhas, incluindo Amortização) NÃO entra no DRE.
+  // Aporte é capital (entrada de caixa do sócio); amortização é devolução
+  // de capital. Ambos são movimentação do balanço (passivo "Conta-corrente
+  // sócios"), não receita/despesa operacional. Pelo padrão contábil, só
+  // pró-labore (sócio-administrador) entra como despesa de Pessoal — o
+  // que já acontece via categoria "Pessoal > Pró-labore".
+  const aporteRoot = await prisma.billCategory.findFirst({
+    where: { tenantId, parentId: null, name: "Aporte sócio", type: "payable" },
+    select: { id: true, children: { select: { id: true } } },
+  })
+  const aporteIds = aporteRoot
+    ? [aporteRoot.id, ...aporteRoot.children.map((c) => c.id)]
+    : []
+
   const despesasWhere =
     basis === "caixa"
       ? {
@@ -74,7 +88,12 @@ export async function computeDre(
           type: "payable",
           status: "paid",
           paidDate: { gte: start, lt: end },
-          NOT: [{ category: "marketplace_fee" }, { category: "venda" }],
+          NOT: [
+            { category: "marketplace_fee" },
+            { category: "venda" },
+            { category: "aporte_amortizacao" },
+          ],
+          ...(aporteIds.length > 0 ? { billCategoryId: { notIn: aporteIds } } : {}),
         }
       : {
           tenantId,
@@ -82,8 +101,10 @@ export async function computeDre(
           NOT: [
             { category: "marketplace_fee" },
             { category: "venda" },
+            { category: "aporte_amortizacao" },
             { status: "cancelled" },
           ],
+          ...(aporteIds.length > 0 ? { billCategoryId: { notIn: aporteIds } } : {}),
           dueDate: { gte: start, lt: end },
         }
   const despesas = await prisma.bill.findMany({

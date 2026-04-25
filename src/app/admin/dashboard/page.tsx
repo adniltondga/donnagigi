@@ -319,14 +319,16 @@ export default function Dashboard() {
               <LineChart data={timeline7d} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
                 <XAxis
                   dataKey="date"
-                  tick={{ fontSize: 11 }}
+                  tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
+                  stroke="hsl(var(--border))"
                   tickFormatter={(v: string) => {
                     const d = new Date(`${v}T12:00:00`)
                     return d.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })
                   }}
                 />
                 <YAxis
-                  tick={{ fontSize: 11 }}
+                  tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
+                  stroke="hsl(var(--border))"
                   tickFormatter={(v: number) => (v >= 1000 ? `${(v / 1000).toFixed(1)}k` : String(v))}
                 />
                 <Tooltip
@@ -335,6 +337,16 @@ export default function Dashboard() {
                     const d = new Date(`${String(label)}T12:00:00`)
                     return d.toLocaleDateString("pt-BR")
                   }}
+                  contentStyle={{
+                    backgroundColor: "hsl(var(--popover))",
+                    border: "1px solid hsl(var(--border))",
+                    borderRadius: "0.5rem",
+                    color: "hsl(var(--popover-foreground))",
+                    boxShadow: "0 4px 12px hsl(var(--foreground) / 0.08)",
+                  }}
+                  labelStyle={{ color: "hsl(var(--popover-foreground))", fontWeight: 600 }}
+                  itemStyle={{ color: "hsl(var(--popover-foreground))" }}
+                  cursor={{ stroke: "hsl(var(--border))", strokeWidth: 1 }}
                 />
                 <Line type="monotone" dataKey="bruto" stroke="#7c3aed" strokeWidth={2} dot={false} name="Bruto" />
                 <Line type="monotone" dataKey="lucro" stroke="#10b981" strokeWidth={2} dot={false} name="Lucro" />

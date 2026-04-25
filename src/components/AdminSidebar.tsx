@@ -5,7 +5,6 @@ import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import {
   LayoutDashboard,
-  BarChart3,
   DollarSign,
   Settings,
   LogOut,
@@ -33,10 +32,8 @@ const MENU: MenuItem[] = [
     isActive: (p) => p.startsWith("/admin/financeiro"),
     children: [
       { label: "Pró-labore", href: "/admin/financeiro/relatorios/pro-labore" },
-      { label: "Contas a pagar", href: "/admin/financeiro/contas-a-pagar" },
-      { label: "Contas a receber", href: "/admin/financeiro/contas-a-receber" },
+      { label: "Contas", href: "/admin/financeiro/contas" },
       { label: "Mercado Pago", href: "/admin/financeiro/mercado-pago" },
-      { label: "Categorias", href: "/admin/financeiro/categorias" },
       { label: "Relatórios", href: "/admin/financeiro/relatorios" },
     ],
   },
@@ -50,12 +47,6 @@ const MENU: MenuItem[] = [
       { label: "Menos vendidos", href: "/admin/top-produtos/menos-vendidos" },
       { label: "Relatório", href: "/admin/produtos/relatorio" },
     ],
-  },
-  {
-    label: "Relatórios",
-    href: "/admin/relatorios",
-    icon: BarChart3,
-    isActive: (p) => p.startsWith("/admin/relatorios") || p === "/admin/previsao",
   },
 ]
 

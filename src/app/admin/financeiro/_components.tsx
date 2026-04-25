@@ -1,8 +1,8 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import { feedback } from '@/lib/feedback';
 import {
-  CalendarClock,
   AlertTriangle,
   Wallet,
   FileText,
@@ -14,6 +14,7 @@ import {
   Check,
   X as XIcon,
   Loader,
+  MoreHorizontal,
 } from 'lucide-react';
 import { formatCurrency } from '@/lib/calculations';
 import { Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from '@/components/ui/table';
@@ -21,10 +22,26 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { StatCard } from '@/components/ui/stat-card';
 import { EmptyState } from '@/components/ui/empty-state';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+} from '@/components/ui/dropdown-menu';
 import { useUserRole } from '@/lib/useUserRole';
 import CurrencyInput from '@/components/CurrencyInput';
+import { SearchableSelect } from '@/components/ui/searchable-select';
+import { PeriodFilter, resolvePreset, type PeriodPreset } from '@/components/admin/PeriodFilter';
 
 export type BillType = 'payable' | 'receivable';
+export type BillsTabType = BillType | 'all';
 
 interface Supplier {
   id: string;
@@ -72,34 +89,122 @@ function formatDate(date: string | Date): string {
 }
 
 /* ============================================================
+   FilterCard — card clicável com botão "+" no canto pra criar
+   ============================================================ */
+
+const FILTER_TONES: Record<'rose' | 'emerald', { ring: string; addBtn: string; iconBg: string; valueColor: string; labelColor: string }> = {
+  rose: {
+    ring: 'ring-2 ring-rose-500 dark:ring-rose-400',
+    addBtn: 'text-rose-700 hover:bg-rose-100 dark:text-rose-300 dark:hover:bg-rose-900/40',
+    iconBg: 'bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-300',
+    valueColor: 'text-foreground',
+    labelColor: 'text-rose-700 dark:text-rose-400',
+  },
+  emerald: {
+    ring: 'ring-2 ring-emerald-500 dark:ring-emerald-400',
+    addBtn: 'text-emerald-700 hover:bg-emerald-100 dark:text-emerald-300 dark:hover:bg-emerald-900/40',
+    iconBg: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300',
+    valueColor: 'text-foreground',
+    labelColor: 'text-emerald-700 dark:text-emerald-400',
+  },
+};
+
+function FilterCard({
+  label,
+  value,
+  sub,
+  accent,
+  active,
+  onSelect,
+  onAdd,
+  addTitle,
+}: {
+  label: string;
+  value: string;
+  sub?: string;
+  accent: 'rose' | 'emerald';
+  active: boolean;
+  onSelect: () => void;
+  onAdd?: () => void;
+  addTitle?: string;
+}) {
+  const t = FILTER_TONES[accent];
+  return (
+    <div
+      role="button"
+      tabIndex={0}
+      onClick={onSelect}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          onSelect();
+        }
+      }}
+      className={`relative bg-card text-card-foreground rounded-xl border border-border shadow-sm p-5 cursor-pointer hover:shadow-md transition select-none ${
+        active ? t.ring : ''
+      }`}
+    >
+      <div className="flex items-start justify-between gap-3 pr-8">
+        <div className="min-w-0">
+          <p className={`text-xs font-semibold uppercase tracking-wide ${t.labelColor}`}>{label}</p>
+          <p className={`text-2xl font-bold mt-2 ${t.valueColor}`}>{value}</p>
+          {sub && <div className="text-xs text-muted-foreground mt-1">{sub}</div>}
+        </div>
+      </div>
+      {onAdd && (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            onAdd();
+          }}
+          className={`absolute top-3 right-3 p-1.5 rounded-full transition ${t.addBtn}`}
+          title={addTitle}
+          aria-label={addTitle}
+        >
+          <Plus className="w-4 h-4" />
+        </button>
+      )}
+    </div>
+  );
+}
+
+/* ============================================================
    Contas a pagar / Contas a receber
    ============================================================ */
 
-export function BillsTab({ type }: { type: BillType }) {
+export function BillsTab({ initialFilter }: { initialFilter?: BillType } = {}) {
   const { canWrite } = useUserRole();
+  const initialPeriod = useMemo(() => resolvePreset('mes'), []);
   const [bills, setBills] = useState<Bill[]>([]);
-  const [categories, setCategories] = useState<CategoryNode[]>([]);
+  const [catsPayable, setCatsPayable] = useState<CategoryNode[]>([]);
+  const [catsReceivable, setCatsReceivable] = useState<CategoryNode[]>([]);
   const [total, setTotal] = useState(0);
   const [pages, setPages] = useState(1);
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(false);
-  const [showNewForm, setShowNewForm] = useState(false);
+  // typeFilter null = mostra tudo; clicar nos cards "A pagar"/"A receber"
+  // alterna entre filtrado e todos.
+  const [typeFilter, setTypeFilter] = useState<BillType | null>(initialFilter ?? null);
+  const [from, setFrom] = useState<string>(initialPeriod.from);
+  const [to, setTo] = useState<string>(initialPeriod.to);
+  const [preset, setPreset] = useState<PeriodPreset>('mes');
+  const [formType, setFormType] = useState<BillType | null>(null);
   const [editBill, setEditBill] = useState<Bill | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
-  const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
-  const [statusFilter, setStatusFilter] = useState<string>('');
 
   const fetchBills = async () => {
     setLoading(true);
     try {
       const params = new URLSearchParams({
-        type,
         excludeCategory: 'venda',
         page: String(page),
         limit: '20',
         orderBy: 'dueDate_asc',
       });
-      if (statusFilter) params.set('status', statusFilter);
+      if (typeFilter) params.set('type', typeFilter);
+      if (from) params.set('dueFrom', from);
+      if (to) params.set('dueTo', to);
       const res = await fetch(`/api/bills?${params}`);
       const data = await res.json();
       setBills(data.data || []);
@@ -111,25 +216,40 @@ export function BillsTab({ type }: { type: BillType }) {
   };
 
   const loadCategories = async () => {
-    const res = await fetch(`/api/bill-categories?type=${type}`);
-    if (res.ok) {
-      const d = await res.json();
-      setCategories(d.categories || []);
-    }
+    await Promise.all([
+      fetch('/api/bill-categories?type=payable')
+        .then((r) => (r.ok ? r.json() : { categories: [] }))
+        .then((d) => setCatsPayable(d.categories || [])),
+      fetch('/api/bill-categories?type=receivable')
+        .then((r) => (r.ok ? r.json() : { categories: [] }))
+        .then((d) => setCatsReceivable(d.categories || [])),
+    ]);
+  };
+
+  const toggleTypeFilter = (next: BillType) => {
+    setPage(1);
+    setTypeFilter((curr) => (curr === next ? null : next));
+  };
+
+  const handlePeriodChange = (next: { from: string; to: string; preset: PeriodPreset }) => {
+    setFrom(next.from);
+    setTo(next.to);
+    setPreset(next.preset);
+    setPage(1);
   };
 
   useEffect(() => {
     loadCategories();
-  }, [type]);
+  }, []);
   useEffect(() => {
     fetchBills();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [page, statusFilter, type]);
+  }, [page, typeFilter, from, to]);
 
   const onMarkPaid = async (id: string) => {
     const res = await fetch(`/api/bills/${id}/pay`, { method: 'PATCH' });
     if (res.ok) {
-      setMessage({ type: 'success', text: 'Conta paga!' });
+      feedback.success('Conta paga!');
       fetchBills();
     }
   };
@@ -137,7 +257,7 @@ export function BillsTab({ type }: { type: BillType }) {
   const onDelete = async (id: string) => {
     const res = await fetch(`/api/bills/${id}`, { method: 'DELETE' });
     if (res.ok) {
-      setMessage({ type: 'success', text: 'Conta deletada' });
+      feedback.success('Conta deletada');
       setDeleteConfirm(null);
       fetchBills();
     }
@@ -152,6 +272,7 @@ export function BillsTab({ type }: { type: BillType }) {
     let proximasCount = 0, proximasAmount = 0;
     let vencidasCount = 0, vencidasAmount = 0;
     let pendentesCount = 0, pendentesAmount = 0;
+    let pagarPend = 0, receberPend = 0;
 
     for (const b of bills) {
       if (b.status !== 'pending') continue;
@@ -159,6 +280,8 @@ export function BillsTab({ type }: { type: BillType }) {
       due.setHours(0, 0, 0, 0);
       pendentesCount++;
       pendentesAmount += b.amount;
+      if (b.type === 'payable') pagarPend += b.amount;
+      else receberPend += b.amount;
       if (due < now) {
         vencidasCount++;
         vencidasAmount += b.amount;
@@ -167,103 +290,128 @@ export function BillsTab({ type }: { type: BillType }) {
         proximasAmount += b.amount;
       }
     }
-    return { proximasCount, proximasAmount, vencidasCount, vencidasAmount, pendentesCount, pendentesAmount };
+    return {
+      proximasCount, proximasAmount, vencidasCount, vencidasAmount, pendentesCount, pendentesAmount,
+      pagarPend, receberPend, saldo: receberPend - pagarPend,
+    };
   }, [bills]);
 
-  const emptyLabel = type === 'payable' ? 'Nenhuma conta a pagar' : 'Nenhuma conta a receber';
-  const newLabel = type === 'payable' ? 'Nova conta a pagar' : 'Nova conta a receber';
+  const emptyLabel = typeFilter === 'payable'
+    ? 'Nenhuma conta a pagar'
+    : typeFilter === 'receivable'
+    ? 'Nenhuma conta a receber'
+    : 'Nenhuma conta cadastrada';
+
+  const formCategories = formType === 'payable' ? catsPayable : catsReceivable;
+  const editCategories = editBill?.type === 'payable' ? catsPayable : catsReceivable;
 
   return (
     <div className="space-y-6">
-      {canWrite && (
-        <div className="flex justify-end">
-          <Button onClick={() => setShowNewForm(!showNewForm)}>
-            <Plus className="w-4 h-4 mr-1" />
-            {newLabel}
-          </Button>
-        </div>
-      )}
-
-      {message && (
-        <div
-          className={`p-3 rounded text-sm ${
-            message.type === 'success' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-          }`}
-        >
-          {message.text}
-        </div>
-      )}
+      <Card className="p-4">
+        <PeriodFilter from={from} to={to} preset={preset} onChange={handlePeriodChange} />
+      </Card>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-        <StatCard
-          label={type === 'payable' ? 'A pagar · 7 dias' : 'A receber · 7 dias'}
-          value={formatCurrency(summary.proximasAmount)}
-          sub={`${summary.proximasCount} conta(s)`}
-          icon={CalendarClock}
-          accent="amber"
-        />
-        <StatCard
-          label="Vencidas"
-          value={formatCurrency(summary.vencidasAmount)}
-          sub={`${summary.vencidasCount} conta(s)`}
-          icon={AlertTriangle}
+        <FilterCard
+          label="Total a pagar"
+          value={formatCurrency(summary.pagarPend)}
+          sub="clique para filtrar"
           accent="rose"
+          active={typeFilter === 'payable'}
+          onSelect={() => toggleTypeFilter('payable')}
+          onAdd={canWrite ? () => setFormType('payable') : undefined}
+          addTitle="Nova conta a pagar"
+        />
+        <FilterCard
+          label="Total a receber"
+          value={formatCurrency(summary.receberPend)}
+          sub="clique para filtrar"
+          accent="emerald"
+          active={typeFilter === 'receivable'}
+          onSelect={() => toggleTypeFilter('receivable')}
+          onAdd={canWrite ? () => setFormType('receivable') : undefined}
+          addTitle="Nova conta a receber"
         />
         <StatCard
-          label={type === 'payable' ? 'Total pendente' : 'Total a receber'}
-          value={formatCurrency(summary.pendentesAmount)}
-          sub={`${summary.pendentesCount} conta(s)`}
-          icon={Wallet}
-          accent="emerald"
+          label="Saldo do período"
+          value={formatCurrency(summary.saldo)}
+          sub="receber − pagar"
+          icon={summary.saldo >= 0 ? Wallet : AlertTriangle}
+          accent={summary.saldo >= 0 ? 'emerald' : 'rose'}
         />
       </div>
 
-      {showNewForm && canWrite && (
-        <BillForm
-          type={type}
-          categories={categories}
-          onCancel={() => setShowNewForm(false)}
-          onSaved={() => {
-            setShowNewForm(false);
-            setPage(1);
-            fetchBills();
-            setMessage({ type: 'success', text: 'Conta criada' });
-          }}
-        />
-      )}
+      {/* Modais de criação/edição */}
+      <Dialog open={!!formType} onOpenChange={(o) => !o && setFormType(null)}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>
+              {formType === 'payable' ? 'Nova conta a pagar' : 'Nova conta a receber'}
+            </DialogTitle>
+          </DialogHeader>
+          {formType && (
+            <BillForm
+              type={formType}
+              categories={formCategories}
+              onCategoriesChange={loadCategories}
+              onCancel={() => setFormType(null)}
+              onSaved={() => {
+                setFormType(null);
+                setPage(1);
+                fetchBills();
+                feedback.success('Conta criada');
+              }}
+              embedded
+            />
+          )}
+        </DialogContent>
+      </Dialog>
 
-      {editBill && canWrite && (
-        <BillForm
-          type={type}
-          bill={editBill}
-          categories={categories}
-          onCancel={() => setEditBill(null)}
-          onSaved={() => {
-            setEditBill(null);
-            fetchBills();
-            setMessage({ type: 'success', text: 'Conta atualizada' });
-          }}
-        />
-      )}
+      <Dialog open={!!deleteConfirm} onOpenChange={(o) => !o && setDeleteConfirm(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Deletar conta?</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            Essa ação não pode ser desfeita. A conta vai ser removida permanentemente.
+          </p>
+          <div className="flex gap-2 justify-end pt-2">
+            <Button variant="outline" onClick={() => setDeleteConfirm(null)}>
+              Cancelar
+            </Button>
+            <Button
+              onClick={() => deleteConfirm && onDelete(deleteConfirm)}
+              className="bg-red-600 hover:bg-red-700 text-white"
+            >
+              <Trash2 className="w-4 h-4 mr-1" />
+              Deletar
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
-      <div className="flex gap-2 items-end">
-        <div>
-          <label className="block text-xs font-medium text-muted-foreground mb-1">Status</label>
-          <select
-            value={statusFilter}
-            onChange={(e) => {
-              setPage(1);
-              setStatusFilter(e.target.value);
-            }}
-            className="border rounded px-3 py-2 text-sm"
-          >
-            <option value="">Todos</option>
-            <option value="pending">Pendentes</option>
-            <option value="paid">Pagos</option>
-            <option value="cancelled">Cancelados</option>
-          </select>
-        </div>
-      </div>
+      <Dialog open={!!editBill} onOpenChange={(o) => !o && setEditBill(null)}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Editar conta</DialogTitle>
+          </DialogHeader>
+          {editBill && (
+            <BillForm
+              type={editBill.type}
+              bill={editBill}
+              categories={editCategories}
+              onCategoriesChange={loadCategories}
+              onCancel={() => setEditBill(null)}
+              onSaved={() => {
+                setEditBill(null);
+                fetchBills();
+                feedback.success('Conta atualizada');
+              }}
+              embedded
+            />
+          )}
+        </DialogContent>
+      </Dialog>
 
       <Card className="overflow-hidden">
         {loading ? (
@@ -277,6 +425,7 @@ export function BillsTab({ type }: { type: BillType }) {
           <Table>
             <TableHeader>
               <TableRow>
+                {!typeFilter && <TableHead>Tipo</TableHead>}
                 <TableHead>Vencimento</TableHead>
                 <TableHead>Descrição</TableHead>
                 <TableHead>Categoria</TableHead>
@@ -296,6 +445,19 @@ export function BillsTab({ type }: { type: BillType }) {
                   : b.category || '—';
                 return (
                   <TableRow key={b.id}>
+                    {!typeFilter && (
+                      <TableCell className="text-xs whitespace-nowrap">
+                        <span
+                          className={`inline-flex items-center gap-1 px-2 py-0.5 rounded font-semibold ${
+                            b.type === 'payable'
+                              ? 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-300'
+                              : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300'
+                          }`}
+                        >
+                          {b.type === 'payable' ? '↓ Saída' : '↑ Entrada'}
+                        </span>
+                      </TableCell>
+                    )}
                     <TableCell className="text-sm whitespace-nowrap">{formatDate(b.dueDate)}</TableCell>
                     <TableCell className="text-sm">{b.description}</TableCell>
                     <TableCell className="text-sm text-muted-foreground">
@@ -330,41 +492,33 @@ export function BillsTab({ type }: { type: BillType }) {
                       </span>
                     </TableCell>
                     <TableCell>
-                      <div className="flex gap-1 justify-end">
+                      <div className="flex justify-end">
                         {canWrite && (
-                          <Button onClick={() => setEditBill(b)} size="sm" variant="ghost" title="Editar">
-                            <Pencil className="w-4 h-4" />
-                          </Button>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button size="icon" variant="ghost" title="Ações" aria-label="Ações">
+                                <MoreHorizontal className="w-4 h-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem onSelect={() => setEditBill(b)}>
+                                <Pencil className="w-4 h-4" />
+                                Editar
+                              </DropdownMenuItem>
+                              {b.status !== 'paid' && b.status !== 'cancelled' && (
+                                <DropdownMenuItem onSelect={() => onMarkPaid(b.id)}>
+                                  <Check className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                                  {b.type === 'payable' ? 'Marcar como paga' : 'Marcar como recebida'}
+                                </DropdownMenuItem>
+                              )}
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem danger onSelect={() => setDeleteConfirm(b.id)}>
+                                <Trash2 className="w-4 h-4" />
+                                Deletar
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
                         )}
-                        {canWrite && b.status !== 'paid' && b.status !== 'cancelled' && (
-                          <Button
-                            onClick={() => onMarkPaid(b.id)}
-                            size="sm"
-                            variant="ghost"
-                            title={type === 'payable' ? 'Marcar como paga' : 'Marcar como recebida'}
-                          >
-                            <Check className="w-4 h-4 text-emerald-600" />
-                          </Button>
-                        )}
-                        {canWrite && deleteConfirm === b.id ? (
-                          <>
-                            <Button onClick={() => onDelete(b.id)} size="sm" variant="ghost" title="Confirmar">
-                              <Check className="w-4 h-4 text-red-600" />
-                            </Button>
-                            <Button onClick={() => setDeleteConfirm(null)} size="sm" variant="ghost" title="Cancelar">
-                              <XIcon className="w-4 h-4" />
-                            </Button>
-                          </>
-                        ) : canWrite ? (
-                          <Button
-                            onClick={() => setDeleteConfirm(b.id)}
-                            size="sm"
-                            variant="ghost"
-                            title="Deletar"
-                          >
-                            <Trash2 className="w-4 h-4 text-red-500" />
-                          </Button>
-                        ) : null}
                       </div>
                     </TableCell>
                   </TableRow>
@@ -407,18 +561,25 @@ function BillForm({
   categories,
   onSaved,
   onCancel,
+  onCategoriesChange,
+  embedded,
 }: {
   type: BillType;
   bill?: Bill;
   categories: CategoryNode[];
   onSaved: () => void;
   onCancel: () => void;
+  /** Callback chamada após criar uma categoria/subcategoria inline; pai
+   * deve refazer fetch para refletir no select. */
+  onCategoriesChange?: () => Promise<void> | void;
+  /** Quando renderizado dentro de Dialog, omite o Card/CardHeader externo. */
+  embedded?: boolean;
 }) {
   const editing = !!bill;
   const [rootId, setRootId] = useState<string>(() => {
     if (bill?.billCategory?.parent) return bill.billCategory.parent.id;
     if (bill?.billCategory && !bill.billCategory.parent) return bill.billCategory.id;
-    return categories[0]?.id || '';
+    return '';
   });
   const [subId, setSubId] = useState<string>(() => {
     if (bill?.billCategory?.parent) return bill.billCategory.id;
@@ -432,12 +593,57 @@ function BillForm({
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
+  // Criação inline de categoria
+  const [showNewRoot, setShowNewRoot] = useState(false);
+  const [showNewSub, setShowNewSub] = useState(false);
+  const [newCatName, setNewCatName] = useState('');
+  const [creatingCat, setCreatingCat] = useState(false);
+
   const rootCat = categories.find((c) => c.id === rootId);
   const subs = rootCat?.children || [];
 
   useEffect(() => {
     if (!bill) setSubId('');
   }, [rootId, bill]);
+
+  const createCategory = async (asSub: boolean) => {
+    const name = newCatName.trim();
+    if (!name) return;
+    setCreatingCat(true);
+    try {
+      const res = await fetch('/api/bill-categories', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name,
+          type,
+          parentId: asSub ? rootId : null,
+        }),
+      });
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}));
+        setErr(d.error || 'Erro ao criar categoria');
+        return;
+      }
+      const created = await res.json();
+      await onCategoriesChange?.();
+      // Auto-seleciona a nova
+      if (asSub) {
+        setSubId(created.id);
+        setShowNewSub(false);
+      } else {
+        setRootId(created.id);
+        setSubId('');
+        setShowNewRoot(false);
+      }
+      setNewCatName('');
+      setErr(null);
+    } catch {
+      setErr('Erro de conexão');
+    } finally {
+      setCreatingCat(false);
+    }
+  };
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -482,52 +688,109 @@ function BillForm({
     }
   };
 
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle>{editing ? 'Editar conta' : type === 'payable' ? 'Nova conta a pagar' : 'Nova conta a receber'}</CardTitle>
-      </CardHeader>
-      <CardContent>
-        {categories.length === 0 ? (
-          <div className="text-sm text-muted-foreground">
-            Nenhuma categoria cadastrada. Vá em <strong>Financeiro &gt; Categorias</strong> e crie uma primeiro.
-          </div>
+  const inner = (
+    <>
+      {categories.length === 0 ? (
+        <div className="text-sm text-muted-foreground">
+          Nenhuma categoria cadastrada. Clique em <strong>&ldquo;Gerenciar categorias&rdquo;</strong> no topo da página e crie uma primeiro.
+        </div>
         ) : (
           <form onSubmit={submit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-foreground mb-1">Categoria</label>
-              <select
-                value={rootId}
-                onChange={(e) => setRootId(e.target.value)}
-                required
-                className="w-full border rounded-lg px-3 py-2"
-              >
-                <option value="">Selecione...</option>
-                {categories.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
-                  </option>
-                ))}
-              </select>
+              {showNewRoot ? (
+                <div className="flex gap-2">
+                  <input
+                    autoFocus
+                    type="text"
+                    value={newCatName}
+                    onChange={(e) => setNewCatName(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') { e.preventDefault(); createCategory(false); }
+                      if (e.key === 'Escape') { setShowNewRoot(false); setNewCatName(''); }
+                    }}
+                    placeholder="Nome da categoria"
+                    className="flex-1 border rounded-lg px-3 py-2"
+                  />
+                  <Button type="button" size="icon" onClick={() => createCategory(false)} disabled={creatingCat} title="Criar">
+                    {creatingCat ? <Loader className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+                  </Button>
+                  <Button type="button" size="icon" variant="outline" onClick={() => { setShowNewRoot(false); setNewCatName(''); }} title="Cancelar">
+                    <XIcon className="w-4 h-4" />
+                  </Button>
+                </div>
+              ) : (
+                <div className="flex gap-2">
+                  <SearchableSelect
+                    value={rootId}
+                    onChange={setRootId}
+                    options={categories.map((c) => ({ value: c.id, label: c.name }))}
+                    placeholder="Buscar categoria..."
+                    emptyText="Nenhuma categoria encontrada"
+                    required
+                    className="flex-1"
+                  />
+                  <Button type="button" size="icon" variant="outline" onClick={() => setShowNewRoot(true)} title="Criar nova categoria">
+                    <Plus className="w-4 h-4" />
+                  </Button>
+                </div>
+              )}
             </div>
 
             <div>
               <label className="block text-sm font-medium text-foreground mb-1">
                 Subcategoria <span className="text-muted-foreground font-normal">(opcional)</span>
               </label>
-              <select
-                value={subId}
-                onChange={(e) => setSubId(e.target.value)}
-                disabled={subs.length === 0}
-                className="w-full border rounded-lg px-3 py-2 disabled:bg-muted disabled:text-muted-foreground"
-              >
-                <option value="">{subs.length === 0 ? 'Sem subcategorias' : 'Selecione...'}</option>
-                {subs.map((s) => (
-                  <option key={s.id} value={s.id}>
-                    {s.name}
-                  </option>
-                ))}
-              </select>
+              {showNewSub ? (
+                <div className="flex gap-2">
+                  <input
+                    autoFocus
+                    type="text"
+                    value={newCatName}
+                    onChange={(e) => setNewCatName(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') { e.preventDefault(); createCategory(true); }
+                      if (e.key === 'Escape') { setShowNewSub(false); setNewCatName(''); }
+                    }}
+                    placeholder="Nome da subcategoria"
+                    className="flex-1 border rounded-lg px-3 py-2"
+                  />
+                  <Button type="button" size="icon" onClick={() => createCategory(true)} disabled={creatingCat || !rootId} title="Criar">
+                    {creatingCat ? <Loader className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+                  </Button>
+                  <Button type="button" size="icon" variant="outline" onClick={() => { setShowNewSub(false); setNewCatName(''); }} title="Cancelar">
+                    <XIcon className="w-4 h-4" />
+                  </Button>
+                </div>
+              ) : (
+                <div className="flex gap-2">
+                  <SearchableSelect
+                    value={subId}
+                    onChange={setSubId}
+                    options={subs.map((s) => ({ value: s.id, label: s.name }))}
+                    placeholder={
+                      !rootId
+                        ? 'Escolha categoria primeiro'
+                        : subs.length === 0
+                        ? 'Sem subcategorias'
+                        : 'Buscar subcategoria...'
+                    }
+                    emptyText="Nenhuma subcategoria encontrada"
+                    disabled={!rootId || subs.length === 0}
+                    className="flex-1"
+                  />
+                  <Button
+                    type="button"
+                    size="icon"
+                    variant="outline"
+                    onClick={() => setShowNewSub(true)}
+                    disabled={!rootId}
+                    title={rootId ? 'Criar subcategoria' : 'Escolha a categoria primeiro'}
+                  >
+                    <Plus className="w-4 h-4" />
+                  </Button>
+                </div>
+              )}
             </div>
 
             <div>
@@ -576,7 +839,17 @@ function BillForm({
             </div>
           </form>
         )}
-      </CardContent>
+    </>
+  );
+
+  if (embedded) return inner;
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>{editing ? 'Editar conta' : type === 'payable' ? 'Nova conta a pagar' : 'Nova conta a receber'}</CardTitle>
+      </CardHeader>
+      <CardContent>{inner}</CardContent>
     </Card>
   );
 }
@@ -590,7 +863,6 @@ export function CategoriasTab() {
   const [payable, setPayable] = useState<CategoryNode[]>([]);
   const [receivable, setReceivable] = useState<CategoryNode[]>([]);
   const [loading, setLoading] = useState(true);
-  const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   const reload = async () => {
     setLoading(true);
@@ -611,8 +883,8 @@ export function CategoriasTab() {
   }, []);
 
   const flash = (type: 'success' | 'error', text: string) => {
-    setMessage({ type, text });
-    setTimeout(() => setMessage(null), 4000);
+    if (type === 'success') feedback.success(text);
+    else feedback.error(text);
   };
 
   if (loading) {
@@ -626,16 +898,6 @@ export function CategoriasTab() {
 
   return (
     <div className="space-y-6">
-      {message && (
-        <div
-          className={`p-3 rounded text-sm ${
-            message.type === 'success' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-          }`}
-        >
-          {message.text}
-        </div>
-      )}
-
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <CategoryTree
           title="💸 Contas a pagar"

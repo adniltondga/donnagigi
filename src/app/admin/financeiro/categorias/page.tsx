@@ -1,11 +1,5 @@
-import { PageHeader } from "@/components/ui/page-header"
-import { CategoriasTab } from "../_components"
+import { redirect } from "next/navigation"
 
-export default function CategoriasFinanceiroPage() {
-  return (
-    <div className="space-y-6">
-      <PageHeader title="📂 Categorias" description="Organize suas contas em categorias e subcategorias (ex: Impostos > DAS)." />
-      <CategoriasTab />
-    </div>
-  )
+export default function CategoriasRedirect() {
+  redirect("/admin/financeiro/contas")
 }
