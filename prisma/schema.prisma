@@ -35,6 +35,7 @@ model Tenant {
   invitations       Invitation[]
   billCategories    BillCategory[]
   notifications     Notification[]
+  pushSubscriptions PushSubscription[]
   financialSettings FinancialSettings?
 }
 
@@ -519,6 +520,23 @@ model BillCategory {
   @@unique([tenantId, parentId, name])
   @@index([tenantId])
   @@index([parentId])
+}
+
+// Subscription Web Push de um device. Cada user pode ter várias (1 por
+// device/browser). Quando o backend dispara push (venda nova, liberação
+// MP), envia pra todas as subscriptions ativas do tenant.
+model PushSubscription {
+  id        String   @id @default(cuid())
+  tenantId  String
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  userAgent String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tenantId])
 }
 
 // Notificações in-app exibidas no sino do header. Per-tenant (se alguém

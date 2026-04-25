@@ -2,6 +2,7 @@ import prisma from '@/lib/prisma';
 import { forEachMLTenant } from '@/lib/ml';
 import { createNotification } from '@/lib/notifications';
 import { captureError } from '@/lib/sentry';
+import { sendPushToTenant } from '@/lib/push';
 import { NextRequest, NextResponse } from 'next/server';
 
 export const dynamic = 'force-dynamic';
@@ -51,13 +52,11 @@ export async function GET(_req: NextRequest) {
           data: { status: 'paid' },
         });
         flipedToPaid += slot.ids.length;
-        await createNotification({
-          tenantId,
-          type: 'mp_release',
-          title: `Liberação: ${formatBRL(slot.total)}`,
-          body: `${slot.ids.length} venda(s) liberadas hoje`,
-          link: `/admin/financeiro/mercado-pago`,
-        });
+        const title = `Liberação: ${formatBRL(slot.total)}`;
+        const body = `${slot.ids.length} venda(s) liberadas hoje`;
+        const link = `/admin/financeiro/mercado-pago`;
+        await createNotification({ tenantId, type: 'mp_release', title, body, link });
+        void sendPushToTenant(tenantId, { title, body, url: link });
       }
     }
 
@@ -164,13 +163,11 @@ export async function GET(_req: NextRequest) {
       }
 
       if (refundCount > 0) {
-        await createNotification({
-          tenantId,
-          type: 'refund',
-          title: `${refundCount} devolução(ões) hoje: ${formatBRL(refundTotal)}`,
-          body: 'Valores deduzidos do caixa. Verifique em vendas ML.',
-          link: `/admin/relatorios/vendas-ml`,
-        });
+        const title = `${refundCount} devolução(ões) hoje: ${formatBRL(refundTotal)}`;
+        const body = 'Valores deduzidos do caixa. Verifique em vendas ML.';
+        const link = `/admin/relatorios/vendas-ml`;
+        await createNotification({ tenantId, type: 'refund', title, body, link });
+        void sendPushToTenant(tenantId, { title, body, url: link });
       }
     });
 
