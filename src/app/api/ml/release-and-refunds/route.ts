@@ -1,6 +1,7 @@
 import prisma from '@/lib/prisma';
 import { forEachMLTenant } from '@/lib/ml';
 import { createNotification } from '@/lib/notifications';
+import { captureError } from '@/lib/sentry';
 import { NextRequest, NextResponse } from 'next/server';
 
 export const dynamic = 'force-dynamic';
@@ -186,7 +187,7 @@ export async function GET(_req: NextRequest) {
       },
     });
   } catch (error) {
-    console.error('Erro em release-and-refunds:', error);
+    captureError(error, { operation: 'release-and-refunds' });
     return NextResponse.json(
       { erro: 'falha', mensagem: error instanceof Error ? error.message : 'erro' },
       { status: 500 }

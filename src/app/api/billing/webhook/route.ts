@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import prisma from "@/lib/prisma"
 import { asaasValidateWebhookToken } from "@/lib/asaas"
+import { captureError } from "@/lib/sentry"
 
 export const dynamic = "force-dynamic"
 
@@ -135,7 +136,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ ok: true })
   } catch (error: any) {
-    console.error("[billing/webhook] erro:", error)
+    captureError(error, { operation: "billing-webhook" })
     return NextResponse.json(
       { error: error?.message || "Erro ao processar webhook" },
       { status: 500 }

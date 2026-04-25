@@ -2,6 +2,7 @@ import prisma from "@/lib/prisma"
 import { formatVariationLabel } from "@/lib/ml-format"
 import { resolveCostsBatch, costKey } from "@/lib/cost-resolver"
 import { createNotification } from "@/lib/notifications"
+import { captureError } from "@/lib/sentry"
 
 interface MLOrderItem {
   item: {
@@ -230,7 +231,11 @@ Bruto: R$ ${order.total_amount.toFixed(2)} | Taxas: ${taxBreakdown} (Total: R$ $
 
     return { ok: true, action: "created", billId: saleBill.id }
   } catch (err) {
-    console.error(`[ml-order-sync] erro ao sincronizar order ${orderId}:`, err)
+    captureError(err, {
+      tenantId,
+      operation: "ml-order-sync",
+      extra: { orderId },
+    })
     return {
       ok: false,
       action: "error",

@@ -1,7 +1,13 @@
+const { withSentryConfig } = require("@sentry/nextjs")
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
   swcMinify: true,
+  experimental: {
+    // Habilita instrumentation.ts (necessário em Next 14; default em 15+).
+    instrumentationHook: true,
+  },
   images: {
     remotePatterns: [
       {
@@ -16,5 +22,11 @@ const nextConfig = {
   },
 };
 
-module.exports = nextConfig;
-
+// withSentryConfig faz upload de source maps em build de produção
+// pra stack traces ficarem com nomes originais (não minificados).
+// Em dev, é noop.
+module.exports = withSentryConfig(nextConfig, {
+  silent: true,
+  // Sem org/project: source map upload fica desligado. Habilita só
+  // quando criar SENTRY_AUTH_TOKEN no .env.
+});
