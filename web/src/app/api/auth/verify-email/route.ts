@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { SignJWT } from "jose"
 import prisma from "@/lib/prisma"
+import { checkRateLimit, rateLimitResponse, RATE_LIMITS } from "@/lib/rate-limit"
 
 /**
  * Valida OTP de ativação de email. Se bate, marca emailVerified=true e
@@ -8,6 +9,9 @@ import prisma from "@/lib/prisma"
  */
 export async function POST(request: NextRequest) {
   try {
+    const limited = rateLimitResponse(checkRateLimit(request, RATE_LIMITS.verifyEmail))
+    if (limited) return limited
+
     const { email, code } = (await request.json()) as {
       email?: string
       code?: string
