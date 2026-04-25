@@ -50,21 +50,14 @@ export const metadata: Metadata = {
     title: "agLivre — Gestão financeira para vendedores do Mercado Livre",
     description: SITE_DESCRIPTION,
     url: SITE_URL,
-    images: [
-      {
-        url: "/og-image.png",
-        width: 1200,
-        height: 630,
-        alt: "agLivre — painel financeiro para vendedores do Mercado Livre",
-      },
-    ],
+    // images preenchido automaticamente pelo arquivo opengraph-image.tsx
   },
   twitter: {
     card: "summary_large_image",
     title: "agLivre — Gestão financeira para vendedores do Mercado Livre",
     description:
       "Lucro real, taxas e liberações do Mercado Pago num só painel.",
-    images: ["/og-image.png"],
+    // images preenchido automaticamente pelo arquivo opengraph-image.tsx
   },
   icons: {
     icon: [
