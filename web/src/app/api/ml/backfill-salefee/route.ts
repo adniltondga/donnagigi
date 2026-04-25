@@ -46,19 +46,15 @@ export async function GET(_req: NextRequest) {
 
       totalVerificadas += bills.length;
 
-      for (const b of bills) {
+      type BillResult = { kind: 'falha' } | { kind: 'zero' } | { kind: 'updated' };
+
+      const processBill = async (b: typeof bills[number]): Promise<BillResult> => {
         const orderId = (b.mlOrderId || '').replace(/^order_/, '');
-        if (!orderId) {
-          totalFails++;
-          continue;
-        }
+        if (!orderId) return { kind: 'falha' };
 
         try {
           const res = await fetch(`https://api.mercadolibre.com/orders/${orderId}`, { headers });
-          if (!res.ok) {
-            totalFails++;
-            continue;
-          }
+          if (!res.ok) return { kind: 'falha' };
 
           const order: any = await res.json();
           const realSaleFee = (order.order_items || []).reduce(
@@ -88,8 +84,7 @@ export async function GET(_req: NextRequest) {
             newSaleFee = bruto * 0.18;
             estimated = true;
           } else {
-            totalZeros++;
-            continue;
+            return { kind: 'zero' };
           }
 
           const newAmount = b.amount + prevSaleFee - newSaleFee;
@@ -114,9 +109,21 @@ export async function GET(_req: NextRequest) {
             where: { id: b.id },
             data: { amount: newAmount, notes: newNotes },
           });
-          totalUpdated++;
+          return { kind: 'updated' };
         } catch {
-          totalFails++;
+          return { kind: 'falha' };
+        }
+      };
+
+      // Processa em batches paralelos. ML aceita ~10 concorrentes por token.
+      const BATCH_SIZE = 10;
+      for (let i = 0; i < bills.length; i += BATCH_SIZE) {
+        const batch = bills.slice(i, i + BATCH_SIZE);
+        const results = await Promise.all(batch.map(processBill));
+        for (const r of results) {
+          if (r.kind === 'falha') totalFails++;
+          else if (r.kind === 'zero') totalZeros++;
+          else if (r.kind === 'updated') totalUpdated++;
         }
       }
     });
