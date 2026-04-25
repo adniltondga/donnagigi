@@ -168,7 +168,7 @@ export async function PUT(req: NextRequest) {
     if (variationId) {
       // Upsert por (mlListingId, variationId) no MLProductVariantCost
       saved = await prisma.mLProductVariantCost.upsert({
-        where: { mlListingId_variationId: { mlListingId, variationId } },
+        where: { tenantId_mlListingId_variationId: { tenantId: session.tenantId, mlListingId, variationId } },
         create: {
           mlListingId,
           variationId,
@@ -203,7 +203,7 @@ export async function PUT(req: NextRequest) {
     } else {
       // Upsert no MLProductCost (custo geral do listing)
       saved = await prisma.mLProductCost.upsert({
-        where: { mlListingId },
+        where: { tenantId_mlListingId: { tenantId: session.tenantId, mlListingId } },
         create: { mlListingId, productCost, title, tenantId: session.tenantId },
         update: { productCost, ...(title ? { title } : {}) },
       });

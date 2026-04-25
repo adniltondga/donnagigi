@@ -53,7 +53,7 @@ export async function POST(request: NextRequest) {
     const topic = body.topic
 
     if (topic === "items" || topic === "item") {
-      if (resourceId) await handleItemUpdate(resourceId, integration.accessToken)
+      if (resourceId) await handleItemUpdate(resourceId, integration.accessToken, integration.tenantId)
     } else if (topic === "orders_v2" || topic === "order" || topic === "orders") {
       if (resourceId) await handleOrderUpdate(resourceId, integration.tenantId)
     } else if (topic === "payments" || topic === "payment") {
@@ -75,7 +75,7 @@ function extractResourceId(resource: string): string | null {
   return parts[parts.length - 1] || null
 }
 
-async function handleItemUpdate(itemId: string, accessToken: string) {
+async function handleItemUpdate(itemId: string, accessToken: string, tenantId: string) {
   try {
     const res = await fetch(`https://api.mercadolibre.com/items/${itemId}`, {
       headers: { Authorization: `Bearer ${accessToken}` },
@@ -85,7 +85,7 @@ async function handleItemUpdate(itemId: string, accessToken: string) {
       return
     }
     const mlProduct = await res.json()
-    const result = await syncMLProductToDB(mlProduct)
+    const result = await syncMLProductToDB(mlProduct, tenantId)
     if (!result.success) {
       console.error(`[ml-webhook] syncMLProductToDB falhou:`, result.error)
     }

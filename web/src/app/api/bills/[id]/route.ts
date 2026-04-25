@@ -112,7 +112,7 @@ export async function PUT(
         const costNum = Number(finalProductCost);
 
         await prisma.mLProductCost.upsert({
-          where: { mlListingId: listingId },
+          where: { tenantId_mlListingId: { tenantId, mlListingId: listingId } },
           create: { mlListingId: listingId, productCost: costNum, title, tenantId },
           update: { productCost: costNum, ...(title ? { title } : {}) },
         });

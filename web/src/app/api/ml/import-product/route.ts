@@ -54,9 +54,12 @@ export async function POST(request: NextRequest) {
 
     console.log("📦 Importando produto:", body.id, body.title)
 
+    const { getDefaultTenantId } = await import("@/lib/tenant")
+    const tenantId = await getDefaultTenantId()
+
     // Verificar se produto já existe
     const produtoExistente = await prisma.product.findUnique({
-      where: { mlListingId: body.id }
+      where: { tenantId_mlListingId: { tenantId, mlListingId: body.id } }
     })
 
     if (produtoExistente) {
@@ -68,8 +71,6 @@ export async function POST(request: NextRequest) {
     }
 
     // 1️⃣ Criar o Product
-    const { getDefaultTenantId } = await import("@/lib/tenant")
-    const tenantId = await getDefaultTenantId()
     const novoProduct = await prisma.product.create({
       data: {
         name: body.title,
