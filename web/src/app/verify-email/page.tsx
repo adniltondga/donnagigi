@@ -111,7 +111,11 @@ function VerifyEmailInner() {
         setCode("")
         return
       }
-      if (data.token) await setTokenAndGo(data.token)
+      if (data.token) {
+        const { trackEvent } = await import("@/lib/analytics")
+        trackEvent("signup_completed")
+        await setTokenAndGo(data.token)
+      }
     } catch {
       setError("Erro ao conectar")
     } finally {

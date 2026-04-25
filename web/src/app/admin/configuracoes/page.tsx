@@ -49,6 +49,17 @@ function ConfigInner() {
     if (t && visibleTabs.some((x) => x.key === t)) setTab(t)
   }, [params, canWrite])
 
+  // Tracking de conversão pós-OAuth (success vem do callback ML/MP)
+  useEffect(() => {
+    const mlOk = params.get("success")
+    const mpOk = params.get("mp_success")
+    if (!mlOk && !mpOk) return
+    void import("@/lib/analytics").then(({ trackEvent }) => {
+      if (mlOk) trackEvent("ml_connected")
+      if (mpOk) trackEvent("mp_connected")
+    })
+  }, [params])
+
   const switchTab = (t: Tab) => {
     setTab(t)
     router.replace(`/admin/configuracoes?tab=${t}`, { scroll: false })
