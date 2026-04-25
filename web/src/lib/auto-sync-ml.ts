@@ -3,10 +3,8 @@
  * Usada por webhook e polling
  */
 
-import { PrismaClient } from '@prisma/client'
+import prisma from '@/lib/prisma'
 import { getDefaultTenantId } from './tenant'
-
-const prisma = new PrismaClient()
 
 export interface MLProductResult {
   id: string

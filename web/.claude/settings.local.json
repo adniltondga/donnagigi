@@ -34,7 +34,22 @@
       "Bash(awk ' /^function ManualTokenCard/ { skip=1 } skip==1 && /^\\\\/\\\\* ------------------- ASSINATURA -------------------/ { skip=0 } skip==0 { print } ' /Users/2480dtidigital/site/donnagigi/src/app/admin/configuracoes/page.tsx)",
       "Bash(mv /tmp/cfg.tsx /Users/2480dtidigital/site/donnagigi/src/app/admin/configuracoes/page.tsx echo \"restantes:\" grep -c \"ManualTokenCard\" /Users/2480dtidigital/site/donnagigi/src/app/admin/configuracoes/page.tsx npx tsc --noEmit)",
       "Bash(ps -p 858,80945 -o pid,command)",
-      "Bash(grep -n \"mLIntegration.create\" /Users/2480dtidigital/site/donnagigi/src/app/api -r echo \"---\" find /Users/2480dtidigital/site/donnagigi/src/app/api -name \"*.ts\" -path \"*callback*\" echo \"---processos---\" lsof -ti tcp:3000 echo \"---build cache---\" ls /Users/2480dtidigital/site/donnagigi/.next)"
+      "Bash(grep -n \"mLIntegration.create\" /Users/2480dtidigital/site/donnagigi/src/app/api -r echo \"---\" find /Users/2480dtidigital/site/donnagigi/src/app/api -name \"*.ts\" -path \"*callback*\" echo \"---processos---\" lsof -ti tcp:3000 echo \"---build cache---\" ls /Users/2480dtidigital/site/donnagigi/.next)",
+      "Bash(git commit -m 'chore: registra cron /api/cron/subs-sync \\(flipa TRIAL → EXPIRED\\) *)",
+      "Bash(git commit *)",
+      "Bash(yarn build *)",
+      "Bash(grep -rn \"Custo \\(R\\\\$\\)\" /Users/2480dtidigital/site/donnagigi/src --include=\"*.tsx\" --include=\"*.ts\")",
+      "Bash(grep -i -E \"label|placeholder|R\\\\\\\\\\\\$\")",
+      "Bash(awk '/^\\\\/\\\\* ------------------- INTEGRAÇÃO ML -------------------/,/^\\\\/\\\\* ------------------- ASSINATURA -------------------/' /Users/2480dtidigital/site/donnagigi/src/app/admin/configuracoes/page.tsx)",
+      "Bash(sed -i '' '339,842d' /Users/2480dtidigital/site/donnagigi/src/app/admin/configuracoes/page.tsx)",
+      "Bash(sed -n '335,348p' /Users/2480dtidigital/site/donnagigi/src/app/admin/configuracoes/page.tsx)",
+      "Bash(grep -n \"Liberações programadas\\\\|</Card>\\\\s*$\" /Users/2480dtidigital/site/donnagigi/src/components/admin/MercadoPagoClient.tsx)",
+      "Bash(awk '/^function __removedBelow/,/^function SummaryCard/' /Users/2480dtidigital/site/donnagigi/src/components/admin/MercadoPagoClient.tsx)",
+      "Bash(sed -i '' '618,812d' /Users/2480dtidigital/site/donnagigi/src/components/admin/MercadoPagoClient.tsx)",
+      "Bash(sed -n '615,625p' /Users/2480dtidigital/site/donnagigi/src/components/admin/MercadoPagoClient.tsx)",
+      "Bash(npx next *)",
+      "Bash(npx eslint *)",
+      "Bash(grep -rn \"Bruto:\\\\\\\\\\\\\\\\s\\\\\\\\*R\\\\\\\\\\\\\\\\\\\\\\\\$\\\\\\\\|Taxa de venda:\\\\\\\\\\\\\\\\s\\\\\\\\*R\\\\\\\\\\\\\\\\\\\\\\\\$\\\\\\\\|Taxa de envio:\\\\\\\\\\\\\\\\s\\\\\\\\*R\\\\\\\\\\\\\\\\\\\\\\\\$\" /Users/2480dtidigital/site/donnagigi/src --include=\"*.ts\" --include=\"*.tsx\" -l)"
     ]
   }
 }

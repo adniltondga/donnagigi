@@ -217,6 +217,7 @@ model Product {
   images        ProductImage[]
 
   @@index([tenantId])
+  @@index([tenantId, active])
 }
 
 // Imagens do produto
@@ -229,6 +230,8 @@ model ProductImage {
   order     Int      @default(0)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@index([productId])
 }
 
 // Imagens da variação (específica para cada variação do produto)
@@ -241,6 +244,8 @@ model VariantImage {
   order     Int            @default(0)
   createdAt DateTime       @default(now())
   updatedAt DateTime       @updatedAt
+
+  @@index([variantId])
 }
 
 // Variação do produto (cor, tamanho, etc)
@@ -271,6 +276,8 @@ model ProductVariant {
   // Relações
   mlProducts MLProduct[]
   images     VariantImage[]
+
+  @@index([productId, active])
 }
 
 // Custo cadastrado por listing do Mercado Livre.
@@ -415,6 +422,10 @@ model MLProduct {
 
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
+
+  @@index([variantId])
+  @@index([integrationId])
+  @@index([mlListingId])
 }
 
 // Fornecedor
@@ -439,7 +450,7 @@ model Bill {
   dueDate         DateTime
   paidDate        DateTime?
   status          String   @default("pending") // pending | paid | overdue | cancelled
-  category        String   @default("outro") // legacy — usar billCategoryId em bills novas
+  category        String   @default("outro") // discriminador de tipo: 'venda' | 'marketplace_fee' | 'aporte_amortizacao' | 'outro'. NÃO é categoria do usuário — pra isso usar billCategoryId.
   billCategoryId  String?
   billCategory    BillCategory? @relation(fields: [billCategoryId], references: [id], onDelete: SetNull)
   supplierId      String?
@@ -459,6 +470,10 @@ model Bill {
 
   @@index([tenantId])
   @@index([billCategoryId])
+  @@index([tenantId, paidDate])
+  @@index([tenantId, dueDate])
+  @@index([tenantId, type, status])
+  @@index([mlPackId])
 }
 
 // Configurações financeiras do tenant — alimenta o relatório de

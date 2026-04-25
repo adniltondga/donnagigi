@@ -13,12 +13,14 @@ const TITLE_MAP: Array<{ prefix: string; title: string }> = [
   { prefix: "/admin/relatorios", title: "Relatórios" },
   { prefix: "/admin/previsao", title: "Previsão de recebimentos" },
   { prefix: "/admin/financeiro", title: "Financeiro" },
-  { prefix: "/admin/custos-ml", title: "Custos do Mercado Livre" },
   { prefix: "/admin/integracao", title: "Integração Mercado Livre" },
   { prefix: "/admin/billing/planos", title: "Planos" },
   { prefix: "/admin/billing/assinatura", title: "Assinatura" },
   { prefix: "/admin/billing/faturas", title: "Faturas" },
   { prefix: "/admin/billing", title: "Assinatura" },
+  { prefix: "/admin/produtos/custo", title: "Custo dos produtos" },
+  { prefix: "/admin/produtos/relatorio", title: "Relatório de produtos" },
+  { prefix: "/admin/produtos", title: "Produtos" },
   { prefix: "/admin/products", title: "Produtos" },
 ]
 

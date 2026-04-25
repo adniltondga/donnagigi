@@ -1,10 +1,8 @@
 import { NextResponse } from "next/server"
-import { PrismaClient } from "@prisma/client"
+import prisma from "@/lib/prisma"
 import { put } from "@vercel/blob"
 import { getTenantIdOrDefault } from "@/lib/tenant"
 import { getMLIntegrationForTenant } from "@/lib/ml"
-
-const prisma = new PrismaClient()
 
 export const dynamic = "force-dynamic"
 

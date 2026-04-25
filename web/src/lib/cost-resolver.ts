@@ -61,6 +61,18 @@ export async function resolveCost(params: {
  * Otimiza ao fazer apenas 2 queries (uma por tabela) em vez de N.
  * Usa a mesma cascata: variant precede listing.
  */
+/**
+ * Chave canônica do Map retornado por resolveCostsBatch.
+ * Use em call-sites pra fazer lookup sem duplicar a lógica de normalização.
+ */
+export function costKey(
+  mlListingId: string,
+  variationId: string | number | null | undefined,
+): string {
+  const vid = variationId != null && variationId !== "" ? String(variationId) : "";
+  return `${mlListingId}|${vid}`;
+}
+
 export async function resolveCostsBatch(params: {
   tenantId: string;
   items: Array<{ mlListingId: string; variationId?: string | number | null }>;

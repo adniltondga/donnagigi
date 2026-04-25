@@ -38,6 +38,7 @@ export async function GET(_req: NextRequest) {
           OR: [
             { NOT: { notes: { contains: 'Taxa de venda' } } },
             { notes: { contains: '(est.)' } },
+            { quantity: { gt: 1 } },
           ],
         },
         select: { id: true, mlOrderId: true, amount: true, notes: true },
@@ -61,7 +62,7 @@ export async function GET(_req: NextRequest) {
 
           const order: any = await res.json();
           const realSaleFee = (order.order_items || []).reduce(
-            (s: number, it: any) => s + (Number(it.sale_fee) || 0),
+            (s: number, it: any) => s + (Number(it.sale_fee) || 0) * (Number(it.quantity) || 1),
             0
           );
 

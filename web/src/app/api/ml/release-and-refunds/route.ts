@@ -87,24 +87,30 @@ export async function GET(_req: NextRequest) {
 
       totalVerificadas += bills.length;
 
+      // Pré-filtra: bills que já têm devolução nas notes não precisam de fetch ML.
+      const billsToCheck = bills.filter((b) => {
+        if (!b.mlOrderId) return false;
+        if (b.notes && /Devolu[çc][aã]o:/.test(b.notes)) {
+          totalJaProcessadas++;
+          return false;
+        }
+        return true;
+      });
+
       let refundCount = 0;
       let refundTotal = 0;
 
-      for (const b of bills) {
+      type BillResult =
+        | { kind: 'falha' }
+        | { kind: 'sem-refund' }
+        | { kind: 'cancelada'; amount: number }
+        | { kind: 'parcial'; refunded: number };
+
+      const checkBill = async (b: typeof billsToCheck[number]): Promise<BillResult> => {
         const orderId = (b.mlOrderId || '').replace(/^order_/, '');
-        if (!orderId) continue;
-
-        if (b.notes && /Devolu[çc][aã]o:/.test(b.notes)) {
-          totalJaProcessadas++;
-          continue;
-        }
-
         try {
           const res = await fetch(`https://api.mercadolibre.com/orders/${orderId}`, { headers });
-          if (!res.ok) {
-            totalFalhas++;
-            continue;
-          }
+          if (!res.ok) return { kind: 'falha' };
 
           const order: any = await res.json();
           const refunded = (order.payments || []).reduce(
@@ -113,7 +119,7 @@ export async function GET(_req: NextRequest) {
           );
           const statusCancelled = order.status === 'cancelled';
 
-          if (refunded <= 0 && !statusCancelled) continue;
+          if (refunded <= 0 && !statusCancelled) return { kind: 'sem-refund' };
 
           const refundNote = `\n\nDevolução: R$ ${refunded.toFixed(2)} em ${new Date().toLocaleDateString('pt-BR')}`;
           const newNotes = (b.notes || '') + refundNote;
@@ -123,20 +129,36 @@ export async function GET(_req: NextRequest) {
               where: { id: b.id },
               data: { status: 'cancelled', notes: newNotes },
             });
-            totalCanceladas++;
-            refundCount++;
-            refundTotal += b.amount;
+            return { kind: 'cancelada', amount: b.amount };
           } else {
             await prisma.bill.update({
               where: { id: b.id },
               data: { amount: b.amount - refunded, notes: newNotes },
             });
-            totalParciais++;
-            refundCount++;
-            refundTotal += refunded;
+            return { kind: 'parcial', refunded };
           }
         } catch {
-          totalFalhas++;
+          return { kind: 'falha' };
+        }
+      };
+
+      // Processa em batches paralelos. ML aceita ~10 requests concorrentes por
+      // token sem reclamar; mais que isso aumenta risco de 429.
+      const BATCH_SIZE = 10;
+      for (let i = 0; i < billsToCheck.length; i += BATCH_SIZE) {
+        const batch = billsToCheck.slice(i, i + BATCH_SIZE);
+        const results = await Promise.all(batch.map(checkBill));
+        for (const r of results) {
+          if (r.kind === 'falha') totalFalhas++;
+          else if (r.kind === 'cancelada') {
+            totalCanceladas++;
+            refundCount++;
+            refundTotal += r.amount;
+          } else if (r.kind === 'parcial') {
+            totalParciais++;
+            refundCount++;
+            refundTotal += r.refunded;
+          }
         }
       }
 

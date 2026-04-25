@@ -2,7 +2,7 @@ import prisma from '@/lib/prisma';
 import { getTenantIdOrDefault } from '@/lib/tenant';
 import { getMLIntegrationForTenant } from '@/lib/ml';
 import { formatVariationLabel } from '@/lib/ml-format';
-import { resolveCost } from '@/lib/cost-resolver';
+import { resolveCostsBatch, costKey } from '@/lib/cost-resolver';
 import { NextRequest, NextResponse } from 'next/server';
 
 interface MLOrder {
@@ -203,7 +203,7 @@ export async function GET(req: NextRequest) {
       let saleFeeEstimated = false;
       if (order.order_items && order.order_items.length > 0) {
         saleFee = order.order_items.reduce(
-          (sum: number, item: any) => sum + (Number(item.sale_fee) || 0),
+          (sum: number, item: any) => sum + (Number(item.sale_fee) || 0) * (Number(item.quantity) || 1),
           0
         );
       }
@@ -277,16 +277,20 @@ Bruto: R$ ${order.total_amount.toFixed(2)} | Taxas: ${taxBreakdown} (Total: R$ $
       let productCost: number | null = null;
       const productId: string | null = null;
 
+      const costItems = (order.order_items || [])
+        .filter((oi) => !!oi.item?.id)
+        .map((oi) => ({
+          mlListingId: oi.item.id,
+          variationId: oi.item?.variation_id ?? null,
+        }));
+      const costs = await resolveCostsBatch({ tenantId, items: costItems });
+
       for (const oi of order.order_items || []) {
         const oiId = oi.item?.id;
         const oiQty = Number(oi.quantity) || 1;
         if (!oiId) continue;
-        const resolved = await resolveCost({
-          tenantId,
-          mlListingId: oiId,
-          variationId: oi.item?.variation_id ?? null,
-        });
-        if (resolved.cost != null) {
+        const resolved = costs.get(costKey(oiId, oi.item?.variation_id ?? null));
+        if (resolved && resolved.cost != null) {
           productCost = (productCost ?? 0) + resolved.cost * oiQty;
         }
       }

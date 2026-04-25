@@ -16,7 +16,6 @@ import {
   Calendar,
   Package,
   Loader2,
-  CheckCircle2,
   AlertCircle,
   ArrowRight,
   Wallet,
@@ -24,7 +23,7 @@ import {
 import { formatCurrency } from "@/lib/calculations"
 import { PageHeader } from "@/components/ui/page-header"
 import { Card } from "@/components/ui/card"
-import { StatCard } from "@/components/ui/stat-card"
+import { SummaryCard } from "@/components/ui/summary-card"
 
 interface Me {
   id: string
@@ -44,7 +43,7 @@ interface V2Response {
   kpisAnterior: { vendas: number; bruto: number; lucro: number; custo: number }
   derivados: { margemPct: number; margemPctAnterior: number }
   cancelamentos: { vendas: number; bruto: number; taxaPct: number }
-  timeline: Array<{ date: string; vendas: number; bruto: number; lucro: number }>
+  timeline: Array<{ date: string; pedidos: number; vendas: number; bruto: number; lucro: number }>
 }
 
 interface MpPendingDay {
@@ -159,10 +158,10 @@ export default function Dashboard() {
     load()
   }, [])
 
-  const vendasHoje = v2?.timeline?.find((t) => t.date === today())
   const kpis = v2?.kpisAtual
   const kpisPrev = v2?.kpisAnterior
   const timeline7d = v2?.timeline?.slice(-7) || []
+  const vendasHoje = v2?.timeline?.find((t) => t.date === today())
   // Próximas liberações MP — vem do cache do /api/mp/snapshot.
   // Pega os 5 primeiros dias com money_release_date no futuro.
   const nowMs = Date.now()
@@ -233,25 +232,32 @@ export default function Dashboard() {
             Reconectar
           </a>
         </div>
-      ) : (
-        <div className="bg-green-50 border border-green-200 text-green-900 rounded-xl p-3 flex items-center gap-3 text-sm">
-          <CheckCircle2 className="w-5 h-5 text-green-600" />
-          <span>
-            Mercado Livre conectado · seller <strong>{mlStatus.sellerID}</strong>
-          </span>
-        </div>
-      )}
+      ) : null}
 
       {/* Stats */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard
-          label="Vendas hoje"
-          value={vendasHoje ? `${vendasHoje.vendas} un.` : "—"}
-          sub={vendasHoje ? formatCurrency(vendasHoje.bruto) : "sem vendas ainda"}
-          icon={TrendingUp}
-          accent="emerald"
-        />
-        <StatCard
+        <Link
+          href="/admin/relatorios/vendas-ml"
+          className="block rounded-xl transition hover:scale-[1.01] hover:shadow-md focus:outline-none focus:ring-2 focus:ring-emerald-400"
+        >
+          <SummaryCard
+            label="Vendas hoje"
+            value={
+              vendasHoje
+                ? `${vendasHoje.pedidos} venda${vendasHoje.pedidos === 1 ? "" : "s"}`
+                : "—"
+            }
+            sub={vendasHoje ? formatCurrency(vendasHoje.bruto) : "sem vendas ainda"}
+            icon={TrendingUp}
+            tone="emerald"
+            tooltip={
+              vendasHoje
+                ? `${vendasHoje.vendas} unidade${vendasHoje.vendas === 1 ? "" : "s"} vendida${vendasHoje.vendas === 1 ? "" : "s"}`
+                : undefined
+            }
+          />
+        </Link>
+        <SummaryCard
           label="Lucro do mês"
           value={kpis ? formatCurrency(kpis.lucro) : "—"}
           sub={
@@ -263,9 +269,9 @@ export default function Dashboard() {
               : "—"
           }
           icon={Package}
-          accent="primary"
+          tone="primary"
         />
-        <StatCard
+        <SummaryCard
           label="A receber (mês)"
           value={receivableMonth ? formatCurrency(receivableMonth.amount) : "—"}
           sub={
@@ -276,9 +282,9 @@ export default function Dashboard() {
               : "sem contas no mês"
           }
           icon={DollarSign}
-          accent="amber"
+          tone="amber"
         />
-        <StatCard
+        <SummaryCard
           label="A pagar (mês)"
           value={payableMonth ? formatCurrency(payableMonth.amount) : "—"}
           sub={
@@ -289,7 +295,7 @@ export default function Dashboard() {
               : "sem contas no mês"
           }
           icon={Wallet}
-          accent="sky"
+          tone="sky"
         />
       </div>
 

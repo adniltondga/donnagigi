@@ -1,7 +1,7 @@
 import prisma from '@/lib/prisma';
 import { getTenantIdOrDefault } from '@/lib/tenant';
 import { getMLIntegrationForTenant } from '@/lib/ml';
-import { resolveCost } from '@/lib/cost-resolver';
+import { resolveCostsBatch, costKey } from '@/lib/cost-resolver';
 import { NextRequest, NextResponse } from 'next/server';
 
 export const dynamic = 'force-dynamic';
@@ -86,17 +86,21 @@ export async function GET(req: NextRequest) {
         const newQuantity = items.reduce((s, oi) => s + (Number(oi.quantity) || 1), 0) || 1;
 
         // Custo resolvido via cascata: variant → listing (ver cost-resolver).
+        const costItems = items
+          .filter((oi) => !!oi.item?.id)
+          .map((oi) => ({
+            mlListingId: oi.item!.id!,
+            variationId: oi.item?.variation_id ?? null,
+          }));
+        const costs = await resolveCostsBatch({ tenantId, items: costItems });
+
         let newProductCost: number | null = null;
         for (const oi of items) {
           const oiId = oi.item?.id;
           const oiQty = Number(oi.quantity) || 1;
           if (!oiId) continue;
-          const resolved = await resolveCost({
-            tenantId,
-            mlListingId: oiId,
-            variationId: oi.item?.variation_id ?? null,
-          });
-          if (resolved.cost != null) {
+          const resolved = costs.get(costKey(oiId, oi.item?.variation_id ?? null));
+          if (resolved && resolved.cost != null) {
             newProductCost = (newProductCost ?? 0) + resolved.cost * oiQty;
           }
         }

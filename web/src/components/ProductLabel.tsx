@@ -18,6 +18,8 @@ interface ProductLabelProps {
   hideMlb?: boolean
   /** Se true, title aparece em 1 linha com ellipsis (default: 2 linhas). */
   singleLine?: boolean
+  /** Quantidade vendida — quando > 1, mostra badge "× N" ao lado da variação. */
+  quantity?: number
 }
 
 /**
@@ -33,6 +35,7 @@ export function ProductLabel({
   size = "md",
   hideMlb,
   singleLine,
+  quantity,
 }: ProductLabelProps) {
   let resolvedTitle = title
   let resolvedVariation: string | null | undefined = variation
@@ -51,13 +54,24 @@ export function ProductLabel({
       : "text-sm font-semibold text-gray-900"
   const clampCls = singleLine ? "line-clamp-1" : "line-clamp-2"
 
+  const showQty = typeof quantity === "number" && quantity > 1
+
   return (
     <div className="min-w-0">
       <div className={`${titleCls} ${clampCls}`}>{resolvedTitle || "—"}</div>
-      {resolvedVariation && (
-        <span className="inline-block text-xs text-primary-700 bg-primary-50 border border-primary-100 rounded px-1.5 py-0.5 mt-1">
-          {resolvedVariation}
-        </span>
+      {(resolvedVariation || showQty) && (
+        <div className="flex flex-wrap items-center gap-1 mt-1">
+          {resolvedVariation && (
+            <span className="inline-block text-xs text-primary-700 bg-primary-50 border border-primary-100 rounded px-1.5 py-0.5">
+              {resolvedVariation}
+            </span>
+          )}
+          {showQty && (
+            <span className="inline-flex items-center text-xs font-semibold text-amber-800 bg-amber-100 border border-amber-200 rounded px-1.5 py-0.5">
+              × {quantity}
+            </span>
+          )}
+        </div>
       )}
       {!hideMlb && resolvedMlb && (
         <div className="text-xs text-gray-500 font-mono mt-0.5">{resolvedMlb}</div>
