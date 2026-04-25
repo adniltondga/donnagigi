@@ -24,15 +24,12 @@ export async function GET(request: NextRequest) {
     select: { clientId: true, clientSecret: true, redirectUri: true, updatedAt: true },
   })
 
-  const envId = process.env.ML_CLIENT_ID || null
-  const envHasSecret = !!process.env.ML_CLIENT_SECRET
   const redirectUri = await getMLRedirectUri(request, session.tenantId)
   const webhookUrl = await getMLWebhookUrl(session.tenantId, request)
 
   if (creds) {
     return NextResponse.json({
       configured: true,
-      source: "tenant",
       clientId: creds.clientId,
       clientSecretMasked: creds.clientSecret.length > 8
         ? `${creds.clientSecret.slice(0, 4)}…${creds.clientSecret.slice(-4)}`
@@ -45,10 +42,9 @@ export async function GET(request: NextRequest) {
   }
 
   return NextResponse.json({
-    configured: !!envId && envHasSecret,
-    source: envId && envHasSecret ? "env" : null,
-    clientId: envId ? `${envId.slice(0, 4)}…${envId.slice(-4)}` : null,
-    clientSecretMasked: envHasSecret ? "••••" : null,
+    configured: false,
+    clientId: null,
+    clientSecretMasked: null,
     redirectUri,
     webhookUrl,
   })
