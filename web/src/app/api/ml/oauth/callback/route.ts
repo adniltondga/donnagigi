@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import prisma from "@/lib/prisma"
 import { getMLAppCredentials } from "@/lib/ml-credentials"
 import { getMLRedirectUri } from "@/lib/ml-url"
+import { captureError } from "@/lib/sentry"
 
 export const dynamic = "force-dynamic"
 
@@ -221,7 +222,7 @@ export async function GET(request: NextRequest) {
     console.log("[PKCE/CALLBACK] ✅ PKCE flow completo com sucesso!")
     return NextResponse.redirect(redirectUrl)
   } catch (error) {
-    console.error("❌ Erro no callback:", error)
+    captureError(error, { operation: "ml-oauth-callback" })
     return NextResponse.json({
       erro: "Erro ao processar callback",
       mensagem: error instanceof Error ? error.message : "Erro desconhecido"
