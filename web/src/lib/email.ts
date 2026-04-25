@@ -1,13 +1,11 @@
 /**
- * Email sender com dois backends:
- * - Dev (NODE_ENV != 'production'): Nodemailer jsonTransport — imprime no
- *   terminal do dev server, não envia de verdade. Útil pra copiar o OTP
- *   durante teste local.
- * - Prod (NODE_ENV === 'production' e RESEND_API_KEY definido): Resend.
- *
- * Se RESEND_API_KEY não estiver setada em prod, cai pro nodemailer em
- * jsonTransport (log-only) pra não quebrar o app — o email precisa ser
- * configurado pra funcionar de verdade.
+ * Email sender com 3 backends, escolhidos por env:
+ * - Mailtrap (dev): se MAILTRAP_HOST + MAILTRAP_USER + MAILTRAP_PASS
+ *   estão setadas, manda via SMTP do sandbox do Mailtrap. Os emails
+ *   ficam no inbox virtual em mailtrap.io — não entregam de verdade.
+ * - Resend (prod): se NODE_ENV=production e RESEND_API_KEY está setada.
+ * - Fallback (jsonTransport): imprime no terminal — usado quando
+ *   nenhum dos dois acima está configurado.
  */
 
 import nodemailer from 'nodemailer';
@@ -21,7 +19,7 @@ export type SendEmailInput = {
   text?: string;
 };
 
-async function sendViaNodemailer(input: SendEmailInput) {
+async function sendViaJsonTransport(input: SendEmailInput) {
   const transport = nodemailer.createTransport({ jsonTransport: true });
   const info = await transport.sendMail({
     from: FROM,
@@ -30,18 +28,37 @@ async function sendViaNodemailer(input: SendEmailInput) {
     html: input.html,
     text: input.text,
   });
-  // Log visível no terminal do dev server
-  console.log('\n========== EMAIL (dev) ==========');
+  console.log('\n========== EMAIL (dev/log) ==========');
   console.log(`→ To: ${input.to}`);
   console.log(`→ Subject: ${input.subject}`);
   console.log(`→ ${input.text || input.html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim()}`);
-  console.log('==================================\n');
+  console.log('======================================\n');
+  return info;
+}
+
+async function sendViaMailtrap(input: SendEmailInput) {
+  const transport = nodemailer.createTransport({
+    host: process.env.MAILTRAP_HOST!,
+    port: Number(process.env.MAILTRAP_PORT) || 2525,
+    auth: {
+      user: process.env.MAILTRAP_USER!,
+      pass: process.env.MAILTRAP_PASS!,
+    },
+  });
+  const info = await transport.sendMail({
+    from: FROM,
+    to: input.to,
+    subject: input.subject,
+    html: input.html,
+    text: input.text,
+  });
+  console.log(`[email/mailtrap] → ${input.to} · ${input.subject} · id=${info.messageId}`);
   return info;
 }
 
 async function sendViaResend(input: SendEmailInput) {
   const key = process.env.RESEND_API_KEY;
-  if (!key) return sendViaNodemailer(input);
+  if (!key) return sendViaJsonTransport(input);
   const { Resend } = await import('resend');
   const resend = new Resend(key);
   return resend.emails.send({
@@ -54,10 +71,20 @@ async function sendViaResend(input: SendEmailInput) {
 }
 
 export async function sendEmail(input: SendEmailInput) {
+  // Prod com Resend tem prioridade absoluta
   if (process.env.NODE_ENV === 'production' && process.env.RESEND_API_KEY) {
     return sendViaResend(input);
   }
-  return sendViaNodemailer(input);
+  // Mailtrap em dev (ou prod sem Resend) — captura no sandbox virtual
+  if (
+    process.env.MAILTRAP_HOST &&
+    process.env.MAILTRAP_USER &&
+    process.env.MAILTRAP_PASS
+  ) {
+    return sendViaMailtrap(input);
+  }
+  // Último recurso: log no terminal
+  return sendViaJsonTransport(input);
 }
 
 /**
