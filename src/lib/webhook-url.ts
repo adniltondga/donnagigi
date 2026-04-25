@@ -5,8 +5,7 @@ import { getMPRedirectUri, getMPCredentialsForTenant } from "./mp"
 /**
  * Deriva a URL pública do webhook usando o mesmo source-of-truth do
  * redirect URI OAuth: host do MLAppCredentials/MPAppCredentials.redirectUri
- * → env var (ML_REDIRECT_URI / MP_REDIRECT_URI / NEXT_PUBLIC_APP_URL) →
- * request origin.
+ * → request origin.
  *
  * Reaproveita os helpers getMLRedirectUri / getMPRedirectUri pra manter
  * uma única fonte de verdade: assim a URL do webhook sempre está no mesmo
