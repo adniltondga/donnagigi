@@ -130,7 +130,11 @@ export async function GET() {
     let synced = 0
     let failed = 0
 
-    for (const mlProduct of mlProducts) {
+    type ImportResult =
+      | { ok: true; result: { id: string; name: string; price: number; variants: number } }
+      | { ok: false }
+
+    const importOne = async (mlProduct: MLProduct): Promise<ImportResult> => {
       try {
         const productTitle = mlProduct.title || mlProduct.displayName || mlProduct.name || "Sem título"
         const productPrice = mlProduct.price || 0
@@ -436,16 +440,35 @@ export async function GET() {
           }
         }
 
-        results.push({
-          id: product.id,
-          name: productTitle,
-          price: productPrice,
-          variants: variantsCount,
-        })
-        synced++
+        return {
+          ok: true,
+          result: {
+            id: product.id,
+            name: productTitle,
+            price: productPrice,
+            variants: variantsCount,
+          },
+        }
       } catch (error) {
         console.error(`[ML/SYNC] Erro ao importar produto:`, error)
-        failed++
+        return { ok: false }
+      }
+    }
+
+    // Processa em batches paralelos. 5 produtos concorrentes × ~5 imagens
+    // cada = 25 uploads simultâneos no Vercel Blob — limite confortável.
+    // ML também aguenta sem rate limit nesse volume por token.
+    const BATCH_SIZE = 5
+    for (let i = 0; i < mlProducts.length; i += BATCH_SIZE) {
+      const batch = mlProducts.slice(i, i + BATCH_SIZE)
+      const batchResults = await Promise.all(batch.map(importOne))
+      for (const r of batchResults) {
+        if (r.ok) {
+          results.push(r.result)
+          synced++
+        } else {
+          failed++
+        }
       }
     }
 
