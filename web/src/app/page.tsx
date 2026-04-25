@@ -16,6 +16,33 @@ import { formatCurrency } from "@/lib/calculations";
 
 const SITE_URL = "https://aglivre.dgadigital.com.br";
 
+const FAQS: Array<{ q: string; a: string }> = [
+  {
+    q: "Como o agLivre se conecta com o Mercado Livre e Mercado Pago?",
+    a: "Via OAuth oficial — o mesmo fluxo que o ML e MP usam pra apps verificados. Você é redirecionado pro site do ML/MP, autoriza o acesso e volta pro agLivre. A gente nunca pede nem armazena sua senha.",
+  },
+  {
+    q: "Vocês armazenam minha senha do Mercado Livre?",
+    a: "Não. Só guardamos os tokens de acesso que o ML/MP nos dá no fluxo OAuth — esses tokens podem ser revogados por você a qualquer momento na sua conta do ML/MP, sem precisar trocar senha.",
+  },
+  {
+    q: "Quanto custa o agLivre? Tem trial?",
+    a: "Sim, 14 dias grátis sem cartão de crédito. Depois disso, planos a partir de R$ 0/mês (FREE, com limite de pedidos) ou plano PRO mensal sem limites. Veja a seção Planos acima.",
+  },
+  {
+    q: "Posso cancelar a qualquer momento?",
+    a: "Sim. Não há fidelidade nem multa. Cancela direto pelo painel e a cobrança para no fim do ciclo atual.",
+  },
+  {
+    q: "O agLivre calcula a taxa real do Mercado Livre por venda?",
+    a: "Sim. A gente puxa o sale_fee real de cada pedido (não estimado), além da taxa de envio quando aplicável. Pedidos recém-criados que ainda não liquidaram aparecem com estimativa marcada como '(est.)' e são corrigidos automaticamente quando o ML liquida.",
+  },
+  {
+    q: "Funciona pra MEI, ME ou empresa de qualquer porte?",
+    a: "Sim. O agLivre é agnóstico de regime tributário — a integração depende só de você ter conta de seller no Mercado Livre. Vendedor pessoa física, MEI, ME, EIRELI, LTDA, todos funcionam igual.",
+  },
+];
+
 const jsonLd = {
   "@context": "https://schema.org",
   "@graph": [
@@ -60,6 +87,15 @@ const jsonLd = {
         category: p.tagline,
       })),
     },
+    {
+      "@type": "FAQPage",
+      "@id": `${SITE_URL}/#faq`,
+      mainEntity: FAQS.map((f) => ({
+        "@type": "Question",
+        name: f.q,
+        acceptedAnswer: { "@type": "Answer", text: f.a },
+      })),
+    },
   ],
 };
 
@@ -87,6 +123,12 @@ export default function Home() {
               className="hidden sm:inline text-sm text-gray-700 hover:text-primary-600 font-medium px-3 py-2 transition"
             >
               Planos
+            </Link>
+            <Link
+              href="#faq"
+              className="hidden sm:inline text-sm text-gray-700 hover:text-primary-600 font-medium px-3 py-2 transition"
+            >
+              FAQ
             </Link>
             <Link
               href="/admin/login"
@@ -298,6 +340,38 @@ export default function Home() {
           <p className="text-center text-sm text-gray-500 mt-8">
             Todos os planos incluem 14 dias de trial grátis. Sem cartão de crédito.
           </p>
+        </div>
+      </section>
+
+      {/* FAQ */}
+      <section id="faq" className="bg-gray-50 py-20 scroll-mt-20">
+        <div className="max-w-3xl mx-auto px-4">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-3">
+              Perguntas frequentes
+            </h2>
+            <p className="text-gray-600">
+              Não achou o que procurava? Manda um email pra contato@aglivre.com.br.
+            </p>
+          </div>
+          <div className="space-y-3">
+            {FAQS.map((f, i) => (
+              <details
+                key={i}
+                className="group bg-white border border-gray-200 rounded-xl p-5 open:shadow-md transition"
+              >
+                <summary className="cursor-pointer list-none flex items-center justify-between gap-4 font-semibold text-gray-900">
+                  <span>{f.q}</span>
+                  <span className="shrink-0 w-6 h-6 rounded-full border border-gray-300 text-gray-500 flex items-center justify-center text-lg leading-none group-open:rotate-45 transition-transform">
+                    +
+                  </span>
+                </summary>
+                <p className="mt-3 text-sm text-gray-600 leading-relaxed">
+                  {f.a}
+                </p>
+              </details>
+            ))}
+          </div>
         </div>
       </section>
 

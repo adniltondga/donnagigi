@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Script from "next/script";
 import "./globals.css";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { Toaster } from "@/components/ui/toaster";
@@ -79,6 +80,11 @@ export default function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
+  const plausibleDomain = process.env.NEXT_PUBLIC_PLAUSIBLE_DOMAIN;
+  const plausibleSrc =
+    process.env.NEXT_PUBLIC_PLAUSIBLE_SCRIPT_URL ||
+    "https://plausible.io/js/script.js";
+
   return (
     <html lang="pt-BR" suppressHydrationWarning>
       <body>
@@ -86,6 +92,14 @@ export default function RootLayout({
           {children}
           <Toaster />
         </ThemeProvider>
+        {plausibleDomain && (
+          <Script
+            defer
+            src={plausibleSrc}
+            data-domain={plausibleDomain}
+            strategy="afterInteractive"
+          />
+        )}
       </body>
     </html>
   );
