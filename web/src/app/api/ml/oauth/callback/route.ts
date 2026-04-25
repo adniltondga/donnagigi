@@ -86,20 +86,13 @@ export async function GET(request: NextRequest) {
     let clientId: string
     let clientSecret: string
     try {
-      // Se o state tem tenantId, usa as credenciais daquele tenant;
-      // senão, cai pro env (fluxo legacy)
-      const tenantForCreds = tenantIdFromState
-      if (tenantForCreds) {
-        const c = await getMLAppCredentials(tenantForCreds)
-        clientId = c.clientId
-        clientSecret = c.clientSecret
-      } else {
-        const envId = process.env.ML_CLIENT_ID
-        const envSecret = process.env.ML_CLIENT_SECRET
-        if (!envId || !envSecret) throw new Error("Credenciais ML não configuradas")
-        clientId = envId
-        clientSecret = envSecret
+      // Cada tenant tem suas próprias credenciais ML.
+      if (!tenantIdFromState) {
+        throw new Error("State sem tenantId — refaça o fluxo de login")
       }
+      const c = await getMLAppCredentials(tenantIdFromState)
+      clientId = c.clientId
+      clientSecret = c.clientSecret
     } catch (err) {
       console.error("[PKCE/CALLBACK] ❌", err)
       return NextResponse.json(

@@ -40,13 +40,13 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    // Lê clientId do tenant (ou fallback pro .env)
+    // Cada tenant cadastra seu próprio app ML no DevCenter
     const cred = await getMLClientId(tenantId)
     if (!cred) {
       return NextResponse.json(
         {
           erro: "App ML não configurado",
-          instrucoes: "Cadastre Client ID + Secret em /admin/configuracoes?tab=ml ou configure ML_CLIENT_ID no .env",
+          instrucoes: "Cadastre Client ID + Secret em /admin/configuracoes?tab=ml",
         },
         { status: 400 }
       )
