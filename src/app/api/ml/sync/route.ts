@@ -179,6 +179,7 @@ export async function GET() {
               variant = await prisma.productVariant.create({
                 data: {
                   productId: product.id,
+                  tenantId,
                   cod: `${product.id}-var-${variation.id}`,
                   title: attributes,
                   salePrice: variation.price || productPrice,
@@ -300,6 +301,7 @@ export async function GET() {
             defaultVariant = await prisma.productVariant.create({
               data: {
                 productId: product.id,
+                tenantId,
                 cod: product.id,
                 title: "Padrão",
                 salePrice: productPrice,

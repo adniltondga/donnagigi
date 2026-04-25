@@ -146,6 +146,7 @@ export async function POST(req: NextRequest) {
       const variant = await prisma.productVariant.create({
         data: {
           productId: product.id,
+          tenantId,
           cod: variantData.cod,
           title: variantData.title || null,
           salePrice: parseFloat(variantData.salePrice),

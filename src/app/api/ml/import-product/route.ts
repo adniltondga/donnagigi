@@ -107,6 +107,7 @@ export async function POST(request: NextRequest) {
           return prisma.productVariant.create({
             data: {
               productId: novoProduct.id,
+              tenantId,
               cod: cod,
               title: variantTitle,
               salePrice: variation.price || body.price,
@@ -123,6 +124,7 @@ export async function POST(request: NextRequest) {
       const variant = await prisma.productVariant.create({
         data: {
           productId: novoProduct.id,
+          tenantId,
           cod: `ML_${body.id}`,
           title: body.title,
           salePrice: body.price,

@@ -61,7 +61,7 @@ export async function syncMLProductToDB(
 
     // Sincronizar variações se existirem
     if (mlProduct.variations && mlProduct.variations.length > 0) {
-      await syncMLVariants(product.id, mlProduct.variations)
+      await syncMLVariants(product.id, tenantId, mlProduct.variations)
     }
 
     return {
@@ -83,6 +83,7 @@ export async function syncMLProductToDB(
  */
 async function syncMLVariants(
   productId: string,
+  tenantId: string,
   variations: Array<{
     id: string
     attribute_combinations?: Array<{
@@ -100,9 +101,10 @@ async function syncMLVariants(
         .join(' | ')
 
       await prisma.productVariant.upsert({
-        where: { cod: variant.id },
+        where: { tenantId_cod: { tenantId, cod: variant.id } },
         create: {
           productId,
+          tenantId,
           cod: variant.id,
           title: variantName || `Variação ${variant.id}`,
           salePrice: variant.price || 0,

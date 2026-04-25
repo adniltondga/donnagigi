@@ -99,10 +99,20 @@ export async function POST(
       )
     }
 
+    // Pega tenantId do produto pai (também valida existência)
+    const product = await prisma.product.findUnique({
+      where: { id: productId },
+      select: { tenantId: true },
+    })
+    if (!product) {
+      return NextResponse.json({ error: "Produto não encontrado" }, { status: 404 })
+    }
+
     // Criar variação
     const variant = await prisma.productVariant.create({
       data: {
         productId,
+        tenantId: product.tenantId,
         cod,
         title: title || null,
         salePrice: parseFloat(salePrice),
