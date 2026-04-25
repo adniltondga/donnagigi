@@ -11,10 +11,96 @@ import {
   Check,
   Sparkles,
 } from "lucide-react";
-import { PLANS } from "@/lib/plans";
 import { formatCurrency } from "@/lib/calculations";
 
 const SITE_URL = "https://aglivre.dgadigital.com.br";
+
+// Catálogo de planos exibido no marketing. O backend ainda só tem
+// FREE/PRO (src/lib/plans.ts) — os tiers Pro/Business/Enterprise abaixo
+// refletem o roadmap e serão plugados ao schema no Sprint 1 de billing.
+interface MarketingPlan {
+  id: "FREE" | "PRO" | "BUSINESS" | "ENTERPRISE";
+  name: string;
+  tagline: string;
+  /** Em BRL, ou "custom" para "sob consulta". */
+  priceBRL: number | "custom";
+  popular?: boolean;
+  ctaLabel: string;
+  /** Override do link de CTA. Default = /admin/login?register=1. */
+  ctaHref?: string;
+  features: string[];
+}
+
+const MARKETING_PLANS: MarketingPlan[] = [
+  {
+    id: "FREE",
+    name: "Free",
+    tagline: "Pra começar e enxergar seu lucro real",
+    priceBRL: 0,
+    ctaLabel: "Começar grátis",
+    features: [
+      "Até 30 vendas/mês sincronizadas",
+      "Sincronização com Mercado Livre",
+      "Dashboard, vendas por dia e listagem de vendas ML",
+      "Custos por anúncio e variação (lucro real)",
+      "Relatórios",
+      "Pró-labore seguro",
+      "Contas a pagar / a receber + categorias",
+      "Top produtos e potencial de estoque",
+      "Export CSV",
+      "Histórico de 6 meses",
+      "1 usuário",
+    ],
+  },
+  {
+    id: "PRO",
+    name: "Pro",
+    tagline: "Conecte com o Mercado Pago e cresça",
+    priceBRL: 49,
+    popular: true,
+    ctaLabel: "Assinar Pro",
+    features: [
+      "Até 300 vendas/mês sincronizadas",
+      "Tudo do Free",
+      "Mercado Pago — saldo a liberar e cronograma diário",
+      "Retidos por reclamação separados",
+      "Previsão de recebimentos",
+      "Histórico ilimitado",
+      "Multi-usuário (até 3)",
+      "Suporte via ticket — resposta em 24h",
+    ],
+  },
+  {
+    id: "BUSINESS",
+    name: "Business",
+    tagline: "Mobile + Chrome pra operação séria",
+    priceBRL: 99,
+    ctaLabel: "Assinar Business",
+    features: [
+      "Até 1.000 vendas/mês sincronizadas",
+      "Tudo do Pro",
+      "Extensão Chrome — sync 1-click direto do anúncio (em breve)",
+      "App mobile (PWA) com push de vendas e devoluções",
+      "Multi-usuário (até 5)",
+      "Suporte via ticket — prioridade alta",
+    ],
+  },
+  {
+    id: "ENTERPRISE",
+    name: "Enterprise",
+    tagline: "Operação grande com volume customizado",
+    priceBRL: "custom",
+    ctaLabel: "Falar com a gente",
+    ctaHref: "mailto:comercial@dgadigital.com.br?subject=Plano%20Enterprise%20agLivre",
+    features: [
+      "Vendas ilimitadas",
+      "Tudo do Business",
+      "Multi-usuário ilimitado",
+      "Webhooks e API customizados",
+      "SLA com suporte dedicado",
+    ],
+  },
+];
 
 const FAQS: Array<{ q: string; a: string }> = [
   {
@@ -27,7 +113,7 @@ const FAQS: Array<{ q: string; a: string }> = [
   },
   {
     q: "Quanto custa o agLivre? Tem trial?",
-    a: "Sim, 14 dias grátis sem cartão de crédito. Depois disso, planos a partir de R$ 0/mês (FREE, com limite de pedidos) ou plano PRO mensal sem limites. Veja a seção Planos acima.",
+    a: "Sim, 14 dias grátis sem cartão de crédito. Depois disso, quatro planos: Free (R$ 0, até 30 vendas/mês), Pro (R$ 49, até 300 vendas/mês com Mercado Pago), Business (R$ 99, até 1.000 vendas/mês com app mobile e extensão Chrome) e Enterprise (sob consulta, vendas ilimitadas e suporte dedicado). Veja a seção Planos acima.",
   },
   {
     q: "Posso cancelar a qualquer momento?",
@@ -79,7 +165,7 @@ const jsonLd = {
         "Gestão financeira para vendedores do Mercado Livre: controle de vendas, taxas, lucro real, devoluções e liberações do Mercado Pago.",
       url: SITE_URL,
       inLanguage: "pt-BR",
-      offers: Object.values(PLANS).map((p) => ({
+      offers: MARKETING_PLANS.map((p) => ({
         "@type": "Offer",
         name: p.name,
         price: p.priceBRL,
@@ -276,65 +362,82 @@ export default function Home() {
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto">
-            {Object.values(PLANS).map((p) => (
-              <div
-                key={p.id}
-                className={`relative rounded-2xl p-6 flex flex-col border ${
-                  p.popular
-                    ? "bg-gradient-to-br from-primary-600 to-fuchsia-700 text-white border-primary-600 shadow-xl"
-                    : "bg-white border-gray-200"
-                }`}
-              >
-                {p.popular && (
-                  <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-amber-400 text-amber-900 text-xs font-bold px-3 py-1 rounded-full flex items-center gap-1">
-                    <Sparkles className="w-3 h-3" />
-                    Mais popular
-                  </div>
-                )}
-                <div className="mb-4">
-                  <h3 className={`text-xl font-bold ${p.popular ? "text-white" : "text-gray-900"}`}>
-                    {p.name}
-                  </h3>
-                  <p className={`text-sm mt-1 ${p.popular ? "text-primary-100" : "text-gray-500"}`}>
-                    {p.tagline}
-                  </p>
-                </div>
-                <div className="mb-6">
-                  <span className={`text-4xl font-bold ${p.popular ? "text-white" : "text-gray-900"}`}>
-                    {p.priceBRL === 0 ? "Grátis" : formatCurrency(p.priceBRL)}
-                  </span>
-                  {p.priceBRL > 0 && (
-                    <span className={`text-sm ml-1 ${p.popular ? "text-primary-100" : "text-gray-500"}`}>
-                      /mês
-                    </span>
-                  )}
-                </div>
-                <ul className="space-y-2.5 mb-6 flex-1">
-                  {p.features.map((f) => (
-                    <li key={f} className="flex items-start gap-2 text-sm">
-                      <Check
-                        className={`w-4 h-4 shrink-0 mt-0.5 ${
-                          p.popular ? "text-primary-200" : "text-primary-600"
-                        }`}
-                      />
-                      <span className={p.popular ? "text-primary-50" : "text-gray-700"}>{f}</span>
-                    </li>
-                  ))}
-                </ul>
-                <Link
-                  href="/admin/login?register=1"
-                  className={`w-full py-2.5 rounded-lg font-semibold transition flex items-center justify-center gap-2 ${
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 max-w-7xl mx-auto items-stretch">
+            {MARKETING_PLANS.map((p) => {
+              const ctaHref = p.ctaHref ?? "/admin/login?register=1";
+              const isExternal = ctaHref.startsWith("mailto:") || ctaHref.startsWith("http");
+              const ctaClass = `w-full py-2.5 rounded-lg font-semibold transition flex items-center justify-center gap-2 ${
+                p.popular
+                  ? "bg-white text-primary-700 hover:bg-primary-50"
+                  : "bg-primary-600 text-white hover:bg-primary-700"
+              }`;
+              const ctaContent = (
+                <>
+                  {p.ctaLabel}
+                  <ArrowRight className="w-4 h-4" />
+                </>
+              );
+              return (
+                <div
+                  key={p.id}
+                  className={`relative rounded-2xl p-6 flex flex-col border ${
                     p.popular
-                      ? "bg-white text-primary-700 hover:bg-primary-50"
-                      : "bg-primary-600 text-white hover:bg-primary-700"
+                      ? "bg-gradient-to-br from-primary-600 to-fuchsia-700 text-white border-primary-600 shadow-xl lg:scale-[1.02]"
+                      : "bg-white border-gray-200"
                   }`}
                 >
-                  {p.id === "FREE" ? "Começar grátis" : `Assinar ${p.name}`}
-                  <ArrowRight className="w-4 h-4" />
-                </Link>
-              </div>
-            ))}
+                  {p.popular && (
+                    <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-amber-400 text-amber-900 text-xs font-bold px-3 py-1 rounded-full flex items-center gap-1">
+                      <Sparkles className="w-3 h-3" />
+                      Mais popular
+                    </div>
+                  )}
+                  <div className="mb-4">
+                    <h3 className={`text-xl font-bold ${p.popular ? "text-white" : "text-gray-900"}`}>
+                      {p.name}
+                    </h3>
+                    <p className={`text-sm mt-1 ${p.popular ? "text-primary-100" : "text-gray-500"}`}>
+                      {p.tagline}
+                    </p>
+                  </div>
+                  <div className="mb-6">
+                    <span className={`text-4xl font-bold ${p.popular ? "text-white" : "text-gray-900"}`}>
+                      {p.priceBRL === "custom"
+                        ? "Sob consulta"
+                        : p.priceBRL === 0
+                        ? "Grátis"
+                        : formatCurrency(p.priceBRL)}
+                    </span>
+                    {typeof p.priceBRL === "number" && p.priceBRL > 0 && (
+                      <span className={`text-sm ml-1 ${p.popular ? "text-primary-100" : "text-gray-500"}`}>
+                        /mês
+                      </span>
+                    )}
+                  </div>
+                  <ul className="space-y-2.5 mb-6 flex-1">
+                    {p.features.map((f) => (
+                      <li key={f} className="flex items-start gap-2 text-sm">
+                        <Check
+                          className={`w-4 h-4 shrink-0 mt-0.5 ${
+                            p.popular ? "text-primary-200" : "text-primary-600"
+                          }`}
+                        />
+                        <span className={p.popular ? "text-primary-50" : "text-gray-700"}>{f}</span>
+                      </li>
+                    ))}
+                  </ul>
+                  {isExternal ? (
+                    <a href={ctaHref} className={ctaClass}>
+                      {ctaContent}
+                    </a>
+                  ) : (
+                    <Link href={ctaHref} className={ctaClass}>
+                      {ctaContent}
+                    </Link>
+                  )}
+                </div>
+              );
+            })}
           </div>
 
           <p className="text-center text-sm text-gray-500 mt-8">
