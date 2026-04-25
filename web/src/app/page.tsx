@@ -351,7 +351,14 @@ export default function Home() {
               Perguntas frequentes
             </h2>
             <p className="text-gray-600">
-              Não achou o que procurava? Manda um email pra contato@aglivre.com.br.
+              Não achou o que procurava? Manda um email pra{" "}
+              <a
+                href="mailto:suporte@dgadigital.com.br"
+                className="text-primary-600 hover:text-primary-700 underline underline-offset-2"
+              >
+                suporte@dgadigital.com.br
+              </a>
+              .
             </p>
           </div>
           <div className="space-y-3">
