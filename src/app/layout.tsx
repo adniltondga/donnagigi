@@ -80,10 +80,7 @@ export default function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const plausibleDomain = process.env.NEXT_PUBLIC_PLAUSIBLE_DOMAIN;
-  const plausibleSrc =
-    process.env.NEXT_PUBLIC_PLAUSIBLE_SCRIPT_URL ||
-    "https://plausible.io/js/script.js";
+  const plausibleSrc = process.env.NEXT_PUBLIC_PLAUSIBLE_SCRIPT_URL;
 
   return (
     <html lang="pt-BR" suppressHydrationWarning>
@@ -92,13 +89,16 @@ export default function RootLayout({
           {children}
           <Toaster />
         </ThemeProvider>
-        {plausibleDomain && (
-          <Script
-            defer
-            src={plausibleSrc}
-            data-domain={plausibleDomain}
-            strategy="afterInteractive"
-          />
+        {plausibleSrc && (
+          <>
+            <Script
+              src={plausibleSrc}
+              strategy="afterInteractive"
+            />
+            <Script id="plausible-init" strategy="afterInteractive">
+              {`window.plausible=window.plausible||function(){(plausible.q=plausible.q||[]).push(arguments)},plausible.init=plausible.init||function(i){plausible.o=i||{}};plausible.init()`}
+            </Script>
+          </>
         )}
       </body>
     </html>
