@@ -146,7 +146,7 @@ export async function GET() {
       await Promise.all(
         paraBackfill.map((p) =>
           prisma.mLProductCost.upsert({
-            where: { mlListingId: p.mlListingId },
+            where: { tenantId_mlListingId: { tenantId, mlListingId: p.mlListingId } },
             create: { ...p, tenantId },
             update: { productCost: p.productCost, ...(p.title ? { title: p.title } : {}) },
           })
@@ -262,7 +262,7 @@ export async function PUT(req: NextRequest) {
 
     if (variationId) {
       saved = await prisma.mLProductVariantCost.upsert({
-        where: { mlListingId_variationId: { mlListingId, variationId } },
+        where: { tenantId_mlListingId_variationId: { tenantId, mlListingId, variationId } },
         create: { mlListingId, variationId, variationName, productCost, tenantId },
         update: { productCost, ...(variationName ? { variationName } : {}) },
       });
@@ -286,7 +286,7 @@ export async function PUT(req: NextRequest) {
       }
     } else {
       saved = await prisma.mLProductCost.upsert({
-        where: { mlListingId },
+        where: { tenantId_mlListingId: { tenantId, mlListingId } },
         create: { mlListingId, productCost, title, tenantId },
         update: { productCost, ...(title ? { title } : {}) },
       });

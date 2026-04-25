@@ -42,12 +42,10 @@ export async function resolveCost(params: {
   }
 
   const listing = await prisma.mLProductCost.findUnique({
-    where: { mlListingId },
-    select: { productCost: true, tenantId: true },
+    where: { tenantId_mlListingId: { tenantId, mlListingId } },
+    select: { productCost: true },
   });
-  // guarda de segurança: MLProductCost usa mlListingId como PK (sem filtro por
-  // tenantId), então confirmamos que pertence ao tenant antes de retornar.
-  if (listing && listing.tenantId === tenantId && Number.isFinite(listing.productCost)) {
+  if (listing && Number.isFinite(listing.productCost)) {
     return { cost: listing.productCost, source: "listing" };
   }
 

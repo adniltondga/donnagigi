@@ -42,7 +42,8 @@ export async function POST(request: NextRequest) {
     const summary = await forEachMLTenant(async (integration, tenantId) => {
       const result = await syncAllMLProducts(
         integration.accessToken,
-        integration.sellerID
+        integration.sellerID,
+        tenantId,
       )
       perTenantResults.push({ tenantId, result })
     })

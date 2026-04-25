@@ -142,7 +142,7 @@ export async function GET() {
 
         // Verificar se produto já existe
         let product = await prisma.product.findUnique({
-          where: { mlListingId: mlProduct.id },
+          where: { tenantId_mlListingId: { tenantId, mlListingId: mlProduct.id } },
         })
 
         // Se não existe, criar (tenantId vem do escopo do endpoint)

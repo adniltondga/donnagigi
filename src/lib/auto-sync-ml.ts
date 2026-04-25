@@ -4,7 +4,6 @@
  */
 
 import prisma from '@/lib/prisma'
-import { getDefaultTenantId } from './tenant'
 
 export interface MLProductResult {
   id: string
@@ -26,15 +25,18 @@ export interface MLProductResult {
 }
 
 /**
- * Sincroniza um produto do ML para o banco
+ * Sincroniza um produto do ML para o banco. tenantId é OBRIGATÓRIO —
+ * antes vinha do default global, mas multi-tenant safety exige passar
+ * explícito (cada cliente tem seus próprios produtos).
  */
 export async function syncMLProductToDB(
-  mlProduct: MLProductResult
+  mlProduct: MLProductResult,
+  tenantId: string,
 ) {
   try {
-    // Verificar se já existe
-    let product = await prisma.product.findFirst({
-      where: { mlListingId: mlProduct.id },
+    // Verificar se já existe (escopado por tenant via @@unique composto)
+    let product = await prisma.product.findUnique({
+      where: { tenantId_mlListingId: { tenantId, mlListingId: mlProduct.id } },
     })
 
     const productData = {
@@ -52,8 +54,6 @@ export async function syncMLProductToDB(
         data: productData,
       })
     } else {
-      // Criar novo
-      const tenantId = await getDefaultTenantId()
       product = await prisma.product.create({
         data: { ...productData, tenantId },
       })
@@ -121,9 +121,13 @@ async function syncMLVariants(
 }
 
 /**
- * Busca todos os produtos do ML e sincroniza
+ * Busca todos os produtos do ML e sincroniza. tenantId obrigatório.
  */
-export async function syncAllMLProducts(token: string, sellerId: string) {
+export async function syncAllMLProducts(
+  token: string,
+  sellerId: string,
+  tenantId: string,
+) {
   try {
     console.log('[AUTO-SYNC] Iniciando sincronização completa...')
 
@@ -158,7 +162,7 @@ export async function syncAllMLProducts(token: string, sellerId: string) {
         if (!itemResponse.ok) continue
 
         const mlProduct = await itemResponse.json() as MLProductResult
-        const result = await syncMLProductToDB(mlProduct)
+        const result = await syncMLProductToDB(mlProduct, tenantId)
 
         if (result.success) {
           synced++

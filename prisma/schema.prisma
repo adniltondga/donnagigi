@@ -199,7 +199,7 @@ model Product {
   productCost   Float?  // custo da mercadoria/produção
 
   // Mercado Livre
-  mlListingId   String? @unique
+  mlListingId   String?
 
   // Status
   active        Boolean @default(true)
@@ -218,6 +218,7 @@ model Product {
 
   @@index([tenantId])
   @@index([tenantId, active])
+  @@unique([tenantId, mlListingId])
 }
 
 // Imagens do produto
@@ -284,7 +285,8 @@ model ProductVariant {
 // Usado pelo sync-orders para abater automaticamente em vendas recorrentes.
 // Fallback: quando não há custo específico por variação, usa este.
 model MLProductCost {
-  mlListingId String   @id
+  id          String   @id @default(cuid())
+  mlListingId String
   title       String?
   productCost Float
   tenantId    String
@@ -292,6 +294,7 @@ model MLProductCost {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
+  @@unique([tenantId, mlListingId])
   @@index([tenantId])
 }
 
@@ -309,7 +312,7 @@ model MLProductVariantCost {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
-  @@unique([mlListingId, variationId])
+  @@unique([tenantId, mlListingId, variationId])
   @@index([tenantId])
   @@index([mlListingId])
 }
