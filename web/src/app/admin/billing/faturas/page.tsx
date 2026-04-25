@@ -26,8 +26,8 @@ const STATUS_STYLES: Record<string, { label: string; cls: string }> = {
   CONFIRMED: { label: "Confirmada", cls: "bg-green-100 text-green-800" },
   RECEIVED: { label: "Recebida", cls: "bg-green-100 text-green-800" },
   OVERDUE: { label: "Vencida", cls: "bg-red-100 text-red-800" },
-  REFUNDED: { label: "Reembolsada", cls: "bg-gray-100 text-gray-800" },
-  CANCELED: { label: "Cancelada", cls: "bg-gray-100 text-gray-700 line-through" },
+  REFUNDED: { label: "Reembolsada", cls: "bg-muted text-foreground" },
+  CANCELED: { label: "Cancelada", cls: "bg-muted text-foreground line-through" },
   RECEIVED_IN_CASH: { label: "Recebida", cls: "bg-green-100 text-green-800" },
 }
 
@@ -70,7 +70,7 @@ export default function FaturasPage() {
 
       <Card className="overflow-hidden">
         {loading ? (
-          <div className="flex items-center justify-center py-12 text-gray-500">
+          <div className="flex items-center justify-center py-12 text-muted-foreground">
             <Loader2 className="w-5 h-5 animate-spin mr-2" />
             Carregando...
           </div>
@@ -94,12 +94,12 @@ export default function FaturasPage() {
             </TableHeader>
             <TableBody>
               {invoices.map((inv) => {
-                const s = STATUS_STYLES[inv.status] || { label: inv.status, cls: "bg-gray-100 text-gray-700" }
+                const s = STATUS_STYLES[inv.status] || { label: inv.status, cls: "bg-muted text-foreground" }
                 const url = inv.invoiceUrl || inv.bankSlipUrl
                 return (
                   <TableRow key={inv.id}>
                     <TableCell className="text-sm">{formatDate(inv.dueDate)}</TableCell>
-                    <TableCell className="text-sm text-gray-600">
+                    <TableCell className="text-sm text-muted-foreground">
                       {inv.billingType ? BILLING_LABELS[inv.billingType] || inv.billingType : "—"}
                     </TableCell>
                     <TableCell className="text-sm font-semibold text-right">
@@ -110,7 +110,7 @@ export default function FaturasPage() {
                         {s.label}
                       </span>
                     </TableCell>
-                    <TableCell className="text-sm text-gray-600">{formatDate(inv.paymentDate)}</TableCell>
+                    <TableCell className="text-sm text-muted-foreground">{formatDate(inv.paymentDate)}</TableCell>
                     <TableCell>
                       {url && (
                         <a

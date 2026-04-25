@@ -98,7 +98,7 @@ export default function PlanosPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-20 text-gray-500">
+      <div className="flex items-center justify-center py-20 text-muted-foreground">
         <Loader2 className="w-6 h-6 animate-spin mr-2" />
         Carregando planos...
       </div>
@@ -119,7 +119,7 @@ export default function PlanosPage() {
               className={`relative rounded-2xl p-6 flex flex-col border ${
                 p.popular
                   ? "bg-gradient-to-br from-primary-600 to-fuchsia-700 text-white border-primary-600 shadow-xl"
-                  : "bg-white border-gray-200"
+                  : "bg-card border-border"
               }`}
             >
               {p.popular && (
@@ -130,20 +130,20 @@ export default function PlanosPage() {
               )}
 
               <div className="mb-4">
-                <h3 className={`text-xl font-bold ${p.popular ? "text-white" : "text-gray-900"}`}>
+                <h3 className={`text-xl font-bold ${p.popular ? "text-white" : "text-foreground"}`}>
                   {p.name}
                 </h3>
-                <p className={`text-sm mt-1 ${p.popular ? "text-primary-100" : "text-gray-500"}`}>
+                <p className={`text-sm mt-1 ${p.popular ? "text-primary-100" : "text-muted-foreground"}`}>
                   {p.tagline}
                 </p>
               </div>
 
               <div className="mb-6">
-                <span className={`text-4xl font-bold ${p.popular ? "text-white" : "text-gray-900"}`}>
+                <span className={`text-4xl font-bold ${p.popular ? "text-white" : "text-foreground"}`}>
                   {p.priceBRL === 0 ? "Grátis" : formatCurrency(p.priceBRL)}
                 </span>
                 {p.priceBRL > 0 && (
-                  <span className={`text-sm ml-1 ${p.popular ? "text-primary-100" : "text-gray-500"}`}>
+                  <span className={`text-sm ml-1 ${p.popular ? "text-primary-100" : "text-muted-foreground"}`}>
                     /mês
                   </span>
                 )}
@@ -157,7 +157,7 @@ export default function PlanosPage() {
                         p.popular ? "text-primary-200" : "text-primary-600"
                       }`}
                     />
-                    <span className={p.popular ? "text-primary-50" : "text-gray-700"}>{f}</span>
+                    <span className={p.popular ? "text-primary-50" : "text-foreground"}>{f}</span>
                   </li>
                 ))}
               </ul>
@@ -168,7 +168,7 @@ export default function PlanosPage() {
                   className={`w-full py-2.5 rounded-lg font-semibold ${
                     p.popular
                       ? "bg-white/20 text-white cursor-not-allowed"
-                      : "bg-gray-100 text-gray-500 cursor-not-allowed"
+                      : "bg-muted text-muted-foreground cursor-not-allowed"
                   }`}
                 >
                   Plano atual
@@ -176,7 +176,7 @@ export default function PlanosPage() {
               ) : isFree ? (
                 <button
                   disabled
-                  className="w-full py-2.5 rounded-lg font-semibold bg-gray-100 text-gray-500 cursor-not-allowed"
+                  className="w-full py-2.5 rounded-lg font-semibold bg-muted text-muted-foreground cursor-not-allowed"
                 >
                   Plano grátis
                 </button>
@@ -201,17 +201,17 @@ export default function PlanosPage() {
       {/* Modal de checkout */}
       {selected && (
         <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6 space-y-4">
+          <div className="bg-card rounded-2xl max-w-md w-full p-6 space-y-4">
             <div className="flex items-start justify-between">
               <div>
-                <h2 className="text-xl font-bold text-gray-900">Assinar Plano Pro</h2>
-                <p className="text-sm text-gray-600 mt-1">
+                <h2 className="text-xl font-bold text-foreground">Assinar Plano Pro</h2>
+                <p className="text-sm text-muted-foreground mt-1">
                   {formatCurrency(plans?.find((p) => p.id === "PRO")?.priceBRL || 0)} / mês
                 </p>
               </div>
               <button
                 onClick={closeModal}
-                className="text-gray-400 hover:text-gray-600"
+                className="text-muted-foreground hover:text-muted-foreground"
                 aria-label="Fechar"
               >
                 <X className="w-5 h-5" />
@@ -226,7 +226,7 @@ export default function PlanosPage() {
 
             <form onSubmit={onCheckout} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">CPF ou CNPJ *</label>
+                <label className="block text-sm font-medium text-foreground mb-1">CPF ou CNPJ *</label>
                 <input
                   type="text"
                   placeholder="000.000.000-00"
@@ -234,15 +234,15 @@ export default function PlanosPage() {
                   required
                   onChange={(e) => setCpfCnpj(maskCpfCnpj(e.target.value))}
                   maxLength={18}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-600 focus:border-transparent outline-none"
+                  className="w-full px-3 py-2 border border-border rounded-lg focus:ring-2 focus:ring-primary-600 focus:border-transparent outline-none"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Forma de pagamento *</label>
+                <label className="block text-sm font-medium text-foreground mb-1">Forma de pagamento *</label>
                 <select
                   value={billingType}
                   onChange={(e) => setBillingType(e.target.value as BillingType)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-600 focus:border-transparent outline-none"
+                  className="w-full px-3 py-2 border border-border rounded-lg focus:ring-2 focus:ring-primary-600 focus:border-transparent outline-none"
                 >
                   {(Object.keys(BILLING_LABELS) as BillingType[]).map((b) => (
                     <option key={b} value={b}>
@@ -252,22 +252,22 @@ export default function PlanosPage() {
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Celular <span className="text-gray-400 font-normal">(opcional)</span>
+                <label className="block text-sm font-medium text-foreground mb-1">
+                  Celular <span className="text-muted-foreground font-normal">(opcional)</span>
                 </label>
                 <input
                   type="text"
                   placeholder="11999999999"
                   value={mobilePhone}
                   onChange={(e) => setMobilePhone(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-600 focus:border-transparent outline-none"
+                  className="w-full px-3 py-2 border border-border rounded-lg focus:ring-2 focus:ring-primary-600 focus:border-transparent outline-none"
                 />
               </div>
               <div className="flex gap-2 pt-2">
                 <button
                   type="button"
                   onClick={closeModal}
-                  className="flex-1 py-2.5 border border-gray-300 text-gray-700 rounded-lg font-semibold hover:bg-gray-50"
+                  className="flex-1 py-2.5 border border-border text-foreground rounded-lg font-semibold hover:bg-accent"
                 >
                   Cancelar
                 </button>
@@ -286,7 +286,7 @@ export default function PlanosPage() {
                   )}
                 </button>
               </div>
-              <p className="text-xs text-gray-500 text-center pt-2">
+              <p className="text-xs text-muted-foreground text-center pt-2">
                 Você vai ser redirecionado pro pagamento. Sem fidelidade.
               </p>
             </form>

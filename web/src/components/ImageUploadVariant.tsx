@@ -200,7 +200,7 @@ export default function ImageUploadVariant({
           className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
             dragActive
               ? 'border-blue-500 bg-blue-50'
-              : 'border-gray-300 bg-gray-50 hover:border-gray-400'
+              : 'border-border bg-muted hover:border-gray-400'
           } ${uploading ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
         >
           <input
@@ -217,17 +217,17 @@ export default function ImageUploadVariant({
             {uploading ? (
               <>
                 <Loader2 className="w-8 h-8 text-blue-500 animate-spin" />
-                <p className="text-sm text-gray-600">Fazendo upload...</p>
+                <p className="text-sm text-muted-foreground">Fazendo upload...</p>
               </>
             ) : (
               <>
-                <Upload className="w-8 h-8 text-gray-400" />
-                <div className="text-sm text-gray-600">
+                <Upload className="w-8 h-8 text-muted-foreground" />
+                <div className="text-sm text-muted-foreground">
                   <p className="font-medium">Arraste imagens aqui ou clique para selecionar</p>
-                  <p className="text-xs text-gray-500 mt-1">
+                  <p className="text-xs text-muted-foreground mt-1">
                     Máximo: {maxImages} imagens, até 5MB cada
                   </p>
-                  <p className="text-xs text-gray-500">
+                  <p className="text-xs text-muted-foreground">
                     Formatos: JPG, PNG, WebP
                   </p>
                 </div>
@@ -262,12 +262,12 @@ export default function ImageUploadVariant({
         {/* Image Preview Grid */}
         {images.length > 0 && (
           <div className="mt-4">
-            <p className="text-xs font-semibold text-gray-600 mb-2">Imagens Carregadas:</p>
+            <p className="text-xs font-semibold text-muted-foreground mb-2">Imagens Carregadas:</p>
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2">
               {images.map((image) => (
                 <div
                   key={image.id}
-                  className="relative group aspect-square bg-gray-100 rounded-lg overflow-hidden border border-gray-200"
+                  className="relative group aspect-square bg-muted rounded-lg overflow-hidden border border-border"
                 >
                   {/* Imagem */}
                   <Image

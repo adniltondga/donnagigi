@@ -20,9 +20,9 @@ export function EmptyState({
 }: EmptyStateProps) {
   return (
     <div className="p-12 text-center">
-      {Icon && <Icon className="w-12 h-12 mx-auto mb-3 text-gray-300" />}
-      <p className="text-sm font-medium text-gray-700">{title}</p>
-      {description && <p className="text-xs text-gray-500 mt-1">{description}</p>}
+      {Icon && <Icon className="w-12 h-12 mx-auto mb-3 text-muted-foreground/60" />}
+      <p className="text-sm font-medium text-foreground">{title}</p>
+      {description && <p className="text-xs text-muted-foreground mt-1">{description}</p>}
       {action && <div className="mt-4">{action}</div>}
     </div>
   )

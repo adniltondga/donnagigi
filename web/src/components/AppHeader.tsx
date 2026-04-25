@@ -4,6 +4,7 @@ import { useEffect, useState } from "react"
 import { usePathname } from "next/navigation"
 import { Menu } from "lucide-react"
 import { NotificationBell } from "./NotificationBell"
+import { ThemeToggle } from "./ThemeToggle"
 
 const TITLE_MAP: Array<{ prefix: string; title: string }> = [
   { prefix: "/admin/dashboard", title: "Dashboard" },
@@ -53,25 +54,26 @@ export function AppHeader({ onOpenSidebar }: { onOpenSidebar: () => void }) {
   const firstName = (me?.name || "").split(" ")[0] || "Usuário"
 
   return (
-    <header className="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-4 md:px-6 gap-4">
+    <header className="h-16 bg-card border-b border-border flex items-center justify-between px-4 md:px-6 gap-4">
       <div className="flex items-center gap-3">
         <button
           onClick={onOpenSidebar}
-          className="lg:hidden p-2 rounded-lg hover:bg-gray-100 text-gray-700"
+          className="lg:hidden p-2 rounded-lg hover:bg-accent text-foreground"
           aria-label="Abrir menu"
         >
           <Menu className="w-6 h-6" />
         </button>
-        <h1 className="hidden md:block text-xl font-semibold text-gray-900">{title}</h1>
+        <h1 className="hidden md:block text-xl font-semibold text-foreground">{title}</h1>
       </div>
 
       <div className="flex items-center gap-2">
+        <ThemeToggle />
         <NotificationBell />
-        <div className="flex items-center gap-3 pl-3 border-l border-gray-200">
+        <div className="flex items-center gap-3 pl-3 border-l border-border">
           <div className="hidden sm:block text-right">
-            <p className="text-sm font-medium text-gray-900 leading-tight">{firstName}</p>
+            <p className="text-sm font-medium text-foreground leading-tight">{firstName}</p>
             {me?.tenant?.name && (
-              <p className="text-xs text-gray-500 leading-tight">{me.tenant.name}</p>
+              <p className="text-xs text-muted-foreground leading-tight">{me.tenant.name}</p>
             )}
           </div>
           <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary-600 to-fuchsia-700 flex items-center justify-center text-white font-semibold">

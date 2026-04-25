@@ -135,7 +135,7 @@ export default function CategoryManager() {
     <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold">Categorias</h1>
-        <p className="text-gray-500">Gerencie as categorias de produtos</p>
+        <p className="text-muted-foreground">Gerencie as categorias de produtos</p>
       </div>
 
       {error && (
@@ -163,18 +163,18 @@ export default function CategoryManager() {
         </Button>
       </div>
 
-      <div className="bg-white rounded-lg border overflow-hidden">
+      <div className="bg-card rounded-lg border overflow-hidden">
         {loading ? (
           <div className="p-6 text-center">Carregando categorias...</div>
         ) : categories.length === 0 ? (
-          <div className="p-6 text-center text-gray-500">
+          <div className="p-6 text-center text-muted-foreground">
             Nenhuma categoria cadastrada
           </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
-                <tr className="bg-gray-50 border-b">
+                <tr className="bg-muted border-b">
                   <th className="px-6 py-3 text-left text-sm font-semibold">Nome</th>
                   <th className="px-6 py-3 text-center text-sm font-semibold">Produtos</th>
                   <th className="px-6 py-3 text-center text-sm font-semibold">Status</th>
@@ -183,8 +183,8 @@ export default function CategoryManager() {
               </thead>
               <tbody>
                 {categories.map((category) => (
-                  <tr key={category.id} className="border-b hover:bg-gray-50">
-                    <td className="px-6 py-4 font-medium text-gray-900">
+                  <tr key={category.id} className="border-b hover:bg-accent">
+                    <td className="px-6 py-4 font-medium text-foreground">
                       {category.name}
                     </td>
                     <td className="px-6 py-4 text-center text-sm">
@@ -195,7 +195,7 @@ export default function CategoryManager() {
                         className={`text-xs font-semibold px-2 py-1 rounded ${
                           category.active
                             ? 'bg-green-100 text-green-800'
-                            : 'bg-gray-100 text-gray-800'
+                            : 'bg-muted text-foreground'
                         }`}
                       >
                         {category.active ? 'Ativo' : 'Inativo'}

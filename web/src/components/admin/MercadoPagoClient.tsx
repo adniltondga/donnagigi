@@ -224,8 +224,8 @@ export function MercadoPagoClient() {
             <Wallet className="w-6 h-6" />
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-base font-semibold text-gray-900">Mercado Pago não conectado</p>
-            <p className="text-sm text-gray-600 mt-0.5">
+            <p className="text-base font-semibold text-foreground">Mercado Pago não conectado</p>
+            <p className="text-sm text-muted-foreground mt-0.5">
               Conecte pra ver saldo, retidos e cronograma de liberações.
             </p>
           </div>
@@ -247,14 +247,14 @@ export function MercadoPagoClient() {
     <div className="space-y-4">
       {/* Barra superior: atualizar + timestamp */}
       <div className="flex items-center justify-between gap-3 flex-wrap">
-        <div className="text-xs text-gray-500">
+        <div className="text-xs text-muted-foreground">
           {neverSynced ? (
             <span className="text-amber-700">
               Nunca sincronizado — clique em Atualizar pra puxar os dados do MP.
             </span>
           ) : cachedLabel ? (
             <>
-              Última atualização: <strong className="text-gray-700">{cachedLabel}</strong>
+              Última atualização: <strong className="text-foreground">{cachedLabel}</strong>
             </>
           ) : (
             "—"
@@ -350,12 +350,12 @@ export function MercadoPagoClient() {
                 return (
                   <li key={p.id} className="px-5 py-3 flex items-center gap-3 flex-wrap">
                     <div className="flex-1 min-w-0">
-                      <div className="text-sm text-gray-900 line-clamp-1">{p.description}</div>
-                      <div className="text-xs text-gray-500 flex items-center gap-2 flex-wrap mt-0.5">
+                      <div className="text-sm text-foreground line-clamp-1">{p.description}</div>
+                      <div className="text-xs text-muted-foreground flex items-center gap-2 flex-wrap mt-0.5">
                         <span className="font-mono">#{p.id}</span>
                         {p.dateCreated && (
                           <>
-                            <span className="text-gray-300">·</span>
+                            <span className="text-muted-foreground/60">·</span>
                             <span>
                               aprovado {new Date(p.dateCreated).toLocaleDateString("pt-BR")}
                             </span>
@@ -363,19 +363,19 @@ export function MercadoPagoClient() {
                         )}
                         {method && (
                           <>
-                            <span className="text-gray-300">·</span>
+                            <span className="text-muted-foreground/60">·</span>
                             <span>{method}</span>
                           </>
                         )}
                         {p.buyer && (
                           <>
-                            <span className="text-gray-300">·</span>
+                            <span className="text-muted-foreground/60">·</span>
                             <span>{p.buyer}</span>
                           </>
                         )}
                         {statusLabel && (
                           <>
-                            <span className="text-gray-300">·</span>
+                            <span className="text-muted-foreground/60">·</span>
                             <span className="text-amber-700 font-medium">{statusLabel}</span>
                           </>
                         )}
@@ -396,18 +396,18 @@ export function MercadoPagoClient() {
       <Card>
         <CardHeader className="space-y-3">
           {/* Abas */}
-          <div className="flex items-center gap-1 border-b border-gray-200 -mb-3 -mx-6 px-6">
+          <div className="flex items-center gap-1 border-b border-border -mb-3 -mx-6 px-6">
             <button
               onClick={() => setActiveTab("programadas")}
               className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 ${
                 activeTab === "programadas"
                   ? "border-sky-600 text-sky-600"
-                  : "border-transparent text-gray-500 hover:text-gray-700"
+                  : "border-transparent text-muted-foreground hover:text-foreground"
               }`}
             >
               <Clock className="w-4 h-4" />
               Liberações programadas
-              <span className="text-xs text-gray-400 tabular-nums">
+              <span className="text-xs text-muted-foreground tabular-nums">
                 ({formatCurrency(filteredPendingTotal)})
               </span>
             </button>
@@ -416,12 +416,12 @@ export function MercadoPagoClient() {
               className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 ${
                 activeTab === "liberadas"
                   ? "border-emerald-600 text-emerald-600"
-                  : "border-transparent text-gray-500 hover:text-gray-700"
+                  : "border-transparent text-muted-foreground hover:text-foreground"
               }`}
             >
               <Calendar className="w-4 h-4" />
               Já liberado
-              <span className="text-xs text-gray-400 tabular-nums">
+              <span className="text-xs text-muted-foreground tabular-nums">
                 ({formatCurrency(filteredReleasedTotal)})
               </span>
             </button>
@@ -429,9 +429,9 @@ export function MercadoPagoClient() {
 
           {/* Subtítulo */}
           <div className="flex items-center justify-between gap-2 flex-wrap pt-3">
-            <span className="text-xs text-gray-500">
+            <span className="text-xs text-muted-foreground">
               No período:{" "}
-              <strong className="text-gray-900">
+              <strong className="text-foreground">
                 {activeTab === "programadas" ? filteredPendingCount : filteredReleasedCount}
               </strong>{" "}
               pagamento
@@ -461,7 +461,7 @@ export function MercadoPagoClient() {
         </CardHeader>
         <CardContent className="p-0">
           {loading && !snap ? (
-            <div className="px-5 py-8 flex items-center justify-center text-gray-500">
+            <div className="px-5 py-8 flex items-center justify-center text-muted-foreground">
               <Loader className="w-4 h-4 animate-spin mr-2" />
               Carregando...
             </div>
@@ -514,7 +514,7 @@ function DayList({
   subLabel: string
 }) {
   if (days.length === 0) {
-    return <div className="px-5 py-8 text-center text-gray-500 text-sm">{emptyLabel}</div>
+    return <div className="px-5 py-8 text-center text-muted-foreground text-sm">{emptyLabel}</div>
   }
   return (
     <ul className="divide-y divide-gray-100">
@@ -525,17 +525,17 @@ function DayList({
           <li key={key}>
             <button
               onClick={() => toggleDay(key)}
-              className="w-full flex items-center gap-3 px-5 py-3 hover:bg-gray-50 text-left"
+              className="w-full flex items-center gap-3 px-5 py-3 hover:bg-accent text-left"
             >
               {open ? (
-                <ChevronDown className="w-4 h-4 text-gray-400 shrink-0" />
+                <ChevronDown className="w-4 h-4 text-muted-foreground shrink-0" />
               ) : (
-                <ChevronRight className="w-4 h-4 text-gray-400 shrink-0" />
+                <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />
               )}
               <Clock className={`w-4 h-4 ${iconColor} shrink-0`} />
               <div className="flex-1 min-w-0">
-                <div className="text-sm font-medium text-gray-900">{formatDayLabel(day.date)}</div>
-                <div className="text-xs text-gray-500">
+                <div className="text-sm font-medium text-foreground">{formatDayLabel(day.date)}</div>
+                <div className="text-xs text-muted-foreground">
                   {day.count} {subLabel}
                 </div>
               </div>
@@ -544,7 +544,7 @@ function DayList({
               </div>
             </button>
             {open && (
-              <ul className="bg-gray-50 divide-y divide-gray-100 border-t border-gray-100">
+              <ul className="bg-muted divide-y divide-gray-100 border-t border-border">
                 {day.payments.map((p) => {
                   const method = p.paymentMethodId
                     ? METHOD_LABELS[p.paymentMethodId] || p.paymentMethodId
@@ -552,12 +552,12 @@ function DayList({
                   return (
                     <li key={p.id} className="px-12 py-2.5 flex items-center gap-3 flex-wrap">
                       <div className="flex-1 min-w-0">
-                        <div className="text-sm text-gray-900 line-clamp-1">{p.description}</div>
-                        <div className="text-xs text-gray-500 flex items-center gap-2 flex-wrap mt-0.5">
+                        <div className="text-sm text-foreground line-clamp-1">{p.description}</div>
+                        <div className="text-xs text-muted-foreground flex items-center gap-2 flex-wrap mt-0.5">
                           <span className="font-mono">#{p.id}</span>
                           {p.dateCreated && (
                             <>
-                              <span className="text-gray-300">·</span>
+                              <span className="text-muted-foreground/60">·</span>
                               <span>
                                 comprado {new Date(p.dateCreated).toLocaleDateString("pt-BR")}
                               </span>
@@ -565,13 +565,13 @@ function DayList({
                           )}
                           {method && (
                             <>
-                              <span className="text-gray-300">·</span>
+                              <span className="text-muted-foreground/60">·</span>
                               <span>{method}</span>
                             </>
                           )}
                           {p.buyer && (
                             <>
-                              <span className="text-gray-300">·</span>
+                              <span className="text-muted-foreground/60">·</span>
                               <span>{p.buyer}</span>
                             </>
                           )}
@@ -582,7 +582,7 @@ function DayList({
                           {formatCurrency(p.netAmount)}
                         </div>
                         {p.grossAmount > p.netAmount && (
-                          <div className="text-xs text-gray-400 line-through tabular-nums">
+                          <div className="text-xs text-muted-foreground line-through tabular-nums">
                             {formatCurrency(p.grossAmount)}
                           </div>
                         )}

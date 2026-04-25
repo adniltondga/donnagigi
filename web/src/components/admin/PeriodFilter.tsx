@@ -82,7 +82,7 @@ export function PeriodFilter({ from, to, preset, onChange, exclude = [], customL
 
   return (
     <div className="flex flex-wrap items-end gap-3">
-      <div className="flex items-center gap-1 bg-gray-100 rounded-lg p-0.5">
+      <div className="flex items-center gap-1 bg-muted rounded-lg p-0.5">
         {OPTIONS.map((opt) => {
           const active = preset === opt.key
           return (
@@ -90,7 +90,7 @@ export function PeriodFilter({ from, to, preset, onChange, exclude = [], customL
               key={opt.key}
               onClick={() => applyPreset(opt.key)}
               className={`px-3 py-1.5 text-xs font-medium rounded-md transition ${
-                active ? "bg-white text-gray-900 shadow-sm" : "text-gray-600 hover:text-gray-900"
+                active ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
               }`}
             >
               {opt.label}
@@ -100,7 +100,7 @@ export function PeriodFilter({ from, to, preset, onChange, exclude = [], customL
       </div>
 
       <div>
-        <label className="block text-xs text-gray-500 mb-1">De</label>
+        <label className="block text-xs text-muted-foreground mb-1">De</label>
         <input
           type="date"
           value={from}
@@ -109,7 +109,7 @@ export function PeriodFilter({ from, to, preset, onChange, exclude = [], customL
         />
       </div>
       <div>
-        <label className="block text-xs text-gray-500 mb-1">Até</label>
+        <label className="block text-xs text-muted-foreground mb-1">Até</label>
         <input
           type="date"
           value={to}

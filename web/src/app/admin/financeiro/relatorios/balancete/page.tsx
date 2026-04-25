@@ -82,14 +82,14 @@ export default function BalancetePage() {
             type="month"
             value={month}
             onChange={(e) => setMonth(e.target.value)}
-            className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary-600 outline-none"
+            className="border border-border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary-600 outline-none"
           />
         }
       />
 
       {loading || !data ? (
         <Card>
-          <CardContent className="flex items-center justify-center py-12 text-gray-500">
+          <CardContent className="flex items-center justify-center py-12 text-muted-foreground">
             <Loader className="w-5 h-5 animate-spin mr-2" />
             Calculando...
           </CardContent>
@@ -107,7 +107,7 @@ export default function BalancetePage() {
             <CardContent className="pt-5">
               <div className="flex items-start justify-between gap-4 flex-wrap">
                 <div>
-                  <p className="text-xs text-gray-500 uppercase tracking-wide">
+                  <p className="text-xs text-muted-foreground uppercase tracking-wide">
                     Lucro líquido · {formatMonthLabel(data.month)}
                   </p>
                   <p
@@ -119,7 +119,7 @@ export default function BalancetePage() {
                   </p>
                 </div>
                 <div className="text-right text-sm">
-                  <p className="text-gray-500">Acumulado do ano (YTD)</p>
+                  <p className="text-muted-foreground">Acumulado do ano (YTD)</p>
                   <p
                     className={`text-lg font-bold tabular-nums ${
                       data.posicao.lucroAcumuladoYTD >= 0 ? "text-emerald-600" : "text-red-600"
@@ -128,7 +128,7 @@ export default function BalancetePage() {
                     {formatCurrency(data.posicao.lucroAcumuladoYTD)}
                   </p>
                   {data.posicao.proLaboresYTD > 0 && (
-                    <p className="text-xs text-gray-500 mt-1">
+                    <p className="text-xs text-muted-foreground mt-1">
                       Pró-labores tirados YTD: <strong>{formatCurrency(data.posicao.proLaboresYTD)}</strong>
                     </p>
                   )}
@@ -285,7 +285,7 @@ export default function BalancetePage() {
                     <p className="text-xs text-primary-700 uppercase tracking-wide">
                       Patrimônio líquido estimado
                     </p>
-                    <p className="text-xs text-gray-600">
+                    <p className="text-xs text-muted-foreground">
                       direitos − obrigações (não considera estoque ou imobilizado)
                     </p>
                   </div>
@@ -301,7 +301,7 @@ export default function BalancetePage() {
             </CardContent>
           </Card>
 
-          <p className="text-xs text-gray-500 flex items-start gap-2">
+          <p className="text-xs text-muted-foreground flex items-start gap-2">
             <Calendar className="w-3.5 h-3.5 shrink-0 mt-0.5" />
             <span>
               Balancete gerencial, não contábil. <strong>Resultado</strong> usa regime de competência
@@ -341,13 +341,13 @@ function LineTable({
         {rows.map((r, i) => (
           <tr
             key={i}
-            className={`border-b border-gray-100 last:border-0 ${
-              r.emphasis ? "bg-gray-50" : ""
+            className={`border-b border-border last:border-0 ${
+              r.emphasis ? "bg-muted" : ""
             } ${r.final ? "bg-primary-50/40 border-t-2 border-primary-200" : ""}`}
           >
-            <td className={`px-5 py-3 ${r.bold ? "font-semibold text-gray-900" : "text-gray-700"}`}>
+            <td className={`px-5 py-3 ${r.bold ? "font-semibold text-foreground" : "text-foreground"}`}>
               {r.label}
-              {r.caption && <div className="text-xs text-gray-400 font-normal mt-0.5">{r.caption}</div>}
+              {r.caption && <div className="text-xs text-muted-foreground font-normal mt-0.5">{r.caption}</div>}
             </td>
             <td
               className={`px-5 py-3 text-right tabular-nums whitespace-nowrap ${
@@ -358,8 +358,8 @@ function LineTable({
                   : r.negative
                   ? "text-rose-600"
                   : r.bold
-                  ? "text-gray-900 font-semibold"
-                  : "text-gray-700"
+                  ? "text-foreground font-semibold"
+                  : "text-foreground"
               }`}
             >
               {formatCurrency(r.value)}

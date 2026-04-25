@@ -53,7 +53,7 @@ export function TopProdutosTable({
           <select
             value={limit}
             onChange={(e) => setLimit(Number(e.target.value))}
-            className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary-600 focus:border-transparent outline-none"
+            className="border border-border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary-600 focus:border-transparent outline-none"
           >
             <option value={20}>Top 20</option>
             <option value={50}>Top 50</option>
@@ -63,7 +63,7 @@ export function TopProdutosTable({
         }
       />
 
-      <div className="text-sm text-gray-600">
+      <div className="text-sm text-muted-foreground">
         {loading
           ? "Carregando..."
           : `${items.length} de ${total} produto${total === 1 ? "" : "s"} com venda`}
@@ -71,7 +71,7 @@ export function TopProdutosTable({
 
       <Card className="overflow-hidden">
         {loading ? (
-          <div className="flex items-center justify-center py-12 text-gray-500">
+          <div className="flex items-center justify-center py-12 text-muted-foreground">
             <Loader className="w-5 h-5 animate-spin mr-2" />
             Calculando ranking...
           </div>
@@ -84,7 +84,7 @@ export function TopProdutosTable({
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
-              <thead className="bg-gray-50 text-xs uppercase tracking-wide text-gray-500">
+              <thead className="bg-muted text-xs uppercase tracking-wide text-muted-foreground">
                 <tr>
                   <th className="px-4 py-3 text-left w-12">#</th>
                   <th className="px-4 py-3 text-left">Produto</th>
@@ -102,30 +102,30 @@ export function TopProdutosTable({
                     idx === 0
                       ? "text-amber-600"
                       : idx === 1
-                      ? "text-gray-500"
+                      ? "text-muted-foreground"
                       : idx === 2
                       ? "text-orange-700"
-                      : "text-gray-400"
+                      : "text-muted-foreground"
                   return (
-                    <tr key={`${it.listingId}-${it.variation || ""}`} className="hover:bg-gray-50">
+                    <tr key={`${it.listingId}-${it.variation || ""}`} className="hover:bg-accent">
                       <td className={`px-4 py-3 font-bold text-center ${rankColor}`}>{idx + 1}</td>
                       <td className="px-4 py-3 max-w-md">
                         <ProductLabel title={it.title} variation={it.variation} hideMlb />
                       </td>
-                      <td className="px-4 py-3 font-mono text-xs text-gray-600 whitespace-nowrap">
+                      <td className="px-4 py-3 font-mono text-xs text-muted-foreground whitespace-nowrap">
                         {it.listingId}
                       </td>
-                      <td className="px-4 py-3 text-right font-bold text-gray-900">
+                      <td className="px-4 py-3 text-right font-bold text-foreground">
                         {it.unidades}
                       </td>
-                      <td className="px-4 py-3 text-right text-gray-600">{it.vendas}</td>
-                      <td className="px-4 py-3 text-right font-semibold text-gray-900 whitespace-nowrap">
+                      <td className="px-4 py-3 text-right text-muted-foreground">{it.vendas}</td>
+                      <td className="px-4 py-3 text-right font-semibold text-foreground whitespace-nowrap">
                         {formatCurrency(it.totalBruto)}
                       </td>
                       <td
                         className={`px-4 py-3 text-right font-semibold whitespace-nowrap ${
                           it.lucroEstimado == null
-                            ? "text-gray-400"
+                            ? "text-muted-foreground"
                             : it.lucroEstimado >= 0
                             ? "text-emerald-600"
                             : "text-red-600"
@@ -133,7 +133,7 @@ export function TopProdutosTable({
                       >
                         {it.lucroEstimado == null ? "—" : formatCurrency(it.lucroEstimado)}
                       </td>
-                      <td className="px-4 py-3 text-xs text-gray-500 whitespace-nowrap">
+                      <td className="px-4 py-3 text-xs text-muted-foreground whitespace-nowrap">
                         {it.ultimaVenda
                           ? new Date(it.ultimaVenda).toLocaleDateString("pt-BR")
                           : "—"}
@@ -147,7 +147,7 @@ export function TopProdutosTable({
         )}
       </Card>
 
-      <p className="text-xs text-gray-500">
+      <p className="text-xs text-muted-foreground">
         * Lucro = bruto − custo de mercadoria (só quando há custo cadastrado nas vendas
         consideradas). Cadastre os custos em <strong>Custos ML</strong> pra enriquecer o ranking.
       </p>

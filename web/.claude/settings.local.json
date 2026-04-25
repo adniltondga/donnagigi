@@ -49,7 +49,11 @@
       "Bash(sed -n '615,625p' /Users/2480dtidigital/site/donnagigi/src/components/admin/MercadoPagoClient.tsx)",
       "Bash(npx next *)",
       "Bash(npx eslint *)",
-      "Bash(grep -rn \"Bruto:\\\\\\\\\\\\\\\\s\\\\\\\\*R\\\\\\\\\\\\\\\\\\\\\\\\$\\\\\\\\|Taxa de venda:\\\\\\\\\\\\\\\\s\\\\\\\\*R\\\\\\\\\\\\\\\\\\\\\\\\$\\\\\\\\|Taxa de envio:\\\\\\\\\\\\\\\\s\\\\\\\\*R\\\\\\\\\\\\\\\\\\\\\\\\$\" /Users/2480dtidigital/site/donnagigi/src --include=\"*.ts\" --include=\"*.tsx\" -l)"
+      "Bash(grep -rn \"Bruto:\\\\\\\\\\\\\\\\s\\\\\\\\*R\\\\\\\\\\\\\\\\\\\\\\\\$\\\\\\\\|Taxa de venda:\\\\\\\\\\\\\\\\s\\\\\\\\*R\\\\\\\\\\\\\\\\\\\\\\\\$\\\\\\\\|Taxa de envio:\\\\\\\\\\\\\\\\s\\\\\\\\*R\\\\\\\\\\\\\\\\\\\\\\\\$\" /Users/2480dtidigital/site/donnagigi/src --include=\"*.ts\" --include=\"*.tsx\" -l)",
+      "Bash(yarn add *)",
+      "Bash(xargs -0 sed -i '' -e s/text-gray-900/text-foreground/g -e s/text-gray-600/text-muted-foreground/g -e s/text-gray-500/text-muted-foreground/g -e s/border-gray-100/border-border/g -e s/border-gray-200/border-border/g -e s/border-gray-300/border-border/g -e s/bg-white/bg-card/g -e s/hover:bg-gray-50/hover:bg-accent/g)",
+      "Bash(xargs -0 sed -i '' -e 's/ dark:text-muted-foreground\\\\/60//g' -e 's/ dark:hover:bg-gray-800//g' -e 's/ dark:hover:text-white//g' -e 's/ dark:bg-gray-800//g')",
+      "Bash(yarn remove *)"
     ]
   }
 }

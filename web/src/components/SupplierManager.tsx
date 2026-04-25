@@ -168,9 +168,9 @@ export default function SupplierManager() {
         </div>
       )}
 
-      <div className="bg-white rounded-lg shadow overflow-hidden">
+      <div className="bg-card rounded-lg shadow overflow-hidden">
         <table className="w-full">
-          <thead className="bg-gray-100 border-b">
+          <thead className="bg-muted border-b">
             <tr>
               <th className="px-6 py-3 text-left text-sm font-semibold">Nome</th>
               <th className="px-6 py-3 text-left text-sm font-semibold">Telefone</th>
@@ -180,13 +180,13 @@ export default function SupplierManager() {
           <tbody>
             {suppliers.length === 0 ? (
               <tr>
-                <td colSpan={3} className="px-6 py-8 text-center text-gray-500">
+                <td colSpan={3} className="px-6 py-8 text-center text-muted-foreground">
                   Nenhum fornecedor cadastrado
                 </td>
               </tr>
             ) : (
               suppliers.map((supplier) => (
-                <tr key={supplier.id} className="border-b hover:bg-gray-50">
+                <tr key={supplier.id} className="border-b hover:bg-accent">
                   <td className="px-6 py-4">{supplier.name}</td>
                   <td className="px-6 py-4">{supplier.telephone || '-'}</td>
                   <td className="px-6 py-4 text-right space-x-2">

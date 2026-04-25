@@ -83,14 +83,14 @@ export default function BalancoPage() {
             type="month"
             value={month}
             onChange={(e) => setMonth(e.target.value)}
-            className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary-600 outline-none"
+            className="border border-border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary-600 outline-none"
           />
         }
       />
 
       {loading || !data ? (
         <Card>
-          <CardContent className="flex items-center justify-center py-12 text-gray-500">
+          <CardContent className="flex items-center justify-center py-12 text-muted-foreground">
             <Loader className="w-5 h-5 animate-spin mr-2" />
             Calculando...
           </CardContent>
@@ -122,7 +122,7 @@ export default function BalancoPage() {
                 <CardTitle className="text-base flex items-center gap-2 text-emerald-700">
                   <TrendingUp className="w-5 h-5" />
                   ATIVO
-                  <span className="text-xs text-gray-500 font-normal">(o que a loja tem)</span>
+                  <span className="text-xs text-muted-foreground font-normal">(o que a loja tem)</span>
                 </CardTitle>
               </CardHeader>
               <CardContent className="p-0">
@@ -166,7 +166,7 @@ export default function BalancoPage() {
                   <CardTitle className="text-base flex items-center gap-2 text-rose-700">
                     <TrendingDown className="w-5 h-5" />
                     PASSIVO
-                    <span className="text-xs text-gray-500 font-normal">(o que deve)</span>
+                    <span className="text-xs text-muted-foreground font-normal">(o que deve)</span>
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="p-0">
@@ -202,7 +202,7 @@ export default function BalancoPage() {
                   <CardTitle className="text-base flex items-center gap-2 text-primary-700">
                     <Landmark className="w-5 h-5" />
                     PATRIMÔNIO LÍQUIDO
-                    <span className="text-xs text-gray-500 font-normal">(valor do negócio)</span>
+                    <span className="text-xs text-muted-foreground font-normal">(valor do negócio)</span>
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="p-0">
@@ -237,22 +237,22 @@ export default function BalancoPage() {
             <CardContent className="pt-5">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
                 <div>
-                  <p className="text-xs text-gray-500 uppercase tracking-wide">Ativo</p>
+                  <p className="text-xs text-muted-foreground uppercase tracking-wide">Ativo</p>
                   <p className="text-xl font-bold text-emerald-700">{formatCurrency(data.ativo.total)}</p>
                 </div>
                 <div className="text-center">
-                  <p className="text-xs text-gray-500 uppercase tracking-wide">Passivo + PL</p>
-                  <p className="text-xl font-bold text-gray-900">{formatCurrency(data.passivoMaisPL)}</p>
+                  <p className="text-xs text-muted-foreground uppercase tracking-wide">Passivo + PL</p>
+                  <p className="text-xl font-bold text-foreground">{formatCurrency(data.passivoMaisPL)}</p>
                 </div>
                 <div className="text-right">
-                  <p className="text-xs text-gray-500 uppercase tracking-wide">Descasamento</p>
+                  <p className="text-xs text-muted-foreground uppercase tracking-wide">Descasamento</p>
                   <p
                     className={`text-xl font-bold ${Math.abs(data.descasamento) < 0.01 ? "text-emerald-700" : "text-amber-700"}`}
                   >
                     {formatCurrency(data.descasamento)}
                   </p>
                   {Math.abs(data.descasamento) >= 0.01 && (
-                    <p className="text-xs text-gray-600 mt-0.5">
+                    <p className="text-xs text-muted-foreground mt-0.5">
                       {data.descasamento > 0
                         ? "ativo não explicado — provavelmente falta informar saldo em caixa"
                         : "passivo maior que ativo — verifique lançamentos"}
@@ -263,7 +263,7 @@ export default function BalancoPage() {
             </CardContent>
           </Card>
 
-          <p className="text-xs text-gray-500">
+          <p className="text-xs text-muted-foreground">
             Balanço gerencial, não contábil. Usa regime de caixa pra ativo, regime de competência
             pra lucros acumulados no PL. Pra fechar perfeitamente Ativo = Passivo + PL, informe o
             saldo real em caixa em Pró-labore &gt; Config.
@@ -291,21 +291,21 @@ function LineTable({
         {rows.map((r, i) => (
           <tr
             key={i}
-            className={`border-b border-gray-100 last:border-0 ${r.emphasis ? "bg-gray-50 font-semibold" : ""}`}
+            className={`border-b border-border last:border-0 ${r.emphasis ? "bg-muted font-semibold" : ""}`}
           >
-            <td className={`px-5 py-3 ${r.emphasis ? "text-gray-900 uppercase text-xs tracking-wide" : "text-gray-700"}`}>
+            <td className={`px-5 py-3 ${r.emphasis ? "text-foreground uppercase text-xs tracking-wide" : "text-foreground"}`}>
               {r.label}
-              {r.caption && <div className="text-xs text-gray-400 font-normal normal-case mt-0.5">{r.caption}</div>}
+              {r.caption && <div className="text-xs text-muted-foreground font-normal normal-case mt-0.5">{r.caption}</div>}
             </td>
             <td
               className={`px-5 py-3 text-right tabular-nums whitespace-nowrap ${
                 r.emphasis
-                  ? "text-gray-900 font-bold"
+                  ? "text-foreground font-bold"
                   : r.negative
                   ? "text-rose-600"
                   : r.value < 0
                   ? "text-rose-600"
-                  : "text-gray-900"
+                  : "text-foreground"
               }`}
             >
               {formatCurrency(r.value)}
