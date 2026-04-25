@@ -1,5 +1,5 @@
 import Link from "next/link"
-import { ArrowRight, TrendingUp, TrendingDown, FileText, FileBarChart, Rocket, Scale, Landmark, BookOpen, type LucideIcon } from "lucide-react"
+import { ArrowRight, TrendingUp, TrendingDown, FileText, FileBarChart, Scale, Landmark, BookOpen, PieChart, CalendarDays, type LucideIcon } from "lucide-react"
 import { PageHeader } from "@/components/ui/page-header"
 import { Card, CardContent } from "@/components/ui/card"
 
@@ -41,13 +41,6 @@ const CARDS: Item[] = [
     accent: "bg-violet-50 text-violet-700",
   },
   {
-    href: "/admin/financeiro/relatorios/pro-labore",
-    icon: Rocket,
-    title: "Pró-labore seguro",
-    description: "Quanto você pode tirar esse mês depois de cobrir operação, aportes, reserva e reinvestimento (Pay Yourself Last).",
-    accent: "bg-fuchsia-50 text-fuchsia-700",
-  },
-  {
     href: "/admin/financeiro/relatorios/balancete",
     icon: Scale,
     title: "Balancete gerencial",
@@ -66,6 +59,20 @@ const CARDS: Item[] = [
     icon: BookOpen,
     title: "Livro Caixa",
     description: "Lançamentos cronológicos de entradas e saídas com saldo acumulado. Exporta em CSV pro contador.",
+    accent: "bg-sky-50 text-sky-700",
+  },
+  {
+    href: "/admin/financeiro/relatorios/despesas-categoria",
+    icon: PieChart,
+    title: "Despesas por categoria",
+    description: "Total de despesas agrupadas por categoria no mês selecionado, com drill-down por subcategoria.",
+    accent: "bg-rose-50 text-rose-700",
+  },
+  {
+    href: "/admin/relatorios/por-dia",
+    icon: CalendarDays,
+    title: "Vendas por dia",
+    description: "Faturamento bruto, taxas ML, custo e lucro agregados por dia do mês selecionado.",
     accent: "bg-sky-50 text-sky-700",
   },
 ]
