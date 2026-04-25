@@ -1,12 +1,16 @@
 import { NextRequest, NextResponse } from "next/server"
 import prisma from "@/lib/prisma"
 import { generateOTP, sendEmail, verifyEmailTemplate } from "@/lib/email"
+import { checkRateLimit, rateLimitResponse, RATE_LIMITS } from "@/lib/rate-limit"
 
 const RESEND_COOLDOWN_MS = 60 * 1000 // 60s entre reenvios
 const CODE_EXPIRES_MS = 10 * 60 * 1000 // 10 min
 
 export async function POST(request: NextRequest) {
   try {
+    const limited = rateLimitResponse(checkRateLimit(request, RATE_LIMITS.resendVerification))
+    if (limited) return limited
+
     const { email } = (await request.json()) as { email?: string }
     if (!email) {
       return NextResponse.json({ error: "Email é obrigatório" }, { status: 400 })

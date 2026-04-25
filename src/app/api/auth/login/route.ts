@@ -2,9 +2,13 @@ import { NextRequest, NextResponse } from "next/server"
 import bcrypt from "bcryptjs"
 import { SignJWT } from "jose"
 import prisma from "@/lib/prisma"
+import { checkRateLimit, rateLimitResponse, RATE_LIMITS } from "@/lib/rate-limit"
 
 export async function POST(request: NextRequest) {
   try {
+    const limited = rateLimitResponse(checkRateLimit(request, RATE_LIMITS.login))
+    if (limited) return limited
+
     const { email, password } = await request.json()
 
     if (!email || !password) {

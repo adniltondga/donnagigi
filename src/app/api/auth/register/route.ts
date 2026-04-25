@@ -4,9 +4,13 @@ import prisma from "@/lib/prisma"
 import { generateUniqueTenantSlug } from "@/lib/tenant"
 import { generateOTP, sendEmail, verifyEmailTemplate } from "@/lib/email"
 import { TRIAL_DAYS } from "@/lib/plans"
+import { checkRateLimit, rateLimitResponse, RATE_LIMITS } from "@/lib/rate-limit"
 
 export async function POST(request: NextRequest) {
   try {
+    const limited = rateLimitResponse(checkRateLimit(request, RATE_LIMITS.register))
+    if (limited) return limited
+
     const body = await request.json()
     const { email, username, password, name, companyName } = body as {
       email?: string
