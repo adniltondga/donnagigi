@@ -25,6 +25,7 @@ import { formatCurrency } from "@/lib/calculations"
 import { useUserRole } from "@/lib/useUserRole"
 import { EquipePanel } from "@/components/admin/EquipePanel"
 import { IntegrationsPanel } from "@/components/admin/IntegrationsPanel"
+import { PushNotificationButton } from "@/components/PushNotificationButton"
 
 type Tab = "perfil" | "senha" | "equipe" | "ml" | "assinatura"
 
@@ -221,6 +222,18 @@ function PerfilPanel() {
             </button>
           </div>
         </form>
+
+        <div className="mt-8 pt-6 border-t border-border">
+          <h3 className="font-semibold text-foreground mb-1">
+            Notificações no celular
+          </h3>
+          <p className="text-sm text-muted-foreground mb-3">
+            Receba ping no celular toda venda nova, devolução ou liberação do
+            Mercado Pago. Funciona melhor com o agLivre instalado como app
+            (PWA).
+          </p>
+          <PushNotificationButton />
+        </div>
       </CardContent>
     </Card>
   )

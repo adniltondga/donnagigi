@@ -3,6 +3,7 @@ import { formatVariationLabel } from "@/lib/ml-format"
 import { resolveCostsBatch, costKey } from "@/lib/cost-resolver"
 import { createNotification } from "@/lib/notifications"
 import { captureError } from "@/lib/sentry"
+import { sendPushToTenant } from "@/lib/push"
 
 interface MLOrderItem {
   item: {
@@ -220,13 +221,13 @@ Bruto: R$ ${order.total_amount.toFixed(2)} | Taxas: ${taxBreakdown} (Total: R$ $
         style: "currency",
         currency: "BRL",
       }).format
-      await createNotification({
-        tenantId,
-        type: "sale",
-        title: `Venda nova: ${formatBRL(order.total_amount)}`,
-        body: `${displayTitle} · ${order.buyer.nickname}`,
-        link: `/admin/relatorios/vendas-ml`,
-      })
+      const title = `Venda nova: ${formatBRL(order.total_amount)}`
+      const body = `${displayTitle} · ${order.buyer.nickname}`
+      const link = `/admin/relatorios/vendas-ml`
+
+      await createNotification({ tenantId, type: "sale", title, body, link })
+      // Push notification (PWA): inerte se ninguém ativou no device.
+      void sendPushToTenant(tenantId, { title, body, url: link })
     }
 
     return { ok: true, action: "created", billId: saleBill.id }
