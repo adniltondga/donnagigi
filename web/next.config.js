@@ -8,6 +8,15 @@ const nextConfig = {
     // Habilita instrumentation.ts (necessário em Next 14; default em 15+).
     instrumentationHook: true,
   },
+  // Lucide-react: cada ícone vira 1 import individual no bundle.
+  // Resolve hydration mismatch causado por module resolution
+  // inconsistente entre runtime do servidor e do cliente.
+  modularizeImports: {
+    "lucide-react": {
+      transform: "lucide-react/dist/esm/icons/{{ kebabCase member }}",
+      preventFullImport: true,
+    },
+  },
   images: {
     remotePatterns: [
       {
