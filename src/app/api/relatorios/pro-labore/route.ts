@@ -119,13 +119,16 @@ export async function GET(req: NextRequest) {
     // "Lucro real recebido" = receita − CMV. Aporte NÃO entra aqui.
     const receitaRecebida = receitaBruta - cmvDoMes
 
-    // Despesas operacionais pagas no mês (status=paid, exclui aporte)
+    // Despesas operacionais pagas no mês (status=paid, exclui aporte
+    // e reposição de estoque — esta vai pro Caixa de Reposição,
+    // ver lib/cash-pools.ts).
     const despesasPagas = await prisma.bill.findMany({
       where: {
         tenantId,
         type: "payable",
         status: "paid",
         paidDate: { gte: start, lt: end },
+        category: { not: "reposicao_estoque" },
         NOT: [
           { billCategoryId: { in: aporteIds.length > 0 ? aporteIds : ["__none__"] } },
         ],
@@ -176,6 +179,7 @@ export async function GET(req: NextRequest) {
           type: "payable",
           status: "paid",
           paidDate: { gte: inicioAno, lt: end },
+          category: { not: "reposicao_estoque" },
           NOT: [
             { billCategoryId: { in: aporteIds.length > 0 ? aporteIds : ["__none__"] } },
             ...(proLaboreSub ? [{ billCategoryId: proLaboreSub.id }] : []),

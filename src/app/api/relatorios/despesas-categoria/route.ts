@@ -41,7 +41,12 @@ export async function GET(req: NextRequest) {
     } = {
       tenantId,
       type: "payable",
-      NOT: [{ category: "marketplace_fee" }, { category: "venda" }, { status: "cancelled" }],
+      NOT: [
+        { category: "marketplace_fee" },
+        { category: "venda" },
+        { category: "reposicao_estoque" },
+        { status: "cancelled" },
+      ],
     }
     if (basis === "paid") {
       where.status = "paid"

@@ -92,6 +92,7 @@ export async function GET(req: NextRequest) {
         type: "payable",
         status: "paid",
         paidDate: { gte: start, lt: end },
+        category: { not: "reposicao_estoque" },
         NOT: [
           { billCategoryId: { in: aporteOriginalIds.length > 0 ? aporteOriginalIds : ["__none__"] } },
           ...(proLaboreSub ? [{ billCategoryId: proLaboreSub.id }] : []),
@@ -253,6 +254,7 @@ export async function GET(req: NextRequest) {
         type: "payable",
         status: "paid",
         paidDate: { gte: startYear, lt: end },
+        category: { not: "reposicao_estoque" },
         NOT: [
           { billCategoryId: { in: aporteOriginalIds.length > 0 ? aporteOriginalIds : ["__none__"] } },
           ...(proLaboreSub ? [{ billCategoryId: proLaboreSub.id }] : []),
