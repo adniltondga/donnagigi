@@ -58,9 +58,8 @@ function LoginInner() {
   const [regConfirm, setRegConfirm] = useState("")
 
   useEffect(() => {
-    // Cadastro fechado? Ignora ?register=1 vindo de links externos
-    if (registrationOpen && params.get("register") === "1") setIsRegisterMode(true)
-  }, [params, registrationOpen])
+    if (params.get("register") === "1") setIsRegisterMode(true)
+  }, [params])
 
   useEffect(() => {
     if (typeof window === "undefined") return
@@ -178,54 +177,47 @@ function LoginInner() {
 
           <div className="mb-6">
             <h1 className="text-3xl font-bold text-foreground mb-2">
-              {isRegisterMode ? "Criar conta" : "Bem-vindo de volta"}
+              {isRegisterMode
+                ? registrationOpen
+                  ? "Criar conta"
+                  : "Quer ser avisado?"
+                : "Bem-vindo de volta"}
             </h1>
             <p className="text-muted-foreground">
               {isRegisterMode
-                ? "Cadastre sua conta e conecte seu Mercado Livre"
+                ? registrationOpen
+                  ? "Cadastre sua conta e conecte seu Mercado Livre"
+                  : "Entre na lista de espera — avisamos quando os cadastros abrirem"
                 : "Entre para acessar o painel do seu negócio"}
             </p>
           </div>
 
-          {/* Tab toggle (some quando cadastro fechado — só Entrar) */}
-          {registrationOpen && (
-            <div className="flex bg-muted rounded-lg p-1 mb-6">
-              <button
-                type="button"
-                onClick={() => isRegisterMode && switchMode()}
-                className={`flex-1 py-2.5 text-sm font-semibold rounded-md transition-all ${
-                  !isRegisterMode
-                    ? "bg-card text-foreground shadow-sm"
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                Entrar
-              </button>
-              <button
-                type="button"
-                onClick={() => !isRegisterMode && switchMode()}
-                className={`flex-1 py-2.5 text-sm font-semibold rounded-md transition-all ${
-                  isRegisterMode
-                    ? "bg-card text-foreground shadow-sm"
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                Criar conta
-              </button>
-            </div>
-          )}
-
-          {!registrationOpen && (
-            <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-lg">
-              <p className="text-sm font-semibold text-amber-900 mb-1">
-                🚧 Cadastros temporariamente fechados
-              </p>
-              <p className="text-xs text-amber-800 mb-3">
-                Estamos em testes finais. Deixa seu email que avisamos assim que liberarmos:
-              </p>
-              <WaitlistForm source="login-page" variant="light" buttonLabel="Avise-me" />
-            </div>
-          )}
+          {/* Tabs sempre visíveis. Quando cadastro fechado, a tab
+              "Criar conta" mostra o banner de waitlist em vez do form. */}
+          <div className="flex bg-muted rounded-lg p-1 mb-6">
+            <button
+              type="button"
+              onClick={() => isRegisterMode && switchMode()}
+              className={`flex-1 py-2.5 text-sm font-semibold rounded-md transition-all ${
+                !isRegisterMode
+                  ? "bg-card text-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              Entrar
+            </button>
+            <button
+              type="button"
+              onClick={() => !isRegisterMode && switchMode()}
+              className={`flex-1 py-2.5 text-sm font-semibold rounded-md transition-all ${
+                isRegisterMode
+                  ? "bg-card text-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              Criar conta
+            </button>
+          </div>
 
           {error && (
             <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm">
@@ -233,7 +225,30 @@ function LoginInner() {
             </div>
           )}
 
-          {!isRegisterMode ? (
+          {isRegisterMode && !registrationOpen ? (
+            <div className="space-y-4">
+              <div className="p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-900/50 rounded-lg">
+                <p className="text-sm font-semibold text-amber-900 dark:text-amber-200 mb-1">
+                  🚧 Cadastros em testes finais
+                </p>
+                <p className="text-xs text-amber-800 dark:text-amber-300">
+                  Ainda não estamos abrindo conta nova — estamos finalizando os testes.
+                  Deixa seu email aqui que avisamos primeiro quando liberar:
+                </p>
+              </div>
+              <WaitlistForm source="login-page" variant="light" buttonLabel="Avise-me" />
+              <p className="text-xs text-muted-foreground text-center">
+                Já tem conta?{" "}
+                <button
+                  type="button"
+                  onClick={switchMode}
+                  className="text-primary-600 hover:underline font-medium"
+                >
+                  Entrar
+                </button>
+              </p>
+            </div>
+          ) : !isRegisterMode ? (
             <form onSubmit={handleLogin} className="space-y-5">
               <Field
                 id="login-email"
