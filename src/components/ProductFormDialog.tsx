@@ -11,6 +11,7 @@ import {
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import CurrencyInput from '@/components/CurrencyInput'
+import { feedback } from '@/lib/feedback'
 import { X, Upload, Download, Loader } from 'lucide-react'
 
 interface Product {
@@ -154,7 +155,7 @@ export default function ProductFormDialog({ product, onClose }: ProductFormDialo
       if (response.ok) {
         const data = await response.json()
         await fetchImages()
-        alert(`${data.imported} imagens importadas do Mercado Livre`)
+        feedback.success(`${data.imported} imagens importadas do Mercado Livre`)
       } else {
         const data = await response.json()
         setError(data.error || 'Erro ao importar imagens')
@@ -203,7 +204,7 @@ export default function ProductFormDialog({ product, onClose }: ProductFormDialo
         })
 
         if (response.ok) {
-          alert('Produto criado com sucesso!')
+          feedback.success('Produto criado com sucesso!')
           onClose()
         } else {
           const data = await response.json()
@@ -227,7 +228,7 @@ export default function ProductFormDialog({ product, onClose }: ProductFormDialo
           return
         }
 
-        alert('Custos atualizado com sucesso!')
+        feedback.success('Custos atualizados com sucesso!')
         onClose()
       }
     } catch (error) {

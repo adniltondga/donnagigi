@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { formatCurrency } from '@/lib/calculations';
+import { feedback } from '@/lib/feedback';
 import { Info, ShoppingCart, DollarSign, TrendingUp, ShoppingBag, Receipt, Download, Loader2 } from 'lucide-react';
 import { Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from '@/components/ui/table';
 import { PageHeader } from '@/components/ui/page-header';
@@ -263,7 +264,7 @@ export default function VendasMLPage() {
       URL.revokeObjectURL(url);
     } catch (err) {
       console.error('export CSV falhou:', err);
-      alert('Erro ao exportar CSV. Tente novamente.');
+      feedback.error('Erro ao exportar CSV. Tente novamente.');
     } finally {
       setExporting(false);
     }
