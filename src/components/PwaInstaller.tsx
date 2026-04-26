@@ -27,12 +27,16 @@ export function PwaInstaller() {
   const [showBanner, setShowBanner] = useState(false)
 
   useEffect(() => {
-    // Registra SW (HTTPS ou localhost — exigência do browser)
+    // Registra SW APENAS em produção. Em dev, o SW cachea chunks
+    // de _next/static que mudam a cada save — gera hydration mismatch
+    // entre HTML novo e JS antigo do cache. Em prod os chunks têm hash
+    // no nome, então cache nunca fica stale.
+    const isProd = process.env.NODE_ENV === "production"
     const canRegister =
+      isProd &&
       typeof window !== "undefined" &&
       "serviceWorker" in navigator &&
-      (window.location.protocol === "https:" ||
-        window.location.hostname === "localhost")
+      window.location.protocol === "https:"
 
     if (canRegister) {
       navigator.serviceWorker
@@ -40,6 +44,18 @@ export function PwaInstaller() {
         .catch((err) => {
           console.warn("[pwa] SW register falhou:", err)
         })
+    }
+
+    // Em dev: se houver SW antigo registrado de sessão anterior,
+    // desregistra pra liberar o cache stale.
+    if (
+      !isProd &&
+      typeof window !== "undefined" &&
+      "serviceWorker" in navigator
+    ) {
+      navigator.serviceWorker.getRegistrations().then((regs) => {
+        regs.forEach((r) => r.unregister())
+      })
     }
 
     const wasDismissedRecently = () => {
