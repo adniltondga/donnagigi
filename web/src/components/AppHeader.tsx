@@ -1,10 +1,19 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { usePathname } from "next/navigation"
-import { Menu } from "lucide-react"
+import { usePathname, useRouter } from "next/navigation"
+import Link from "next/link"
+import { Menu, Settings, Headset, LogOut, ChevronDown } from "lucide-react"
 import { NotificationBell } from "./NotificationBell"
 import { ThemeToggle } from "./ThemeToggle"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "./ui/dropdown-menu"
 
 const TITLE_MAP: Array<{ prefix: string; title: string }> = [
   { prefix: "/admin/dashboard", title: "Dashboard" },
@@ -41,6 +50,7 @@ interface Me {
 
 export function AppHeader({ onOpenSidebar }: { onOpenSidebar: () => void }) {
   const pathname = usePathname()
+  const router = useRouter()
   const title = titleFor(pathname)
   const [me, setMe] = useState<Me | null>(null)
 
@@ -53,6 +63,13 @@ export function AppHeader({ onOpenSidebar }: { onOpenSidebar: () => void }) {
 
   const firstLetter = (me?.name || "?").trim().charAt(0).toUpperCase()
   const firstName = (me?.name || "").split(" ")[0] || "Usuário"
+
+  const handleLogout = async () => {
+    try {
+      await fetch("/api/auth/logout", { method: "POST" })
+    } catch {}
+    router.push("/admin/login")
+  }
 
   return (
     <header className="h-16 bg-card border-b border-border flex items-center justify-between px-4 md:px-6 gap-4">
@@ -70,17 +87,60 @@ export function AppHeader({ onOpenSidebar }: { onOpenSidebar: () => void }) {
       <div className="flex items-center gap-2">
         <ThemeToggle />
         <NotificationBell />
-        <div className="flex items-center gap-3 pl-3 border-l border-border">
-          <div className="hidden sm:block text-right">
-            <p className="text-sm font-medium text-foreground leading-tight">{firstName}</p>
-            {me?.tenant?.name && (
-              <p className="text-xs text-muted-foreground leading-tight">{me.tenant.name}</p>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button
+              type="button"
+              className="flex items-center gap-3 pl-3 ml-1 border-l border-border hover:bg-muted/40 rounded-r-lg pr-1 py-1 transition focus:outline-none focus:ring-2 focus:ring-primary-600"
+              aria-label="Menu da conta"
+            >
+              <div className="hidden sm:block text-right">
+                <p className="text-sm font-medium text-foreground leading-tight">{firstName}</p>
+                {me?.tenant?.name && (
+                  <p className="text-xs text-muted-foreground leading-tight">{me.tenant.name}</p>
+                )}
+              </div>
+              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary-600 to-fuchsia-700 flex items-center justify-center text-white font-semibold">
+                {firstLetter}
+              </div>
+              <ChevronDown className="w-4 h-4 text-muted-foreground hidden sm:block" />
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-56">
+            {me && (
+              <>
+                <DropdownMenuLabel className="flex flex-col gap-0.5">
+                  <span className="text-sm font-medium text-foreground truncate">{me.name}</span>
+                  <span className="text-xs text-muted-foreground truncate">{me.email}</span>
+                  {me.tenant?.name && (
+                    <span className="text-xs text-muted-foreground truncate">{me.tenant.name}</span>
+                  )}
+                </DropdownMenuLabel>
+                <DropdownMenuSeparator />
+              </>
             )}
-          </div>
-          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary-600 to-fuchsia-700 flex items-center justify-center text-white font-semibold">
-            {firstLetter}
-          </div>
-        </div>
+            <DropdownMenuItem asChild>
+              <Link href="/admin/configuracoes" className="flex items-center gap-2 cursor-pointer">
+                <Settings className="w-4 h-4" />
+                Configurações
+              </Link>
+            </DropdownMenuItem>
+            <DropdownMenuItem asChild>
+              <Link href="/admin/suporte" className="flex items-center gap-2 cursor-pointer">
+                <Headset className="w-4 h-4" />
+                Suporte
+              </Link>
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              onClick={handleLogout}
+              className="flex items-center gap-2 text-red-600 focus:text-red-700 cursor-pointer"
+            >
+              <LogOut className="w-4 h-4" />
+              Sair
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
     </header>
   )
