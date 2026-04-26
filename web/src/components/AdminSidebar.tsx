@@ -11,6 +11,7 @@ import {
   ChevronDown,
   X,
   ShoppingBag,
+  LifeBuoy,
   type LucideIcon,
 } from "lucide-react"
 
@@ -50,8 +51,14 @@ const MENU: MenuItem[] = [
   },
 ]
 
-// Itens no rodapé (acima do Sair): configurações gerais.
+// Itens no rodapé (acima do Sair): suporte e configurações gerais.
 const FOOTER_MENU: MenuItem[] = [
+  {
+    label: "Suporte",
+    href: "/admin/suporte",
+    icon: LifeBuoy,
+    isActive: (p) => p.startsWith("/admin/suporte"),
+  },
   {
     label: "Configurações",
     href: "/admin/configuracoes",

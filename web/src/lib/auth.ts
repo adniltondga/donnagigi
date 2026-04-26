@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import type { UserRole } from "@prisma/client"
+import prisma from "./prisma"
 import { getSession, type SessionPayload } from "./tenant"
 
 export type { UserRole } from "@prisma/client"
@@ -54,4 +55,19 @@ export function authErrorResponse(err: unknown): NextResponse {
 
 export function isWriter(role: UserRole): boolean {
   return role === "OWNER" || role === "ADMIN"
+}
+
+/**
+ * Exige que a sessão pertença a um usuário marcado como staff (DGA Digital).
+ * Usado em rotas /api/staff/* e na área /staff. O bit `isStaff` mora em
+ * User — toggle manual no banco. Lança AuthError(403) se não staff.
+ */
+export async function requireStaff(): Promise<SessionPayload> {
+  const session = await requireSession()
+  const user = await prisma.user.findUnique({
+    where: { id: session.id },
+    select: { isStaff: true },
+  })
+  if (!user?.isStaff) throw new AuthError("Acesso restrito a staff", 403)
+  return session
 }
