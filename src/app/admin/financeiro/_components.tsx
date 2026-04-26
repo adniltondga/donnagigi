@@ -590,6 +590,7 @@ function BillForm({
     bill ? bill.dueDate.split('T')[0] : new Date().toISOString().split('T')[0]
   );
   const [status, setStatus] = useState<string>(bill?.status || 'pending');
+  const [isReposicao, setIsReposicao] = useState<boolean>(bill?.category === 'reposicao_estoque');
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
@@ -672,6 +673,11 @@ function BillForm({
           billCategoryId: categoryId,
           amount: parsedAmount,
           dueDate,
+          ...(type === 'payable' && isReposicao
+            ? { category: 'reposicao_estoque' }
+            : type === 'payable'
+            ? { category: 'outro' }
+            : {}),
           ...(editing ? { status } : {}),
         }),
       });
@@ -823,6 +829,30 @@ function BillForm({
                   <option value="paid">{type === 'payable' ? 'Pago' : 'Recebido'}</option>
                   <option value="cancelled">Cancelado</option>
                 </select>
+              </div>
+            )}
+
+            {type === 'payable' && (
+              <div className="md:col-span-2">
+                <label className="flex items-start gap-3 p-3 rounded-lg border border-border bg-muted/30 cursor-pointer hover:bg-muted/50 transition">
+                  <input
+                    type="checkbox"
+                    checked={isReposicao}
+                    onChange={(e) => setIsReposicao(e.target.checked)}
+                    className="mt-0.5 accent-primary-600 w-4 h-4 shrink-0"
+                  />
+                  <div className="flex-1 text-sm">
+                    <p className="font-medium text-foreground">
+                      Esse pagamento é reposição de estoque (compra de produto pra revender)?
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Marcando: o valor abate do <strong>Caixa de Reposição</strong> e
+                      NÃO entra como despesa no DRE (evita duplicar com o CMV das vendas).
+                      <br />
+                      Não marque pra: frete, embalagem, contador, energia, marketing — esses são despesa operacional normal.
+                    </p>
+                  </div>
+                </label>
               </div>
             )}
 
