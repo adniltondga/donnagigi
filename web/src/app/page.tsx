@@ -230,15 +230,13 @@ export default function Home() {
             >
               Entrar
             </Link>
-            {open && (
-              <Link
-                href="/admin/login?register=1"
-                className="text-sm bg-primary-600 hover:bg-primary-700 text-white font-semibold px-3 sm:px-4 py-2 rounded-lg transition"
-              >
-                <span className="hidden sm:inline">Criar conta grátis</span>
-                <span className="sm:hidden">Criar conta</span>
-              </Link>
-            )}
+            <Link
+              href="/admin/login?register=1"
+              className="text-sm bg-primary-600 hover:bg-primary-700 text-white font-semibold px-3 sm:px-4 py-2 rounded-lg transition"
+            >
+              <span className="hidden sm:inline">Criar conta grátis</span>
+              <span className="sm:hidden">Criar conta</span>
+            </Link>
           </nav>
         </div>
       </header>
