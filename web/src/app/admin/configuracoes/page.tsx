@@ -28,6 +28,7 @@ import { IntegrationsPanel } from "@/components/admin/IntegrationsPanel"
 import { PushNotificationButton } from "@/components/PushNotificationButton"
 import { DeleteAccountSection } from "@/components/DeleteAccountSection"
 import { ExportDataButton } from "@/components/ExportDataButton"
+import { feedback } from "@/lib/feedback"
 
 type Tab = "perfil" | "senha" | "equipe" | "ml" | "assinatura"
 
@@ -126,7 +127,6 @@ function PerfilPanel() {
   const [tenantName, setTenantName] = useState("")
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
-  const [msg, setMsg] = useState<{ type: "success" | "error"; text: string } | null>(null)
   const { isOwner } = useUserRole()
 
   useEffect(() => {
@@ -144,21 +144,15 @@ function PerfilPanel() {
   const onSave = async (e: React.FormEvent) => {
     e.preventDefault()
     setSaving(true)
-    setMsg(null)
     try {
       const res = await fetch("/api/auth/me", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name, tenantName }),
       })
-      if (res.ok) {
-        setMsg({ type: "success", text: "Perfil atualizado." })
-      } else {
-        const d = await res.json().catch(() => ({}))
-        setMsg({ type: "error", text: d.error || "Erro ao salvar" })
-      }
+      await feedback.fromResponse(res, "Perfil atualizado.")
     } catch {
-      setMsg({ type: "error", text: "Erro de conexão" })
+      feedback.error("Erro de conexão")
     } finally {
       setSaving(false)
     }
@@ -175,8 +169,6 @@ function PerfilPanel() {
         <CardDescription>Atualize seus dados pessoais e o nome do seu negócio.</CardDescription>
       </CardHeader>
       <CardContent>
-        {msg && <StatusMessage status={msg.type} message={msg.text} />}
-
         <form onSubmit={onSave} className="space-y-4 max-w-xl">
           <div>
             <label className="block text-sm font-medium text-foreground mb-1">Nome completo</label>
@@ -257,17 +249,19 @@ function SenhaPanel() {
   const [confirm, setConfirm] = useState("")
   const [show, setShow] = useState(false)
   const [saving, setSaving] = useState(false)
-  const [msg, setMsg] = useState<{ type: "success" | "error"; text: string } | null>(null)
+  /** Validações inline (passwords não conferem, etc) ficam aqui;
+   *  erros de servidor / sucesso vão pra toast. */
+  const [validationError, setValidationError] = useState<string | null>(null)
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    setMsg(null)
+    setValidationError(null)
     if (next !== confirm) {
-      setMsg({ type: "error", text: "As senhas não conferem" })
+      setValidationError("As senhas não conferem")
       return
     }
     if (next.length < 6) {
-      setMsg({ type: "error", text: "A nova senha precisa ter ao menos 6 caracteres" })
+      setValidationError("A nova senha precisa ter ao menos 6 caracteres")
       return
     }
     setSaving(true)
@@ -277,17 +271,14 @@ function SenhaPanel() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ currentPassword: current, newPassword: next }),
       })
-      const d = await res.json().catch(() => ({}))
-      if (res.ok) {
-        setMsg({ type: "success", text: "Senha alterada com sucesso." })
+      const ok = await feedback.fromResponse(res, "Senha alterada com sucesso.")
+      if (ok) {
         setCurrent("")
         setNext("")
         setConfirm("")
-      } else {
-        setMsg({ type: "error", text: d.error || "Erro ao trocar senha" })
       }
     } catch {
-      setMsg({ type: "error", text: "Erro de conexão" })
+      feedback.error("Erro de conexão")
     } finally {
       setSaving(false)
     }
@@ -300,7 +291,7 @@ function SenhaPanel() {
         <CardDescription>Proteja sua conta trocando a senha periodicamente.</CardDescription>
       </CardHeader>
       <CardContent>
-        {msg && <StatusMessage status={msg.type} message={msg.text} />}
+        {validationError && <StatusMessage status="error" message={validationError} />}
 
         <form onSubmit={onSubmit} className="space-y-4 max-w-xl">
           <PasswordField label="Senha atual" value={current} onChange={setCurrent} show={show} toggleShow={() => setShow((v) => !v)} required />
@@ -397,7 +388,6 @@ function AssinaturaPanel() {
   const [data, setData] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [canceling, setCanceling] = useState(false)
-  const [msg, setMsg] = useState<{ type: "success" | "error"; text: string } | null>(null)
 
   const load = () => {
     setLoading(true)
@@ -414,18 +404,12 @@ function AssinaturaPanel() {
   const onCancel = async () => {
     if (!confirm("Cancelar a assinatura? Você perderá acesso aos recursos do Pro.")) return
     setCanceling(true)
-    setMsg(null)
     try {
       const res = await fetch("/api/billing/cancel", { method: "POST" })
-      if (res.ok) {
-        setMsg({ type: "success", text: "Assinatura cancelada." })
-        load()
-      } else {
-        const d = await res.json().catch(() => ({}))
-        setMsg({ type: "error", text: d.error || "Erro" })
-      }
+      const ok = await feedback.fromResponse(res, "Assinatura cancelada.")
+      if (ok) load()
     } catch {
-      setMsg({ type: "error", text: "Erro de conexão" })
+      feedback.error("Erro de conexão")
     } finally {
       setCanceling(false)
     }
@@ -440,8 +424,6 @@ function AssinaturaPanel() {
 
   return (
     <div className="space-y-4">
-      {msg && <StatusMessage status={msg.type} message={msg.text} />}
-
       <Card>
         <CardHeader>
           <CardTitle>Assinatura</CardTitle>
