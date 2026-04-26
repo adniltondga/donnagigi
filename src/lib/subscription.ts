@@ -38,8 +38,8 @@ export function trialDaysLeft(sub: Subscription): number | null {
 }
 
 /**
- * Marca trial como EXPIRED quando passou da data. Use em cron ou em
- * request-time quando querer garantir consistência.
+ * Marca trial como EXPIRED + downgrade pro FREE quando passou da data.
+ * Use em cron ou em request-time quando querer garantir consistência.
  */
 export async function syncExpiredTrials(): Promise<number> {
   const now = new Date();
@@ -48,19 +48,68 @@ export async function syncExpiredTrials(): Promise<number> {
       status: 'TRIAL',
       trialEndsAt: { lt: now },
     },
-    data: { status: 'EXPIRED' },
+    data: { status: 'EXPIRED', plan: 'FREE' },
   });
   return res.count;
 }
 
 /**
- * Retorna true se o tenant pode usar o produto agora (trial válido ou
- * pagamento confirmado).
+ * Subscriptions OVERDUE há N dias (default 7) viram EXPIRED + FREE.
+ * O ASAAS já tentou cobrar 3x antes de virar OVERDUE; depois desse
+ * grace period, downgrade definitivo.
+ */
+export async function expireOverdueSubscriptions(daysThreshold = 7): Promise<number> {
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - daysThreshold);
+  const res = await prisma.subscription.updateMany({
+    where: {
+      status: 'OVERDUE',
+      updatedAt: { lt: cutoff },
+    },
+    data: { status: 'EXPIRED', plan: 'FREE' },
+  });
+  return res.count;
+}
+
+/**
+ * Subscriptions CANCELED com fim de ciclo passado viram EXPIRED + FREE.
+ * Cliente cancelou mas ainda tem acesso pago até currentPeriodEnd —
+ * passou disso, downgrade pro FREE.
+ */
+export async function expireCanceledPastPeriod(): Promise<number> {
+  const now = new Date();
+  const res = await prisma.subscription.updateMany({
+    where: {
+      status: 'CANCELED',
+      currentPeriodEnd: { lt: now },
+    },
+    data: { status: 'EXPIRED', plan: 'FREE' },
+  });
+  return res.count;
+}
+
+/**
+ * Retorna true se o tenant pode usar o produto agora.
+ *
+ * Estados de acesso:
+ *  - TRIAL: válido até trialEndsAt
+ *  - ACTIVE / PENDING: sempre OK
+ *  - CANCELED: continua válido até currentPeriodEnd (cliente pagou
+ *    o ciclo, usa até o fim — padrão da indústria)
+ *  - OVERDUE: bloqueia imediatamente (estimula resolver pagamento)
+ *  - EXPIRED: bloqueia (deveria já estar em plan=FREE)
  */
 export function canUseProduct(sub: Subscription): boolean {
-  if (!isActive(sub.status)) return false;
-  if (sub.status === 'TRIAL' && sub.trialEndsAt && sub.trialEndsAt < new Date()) {
-    return false;
+  if (sub.status === 'TRIAL') {
+    return !!sub.trialEndsAt && sub.trialEndsAt > new Date();
   }
-  return true;
+  if (sub.status === 'ACTIVE' || sub.status === 'PENDING') return true;
+  if (sub.status === 'CANCELED') {
+    return !!sub.currentPeriodEnd && sub.currentPeriodEnd > new Date();
+  }
+  return false;
 }
+
+// isActive importada mas não usada após refactor — reexporta pra
+// não quebrar callers existentes.
+void isActive;
