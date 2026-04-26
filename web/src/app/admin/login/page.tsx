@@ -13,6 +13,7 @@ import {
   User,
   Building2,
 } from "lucide-react"
+import { WaitlistForm } from "@/components/WaitlistForm"
 
 const SAVED_EMAIL_KEY = "aglivre_saved_email"
 
@@ -27,7 +28,18 @@ export default function LoginPage() {
 function LoginInner() {
   const router = useRouter()
   const params = useSearchParams()
+  // Lemos runtime — env var na Vercel surte efeito sem rebuild.
+  // Default conservador: fechado até descobrir; trocamos pra true só
+  // quando API confirma. Evita flash de "Criar conta" indesejado.
+  const [registrationOpen, setRegistrationOpen] = useState(false)
   const [isRegisterMode, setIsRegisterMode] = useState(false)
+
+  useEffect(() => {
+    fetch("/api/registration-status")
+      .then((r) => r.json())
+      .then((d) => setRegistrationOpen(!!d.open))
+      .catch(() => {})
+  }, [])
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState("")
   const [loading, setLoading] = useState(false)
@@ -46,8 +58,9 @@ function LoginInner() {
   const [regConfirm, setRegConfirm] = useState("")
 
   useEffect(() => {
-    if (params.get("register") === "1") setIsRegisterMode(true)
-  }, [params])
+    // Cadastro fechado? Ignora ?register=1 vindo de links externos
+    if (registrationOpen && params.get("register") === "1") setIsRegisterMode(true)
+  }, [params, registrationOpen])
 
   useEffect(() => {
     if (typeof window === "undefined") return
@@ -64,7 +77,7 @@ function LoginInner() {
     setShowPassword(false)
   }
 
-  const setTokenAndGo = async (token: string) => {
+  const setTokenAndGo = async (token: string, isStaff = false) => {
     const r = await fetch("/api/auth/set-token", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -74,7 +87,9 @@ function LoginInner() {
       setError("Erro ao salvar autenticação")
       return
     }
-    setTimeout(() => router.push("/admin/dashboard"), 100)
+    // Staff vai direto pro painel interno; cliente normal vai pro dashboard.
+    const dest = isStaff ? "/staff" : "/admin/dashboard"
+    setTimeout(() => router.push(dest), 100)
   }
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -105,7 +120,7 @@ function LoginInner() {
       } else {
         localStorage.removeItem(SAVED_EMAIL_KEY)
       }
-      if (data.token) await setTokenAndGo(data.token)
+      if (data.token) await setTokenAndGo(data.token, !!data.user?.isStaff)
     } catch {
       setError("Erro ao conectar ao servidor")
     } finally {
@@ -172,31 +187,45 @@ function LoginInner() {
             </p>
           </div>
 
-          {/* Tab toggle */}
-          <div className="flex bg-muted rounded-lg p-1 mb-6">
-            <button
-              type="button"
-              onClick={() => isRegisterMode && switchMode()}
-              className={`flex-1 py-2.5 text-sm font-semibold rounded-md transition-all ${
-                !isRegisterMode
-                  ? "bg-card text-foreground shadow-sm"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              Entrar
-            </button>
-            <button
-              type="button"
-              onClick={() => !isRegisterMode && switchMode()}
-              className={`flex-1 py-2.5 text-sm font-semibold rounded-md transition-all ${
-                isRegisterMode
-                  ? "bg-card text-foreground shadow-sm"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              Criar conta
-            </button>
-          </div>
+          {/* Tab toggle (some quando cadastro fechado — só Entrar) */}
+          {registrationOpen && (
+            <div className="flex bg-muted rounded-lg p-1 mb-6">
+              <button
+                type="button"
+                onClick={() => isRegisterMode && switchMode()}
+                className={`flex-1 py-2.5 text-sm font-semibold rounded-md transition-all ${
+                  !isRegisterMode
+                    ? "bg-card text-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                Entrar
+              </button>
+              <button
+                type="button"
+                onClick={() => !isRegisterMode && switchMode()}
+                className={`flex-1 py-2.5 text-sm font-semibold rounded-md transition-all ${
+                  isRegisterMode
+                    ? "bg-card text-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                Criar conta
+              </button>
+            </div>
+          )}
+
+          {!registrationOpen && (
+            <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-lg">
+              <p className="text-sm font-semibold text-amber-900 mb-1">
+                🚧 Cadastros temporariamente fechados
+              </p>
+              <p className="text-xs text-amber-800 mb-3">
+                Estamos em testes finais. Deixa seu email que avisamos assim que liberarmos:
+              </p>
+              <WaitlistForm source="login-page" variant="light" buttonLabel="Avise-me" />
+            </div>
+          )}
 
           {error && (
             <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm">

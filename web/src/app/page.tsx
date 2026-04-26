@@ -12,6 +12,13 @@ import {
   Sparkles,
 } from "lucide-react";
 import { formatCurrency } from "@/lib/calculations";
+import { isRegistrationOpen } from "@/lib/registration";
+import { WaitlistForm } from "@/components/WaitlistForm";
+
+// Lê REGISTRATION_OPEN / NEXT_PUBLIC_REGISTRATION_OPEN em todo request
+// — sem isso, Next renderiza estático em build-time e mudar env var na
+// Vercel não tem efeito sem novo build com cache limpo.
+export const dynamic = "force-dynamic";
 
 const SITE_URL = "https://aglivre.dgadigital.com.br";
 
@@ -186,6 +193,7 @@ const jsonLd = {
 };
 
 export default function Home() {
+  const open = isRegistrationOpen();
   return (
     <div className="min-h-screen flex flex-col bg-white">
       <script
@@ -222,13 +230,15 @@ export default function Home() {
             >
               Entrar
             </Link>
-            <Link
-              href="/admin/login?register=1"
-              className="text-sm bg-primary-600 hover:bg-primary-700 text-white font-semibold px-3 sm:px-4 py-2 rounded-lg transition"
-            >
-              <span className="hidden sm:inline">Criar conta grátis</span>
-              <span className="sm:hidden">Criar conta</span>
-            </Link>
+            {open && (
+              <Link
+                href="/admin/login?register=1"
+                className="text-sm bg-primary-600 hover:bg-primary-700 text-white font-semibold px-3 sm:px-4 py-2 rounded-lg transition"
+              >
+                <span className="hidden sm:inline">Criar conta grátis</span>
+                <span className="sm:hidden">Criar conta</span>
+              </Link>
+            )}
           </nav>
         </div>
       </header>
@@ -250,24 +260,45 @@ export default function Home() {
                 Veja quando cada venda libera, quanto fica de lucro real depois das taxas
                 e acompanhe o dinheiro do seu Mercado Pago — tudo num painel só.
               </p>
-              <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
-                <Link
-                  href="/admin/login?register=1"
-                  className="bg-white text-primary-700 px-8 py-3 rounded-lg font-bold hover:bg-primary-50 transition inline-flex items-center justify-center gap-2"
-                >
-                  Criar conta grátis
-                  <ArrowRight size={18} />
-                </Link>
-                <Link
-                  href="/admin/login"
-                  className="bg-white/10 backdrop-blur border border-white/30 text-white px-8 py-3 rounded-lg font-semibold hover:bg-white/20 transition text-center"
-                >
-                  Já tenho conta
-                </Link>
-              </div>
-              <p className="text-sm text-white/70 mt-6">
-                Cadastro com email e senha · 14 dias grátis · Sem cartão de crédito
-              </p>
+              {open ? (
+                <>
+                  <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
+                    <Link
+                      href="/admin/login?register=1"
+                      className="bg-white text-primary-700 px-8 py-3 rounded-lg font-bold hover:bg-primary-50 transition inline-flex items-center justify-center gap-2"
+                    >
+                      Criar conta grátis
+                      <ArrowRight size={18} />
+                    </Link>
+                    <Link
+                      href="/admin/login"
+                      className="bg-white/10 backdrop-blur border border-white/30 text-white px-8 py-3 rounded-lg font-semibold hover:bg-white/20 transition text-center"
+                    >
+                      Já tenho conta
+                    </Link>
+                  </div>
+                  <p className="text-sm text-white/70 mt-6">
+                    Cadastro com email e senha · 14 dias grátis · Sem cartão de crédito
+                  </p>
+                </>
+              ) : (
+                <>
+                  <div className="bg-amber-400/20 border border-amber-300/40 rounded-lg px-4 py-3 mb-5 text-sm text-amber-50 inline-flex items-start gap-2">
+                    <span className="text-base leading-none">🚧</span>
+                    <div>
+                      <strong className="font-bold">Em testes finais.</strong>{" "}
+                      Os cadastros serão liberados em breve — entre na lista pra ser avisado primeiro.
+                    </div>
+                  </div>
+                  <WaitlistForm source="home-hero" variant="onPrimary" className="max-w-lg mx-auto lg:mx-0" />
+                  <p className="text-sm text-white/70 mt-4">
+                    Já tem conta?{" "}
+                    <Link href="/admin/login" className="underline hover:text-white">
+                      Entre por aqui
+                    </Link>
+                  </p>
+                </>
+              )}
             </div>
 
             {/* Coluna direita — screenshot do produto */}
@@ -362,19 +393,33 @@ export default function Home() {
             </p>
           </div>
 
+          {!open && (
+            <div className="max-w-2xl mx-auto mb-8 bg-amber-50 border border-amber-200 rounded-lg p-4 text-center text-sm text-amber-900">
+              🚧 <strong>Cadastros em testes finais.</strong> Os planos abaixo são o que vai estar disponível —
+              entre na lista no topo da página pra avisarmos quando abrirmos.
+            </div>
+          )}
+
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 max-w-7xl mx-auto items-stretch">
             {MARKETING_PLANS.map((p) => {
               const ctaHref = p.ctaHref ?? "/admin/login?register=1";
               const isExternal = ctaHref.startsWith("mailto:") || ctaHref.startsWith("http");
+              // Enterprise sempre permite contato (mailto). Demais ficam disabled quando registro fechado.
+              const isMailto = ctaHref.startsWith("mailto:");
+              const disabled = !open && !isMailto;
               const ctaClass = `w-full py-2.5 rounded-lg font-semibold transition flex items-center justify-center gap-2 ${
-                p.popular
+                disabled
+                  ? p.popular
+                    ? "bg-white/40 text-primary-700/60 cursor-not-allowed"
+                    : "bg-gray-100 text-gray-400 cursor-not-allowed"
+                  : p.popular
                   ? "bg-white text-primary-700 hover:bg-primary-50"
                   : "bg-primary-600 text-white hover:bg-primary-700"
               }`;
               const ctaContent = (
                 <>
-                  {p.ctaLabel}
-                  <ArrowRight className="w-4 h-4" />
+                  {disabled ? "Em breve" : p.ctaLabel}
+                  {!disabled && <ArrowRight className="w-4 h-4" />}
                 </>
               );
               return (
@@ -426,7 +471,11 @@ export default function Home() {
                       </li>
                     ))}
                   </ul>
-                  {isExternal ? (
+                  {disabled ? (
+                    <span className={ctaClass} aria-disabled="true">
+                      {ctaContent}
+                    </span>
+                  ) : isExternal ? (
                     <a href={ctaHref} className={ctaClass}>
                       {ctaContent}
                     </a>
@@ -489,18 +538,24 @@ export default function Home() {
       <section className="py-20">
         <div className="max-w-3xl mx-auto text-center px-4">
           <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
-            Pronto pra ver seu lucro real?
+            {open ? "Pronto pra ver seu lucro real?" : "Quer ser avisado quando abrir?"}
           </h2>
           <p className="text-gray-600 mb-8">
-            Leva 1 minuto pra criar conta e conectar Mercado Livre e Mercado Pago.
+            {open
+              ? "Leva 1 minuto pra criar conta e conectar Mercado Livre e Mercado Pago."
+              : "Estamos em testes finais. Deixa seu email que avisamos assim que liberarmos os cadastros."}
           </p>
-          <Link
-            href="/admin/login?register=1"
-            className="inline-flex items-center gap-2 bg-primary-600 hover:bg-primary-700 text-white font-bold px-8 py-3 rounded-lg transition"
-          >
-            Criar conta grátis
-            <ArrowRight size={18} />
-          </Link>
+          {open ? (
+            <Link
+              href="/admin/login?register=1"
+              className="inline-flex items-center gap-2 bg-primary-600 hover:bg-primary-700 text-white font-bold px-8 py-3 rounded-lg transition"
+            >
+              Criar conta grátis
+              <ArrowRight size={18} />
+            </Link>
+          ) : (
+            <WaitlistForm source="home-cta-final" variant="light" className="max-w-md mx-auto" />
+          )}
         </div>
       </section>
 

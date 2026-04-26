@@ -692,3 +692,16 @@ model TicketMessage {
 
   @@index([ticketId, createdAt])
 }
+
+// Lista de espera — captura email enquanto o cadastro estiver fechado
+// (sistema em testes finais). Ao reabrir, manda broadcast pra todos.
+// `source` ajuda a saber qual CTA converteu mais (home / planos / login).
+model WaitlistSignup {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  source    String?  // ex: "home", "planos", "login"
+  notified  Boolean  @default(false) // marcamos true quando enviarmos o "tá no ar"
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+}

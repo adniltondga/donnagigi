@@ -1,39 +1,60 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { jwtVerify } from 'jose'
 
+const SECRET = new TextEncoder().encode(
+  process.env.JWT_SECRET || 'seu_jwt_secret_super_seguro'
+)
+
+/**
+ * Middleware roteia o app por isStaff:
+ *  - Staff que cair em /admin/* (exceto login) → vai pra /staff
+ *  - Não-staff que tentar /staff/* → vai pra /admin/dashboard
+ *  - Sem token em rota protegida → /admin/login
+ *
+ * Lê isStaff do JWT (preenchido em /api/auth/login). Tokens antigos
+ * sem isStaff são tratados como cliente (false) — basta re-logar.
+ */
 export async function middleware(request: NextRequest) {
   const path = request.nextUrl.pathname
 
-  // Rotas que requerem autenticação
-  const protectedRoutes = ['/admin/dashboard', '/admin/products', '/admin/orders', '/admin/analytics']
+  // /admin/login é público (precisa entrar antes de saber se é staff)
+  if (path === '/admin/login') return NextResponse.next()
 
-  if (protectedRoutes.some(route => path.startsWith(route))) {
-    const token = request.cookies.get('token')?.value
+  const isAdminRoute = path.startsWith('/admin/')
+  const isStaffRoute = path.startsWith('/staff')
 
-    console.log(`[Middleware] Verificando acesso para ${path}`)
-    console.log(`[Middleware] Token presente:`, !!token)
-    console.log(`[Middleware] Cookies disponíveis:`, request.cookies.getAll().map(c => c.name))
+  if (!isAdminRoute && !isStaffRoute) return NextResponse.next()
 
-    if (!token) {
-      console.log(`[Middleware] ❌ No token found for ${path}`)
-      return NextResponse.redirect(new URL('/admin/login', request.url))
-    }
+  const token = request.cookies.get('token')?.value
+  if (!token) {
+    const url = new URL('/admin/login', request.url)
+    if (isStaffRoute) url.searchParams.set('next', path)
+    return NextResponse.redirect(url)
+  }
 
-    try {
-      const secret = new TextEncoder().encode(
-        process.env.JWT_SECRET || 'seu_jwt_secret_super_seguro'
-      )
-      await jwtVerify(token, secret)
-      console.log(`[Middleware] ✅ Token válido para ${path}`)
-    } catch (error) {
-      console.error(`[Middleware] ❌ Token inválido para ${path}:`, error)
-      return NextResponse.redirect(new URL('/admin/login', request.url))
-    }
+  let payload: { isStaff?: boolean } = {}
+  try {
+    const verified = await jwtVerify(token, SECRET)
+    payload = verified.payload as { isStaff?: boolean }
+  } catch {
+    return NextResponse.redirect(new URL('/admin/login', request.url))
+  }
+
+  const isStaff = payload.isStaff === true
+
+  // Staff em /admin/* (que não é login) → manda pro painel staff
+  if (isAdminRoute && isStaff) {
+    return NextResponse.redirect(new URL('/staff', request.url))
+  }
+
+  // Não-staff tentando /staff/* → manda pro admin do cliente
+  if (isStaffRoute && !isStaff) {
+    return NextResponse.redirect(new URL('/admin/dashboard', request.url))
   }
 
   return NextResponse.next()
 }
 
 export const config = {
-  matcher: ['/admin/:path*']
+  matcher: ['/admin/:path*', '/staff/:path*'],
 }

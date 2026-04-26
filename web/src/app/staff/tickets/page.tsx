@@ -28,17 +28,17 @@ const STATUS_LABEL: Record<TicketRow["status"], string> = {
 }
 
 const STATUS_TONE: Record<TicketRow["status"], string> = {
-  OPEN: "bg-blue-900/40 text-blue-300 border-blue-800",
-  IN_PROGRESS: "bg-amber-900/40 text-amber-300 border-amber-800",
-  WAITING_CLIENT: "bg-zinc-800 text-zinc-400 border-zinc-700",
-  CLOSED: "bg-zinc-900 text-zinc-500 border-zinc-800",
+  OPEN: "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/40 dark:text-blue-300 dark:border-blue-800",
+  IN_PROGRESS: "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-900/40 dark:text-amber-300 dark:border-amber-800",
+  WAITING_CLIENT: "bg-muted text-muted-foreground border-border",
+  CLOSED: "bg-card text-muted-foreground border-border",
 }
 
 const PRIORITY_TONE: Record<TicketRow["priority"], string> = {
-  LOW: "text-zinc-500",
-  NORMAL: "text-zinc-400",
-  HIGH: "text-amber-400",
-  URGENT: "text-red-400 font-bold",
+  LOW: "text-muted-foreground",
+  NORMAL: "text-muted-foreground",
+  HIGH: "text-amber-600 dark:text-amber-400",
+  URGENT: "text-red-600 dark:text-red-400 font-bold",
 }
 
 const CATEGORY_LABEL: Record<TicketRow["category"], string> = {
@@ -84,7 +84,7 @@ export default function StaffTicketsPage() {
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h2 className="text-2xl font-bold">Tickets</h2>
-          <p className="text-sm text-zinc-500">Todos os chamados abertos pelos clientes.</p>
+          <p className="text-sm text-muted-foreground">Todos os chamados abertos pelos clientes.</p>
         </div>
         <div className="flex gap-2 items-center">
           <form
@@ -94,19 +94,19 @@ export default function StaffTicketsPage() {
             }}
             className="relative"
           >
-            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" />
+            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
             <input
               type="text"
               value={qInput}
               onChange={(e) => setQInput(e.target.value)}
               placeholder="Buscar por assunto…"
-              className="bg-zinc-900 border border-zinc-800 rounded-md pl-9 pr-3 py-2 text-sm placeholder:text-zinc-600 focus:outline-none focus:border-zinc-700 w-64"
+              className="bg-card border border-border rounded-md pl-9 pr-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:border-border w-64"
             />
           </form>
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
-            className="bg-zinc-900 border border-zinc-800 rounded-md px-3 py-2 text-sm"
+            className="bg-card border border-border rounded-md px-3 py-2 text-sm"
           >
             <option value="">Todos os status</option>
             <option value="OPEN">Abertos</option>
@@ -118,18 +118,18 @@ export default function StaffTicketsPage() {
       </div>
 
       {loading ? (
-        <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-8 flex items-center justify-center text-zinc-500">
+        <div className="bg-card border border-border rounded-lg p-8 flex items-center justify-center text-muted-foreground">
           <Loader2 className="w-5 h-5 animate-spin mr-2" />
           Carregando…
         </div>
       ) : tickets && tickets.length === 0 ? (
-        <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-12 text-center text-zinc-500">
+        <div className="bg-card border border-border rounded-lg p-12 text-center text-muted-foreground">
           Nenhum ticket encontrado.
         </div>
       ) : (
-        <div className="bg-zinc-900 border border-zinc-800 rounded-lg overflow-hidden">
+        <div className="bg-card border border-border rounded-lg overflow-hidden">
           <table className="w-full text-sm">
-            <thead className="bg-zinc-950 text-xs uppercase tracking-wide text-zinc-500">
+            <thead className="bg-app-bg text-xs uppercase tracking-wide text-muted-foreground">
               <tr>
                 <th className="text-left px-4 py-3">Status</th>
                 <th className="text-left px-4 py-3">Assunto</th>
@@ -140,9 +140,9 @@ export default function StaffTicketsPage() {
                 <th className="text-right px-4 py-3">Msg</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-zinc-800">
+            <tbody className="divide-y divide-border">
               {tickets?.map((t) => (
-                <tr key={t.id} className="hover:bg-zinc-950 transition">
+                <tr key={t.id} className="hover:bg-app-bg transition">
                   <td className="px-4 py-3">
                     <span
                       className={`text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded border ${STATUS_TONE[t.status]}`}
@@ -153,7 +153,7 @@ export default function StaffTicketsPage() {
                   <td className="px-4 py-3">
                     <Link
                       href={`/staff/tickets/${t.id}`}
-                      className="font-medium text-zinc-100 hover:text-primary-400"
+                      className="font-medium text-foreground hover:text-primary-600 dark:text-primary-400"
                     >
                       {t.subject}
                     </Link>
@@ -163,18 +163,18 @@ export default function StaffTicketsPage() {
                       </span>
                     )}
                   </td>
-                  <td className="px-4 py-3 text-zinc-400">
+                  <td className="px-4 py-3 text-muted-foreground">
                     <div>{t.tenant.name}</div>
-                    <div className="text-xs text-zinc-500">{t.openedBy.email}</div>
+                    <div className="text-xs text-muted-foreground">{t.openedBy.email}</div>
                   </td>
-                  <td className="px-4 py-3 text-zinc-400">
-                    {t.assignee?.name || <span className="text-zinc-600">—</span>}
+                  <td className="px-4 py-3 text-muted-foreground">
+                    {t.assignee?.name || <span className="text-muted-foreground">—</span>}
                   </td>
-                  <td className="px-4 py-3 text-xs text-zinc-500">{CATEGORY_LABEL[t.category]}</td>
-                  <td className="px-4 py-3 text-right text-xs text-zinc-500 whitespace-nowrap">
+                  <td className="px-4 py-3 text-xs text-muted-foreground">{CATEGORY_LABEL[t.category]}</td>
+                  <td className="px-4 py-3 text-right text-xs text-muted-foreground whitespace-nowrap">
                     {formatDate(t.updatedAt)}
                   </td>
-                  <td className="px-4 py-3 text-right text-zinc-400">
+                  <td className="px-4 py-3 text-right text-muted-foreground">
                     <span className="inline-flex items-center gap-1">
                       <MessageSquare className="w-3.5 h-3.5" />
                       {t._count.messages}
