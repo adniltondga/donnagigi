@@ -19,6 +19,7 @@ const TITLE_MAP: Array<{ prefix: string; title: string }> = [
   { prefix: "/admin/billing/assinatura", title: "Assinatura" },
   { prefix: "/admin/billing/faturas", title: "Faturas" },
   { prefix: "/admin/billing", title: "Assinatura" },
+  { prefix: "/admin/suporte", title: "Suporte" },
   { prefix: "/admin/produtos/custo", title: "Custo dos produtos" },
   { prefix: "/admin/produtos/relatorio", title: "Relatório de produtos" },
   { prefix: "/admin/produtos", title: "Produtos" },
