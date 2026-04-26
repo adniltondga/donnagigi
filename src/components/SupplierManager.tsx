@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
+import { LoadingState } from '@/components/ui/loading-state'
 
 interface Supplier {
   id: string
@@ -151,7 +152,7 @@ export default function SupplierManager() {
   }
 
   if (loading) {
-    return <div className="p-6">Carregando fornecedores...</div>
+    return <LoadingState variant="inline" label="Carregando fornecedores..." />
   }
 
   return (

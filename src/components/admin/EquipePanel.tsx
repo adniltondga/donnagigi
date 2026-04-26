@@ -26,6 +26,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog"
 import { confirmDialog } from "@/components/ui/confirm-dialog"
+import { LoadingState } from "@/components/ui/loading-state"
 
 type Role = "OWNER" | "ADMIN" | "VIEWER"
 
@@ -212,10 +213,7 @@ export function EquipePanel() {
         </CardHeader>
         <CardContent>
           {loading ? (
-            <div className="flex items-center justify-center py-8 text-muted-foreground">
-              <Loader className="w-5 h-5 animate-spin mr-2" />
-              Carregando...
-            </div>
+            <LoadingState variant="card" className="py-8" />
           ) : (
             <div className="divide-y divide-gray-100">
               {members.map((m) => {

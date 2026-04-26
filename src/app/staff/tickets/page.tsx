@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from "react"
 import Link from "next/link"
-import { Loader2, MessageSquare, Search } from "lucide-react"
+import { MessageSquare, Search } from "lucide-react"
+import { LoadingState } from "@/components/ui/loading-state"
 
 interface TicketRow {
   id: string
@@ -118,9 +119,8 @@ export default function StaffTicketsPage() {
       </div>
 
       {loading ? (
-        <div className="bg-card border border-border rounded-lg p-8 flex items-center justify-center text-muted-foreground">
-          <Loader2 className="w-5 h-5 animate-spin mr-2" />
-          Carregando…
+        <div className="bg-card border border-border rounded-lg">
+          <LoadingState variant="card" label="Carregando…" />
         </div>
       ) : tickets && tickets.length === 0 ? (
         <div className="bg-card border border-border rounded-lg p-12 text-center text-muted-foreground">

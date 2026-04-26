@@ -8,6 +8,7 @@ import { PageHeader } from "@/components/ui/page-header"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { EmptyState } from "@/components/ui/empty-state"
+import { LoadingState } from "@/components/ui/loading-state"
 import {
   Dialog,
   DialogContent,
@@ -90,9 +91,8 @@ export default function SuportePage() {
       />
 
       {loading ? (
-        <Card className="p-8 flex items-center justify-center text-muted-foreground">
-          <Loader2 className="w-5 h-5 animate-spin mr-2" />
-          Carregando chamados…
+        <Card className="p-0">
+          <LoadingState variant="card" label="Carregando chamados…" />
         </Card>
       ) : tickets && tickets.length === 0 ? (
         <Card className="p-0">

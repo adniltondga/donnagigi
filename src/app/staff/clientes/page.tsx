@@ -1,7 +1,8 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { Loader2, Search, Building2, Plug, Receipt, Tickets as TicketsIcon } from "lucide-react"
+import { Search, Building2, Plug, Receipt, Tickets as TicketsIcon } from "lucide-react"
+import { LoadingState } from "@/components/ui/loading-state"
 
 interface TenantRow {
   id: string
@@ -127,9 +128,8 @@ export default function StaffClientesPage() {
       )}
 
       {loading ? (
-        <div className="bg-card border border-border rounded-lg p-8 flex items-center justify-center text-muted-foreground">
-          <Loader2 className="w-5 h-5 animate-spin mr-2" />
-          Carregando…
+        <div className="bg-card border border-border rounded-lg">
+          <LoadingState variant="card" label="Carregando…" />
         </div>
       ) : tenants && tenants.length === 0 ? (
         <div className="bg-card border border-border rounded-lg p-12 text-center text-muted-foreground">

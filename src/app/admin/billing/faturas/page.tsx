@@ -2,12 +2,13 @@
 
 import { useEffect, useState } from "react"
 import Link from "next/link"
-import { ExternalLink, FileText, Loader2 } from "lucide-react"
+import { ExternalLink, FileText } from "lucide-react"
 import { formatCurrency } from "@/lib/calculations"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { PageHeader } from "@/components/ui/page-header"
 import { Card } from "@/components/ui/card"
 import { EmptyState } from "@/components/ui/empty-state"
+import { LoadingState } from "@/components/ui/loading-state"
 
 interface Invoice {
   id: string
@@ -70,10 +71,7 @@ export default function FaturasPage() {
 
       <Card className="overflow-hidden">
         {loading ? (
-          <div className="flex items-center justify-center py-12 text-muted-foreground">
-            <Loader2 className="w-5 h-5 animate-spin mr-2" />
-            Carregando...
-          </div>
+          <LoadingState variant="card" />
         ) : invoices.length === 0 ? (
           <EmptyState
             icon={FileText}
