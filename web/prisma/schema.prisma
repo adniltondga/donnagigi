@@ -515,7 +515,7 @@ model Bill {
   dueDate         DateTime
   paidDate        DateTime?
   status          String   @default("pending") // pending | paid | overdue | cancelled
-  category        String   @default("outro") // discriminador de tipo: 'venda' | 'marketplace_fee' | 'aporte_amortizacao' | 'outro'. NÃO é categoria do usuário — pra isso usar billCategoryId.
+  category        String   @default("outro") // discriminador de tipo: 'venda' | 'marketplace_fee' | 'aporte_amortizacao' | 'reposicao_estoque' | 'outro'. NÃO é categoria do usuário — pra isso usar billCategoryId.
   billCategoryId  String?
   billCategory    BillCategory? @relation(fields: [billCategoryId], references: [id], onDelete: SetNull)
   supplierId      String?
@@ -549,6 +549,7 @@ model FinancialSettings {
   tenant          Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   reservaMeses    Int      @default(3)  // meses de despesa fixa a manter como colchão
   reinvestPct     Float    @default(20) // % do lucro líquido pra reinvestir
+  reposicaoPct    Float    @default(50) // % da receita líquida reservada pro caixa de reposição de estoque
   saldoCaixaAtual Float?   // saldo em conta/caixa informado manualmente
   saldoAtualizadoEm DateTime?
   createdAt       DateTime @default(now())
