@@ -26,6 +26,7 @@ import { useUserRole } from "@/lib/useUserRole"
 import { EquipePanel } from "@/components/admin/EquipePanel"
 import { IntegrationsPanel } from "@/components/admin/IntegrationsPanel"
 import { PushNotificationButton } from "@/components/PushNotificationButton"
+import { DeleteAccountSection } from "@/components/DeleteAccountSection"
 
 type Tab = "perfil" | "senha" | "equipe" | "ml" | "assinatura"
 
@@ -125,6 +126,7 @@ function PerfilPanel() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [msg, setMsg] = useState<{ type: "success" | "error"; text: string } | null>(null)
+  const { isOwner } = useUserRole()
 
   useEffect(() => {
     fetch("/api/auth/me")
@@ -234,6 +236,8 @@ function PerfilPanel() {
           </p>
           <PushNotificationButton />
         </div>
+
+        {isOwner && <DeleteAccountSection />}
       </CardContent>
     </Card>
   )

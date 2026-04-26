@@ -93,6 +93,10 @@ function LoginInner() {
           router.push(`/verify-email?email=${encodeURIComponent(loginEmail)}`)
           return
         }
+        if (data.error === "ACCOUNT_DELETED") {
+          router.push(`/conta-excluida`)
+          return
+        }
         setError(data.error || "Erro ao fazer login")
         return
       }
