@@ -27,6 +27,7 @@ import { EquipePanel } from "@/components/admin/EquipePanel"
 import { IntegrationsPanel } from "@/components/admin/IntegrationsPanel"
 import { PushNotificationButton } from "@/components/PushNotificationButton"
 import { DeleteAccountSection } from "@/components/DeleteAccountSection"
+import { ExportDataButton } from "@/components/ExportDataButton"
 
 type Tab = "perfil" | "senha" | "equipe" | "ml" | "assinatura"
 
@@ -237,7 +238,12 @@ function PerfilPanel() {
           <PushNotificationButton />
         </div>
 
-        {isOwner && <DeleteAccountSection />}
+        {isOwner && (
+          <>
+            <ExportDataButton />
+            <DeleteAccountSection />
+          </>
+        )}
       </CardContent>
     </Card>
   )
