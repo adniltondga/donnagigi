@@ -6,6 +6,9 @@ import { AdminSidebar } from "@/components/AdminSidebar"
 import { AppHeader } from "@/components/AppHeader"
 import { SubscriptionGuard } from "@/components/SubscriptionGuard"
 
+// Roteamento staff vs cliente acontece no middleware.ts (lê isStaff do JWT
+// e redireciona /admin/* → /staff pra staff, /staff/* → /admin/dashboard
+// pra cliente). Aqui o layout só renderiza o admin do cliente normal.
 export default function AdminLayout({
   children,
 }: {

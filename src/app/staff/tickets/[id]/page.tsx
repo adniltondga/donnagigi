@@ -127,7 +127,7 @@ export default function StaffTicketDetailPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-20 text-zinc-500">
+      <div className="flex items-center justify-center py-20 text-muted-foreground">
         <Loader2 className="w-5 h-5 animate-spin mr-2" />
         Carregando…
       </div>
@@ -138,12 +138,12 @@ export default function StaffTicketDetailPage() {
       <div className="space-y-4">
         <Link
           href="/staff/tickets"
-          className="text-sm text-zinc-400 hover:text-zinc-200 inline-flex items-center gap-1"
+          className="text-sm text-muted-foreground hover:text-foreground inline-flex items-center gap-1"
         >
           <ArrowLeft className="w-3.5 h-3.5" />
           Voltar
         </Link>
-        <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-8 text-center text-zinc-500">
+        <div className="bg-card border border-border rounded-lg p-8 text-center text-muted-foreground">
           Ticket não encontrado.
         </div>
       </div>
@@ -154,7 +154,7 @@ export default function StaffTicketDetailPage() {
     <div className="space-y-5">
       <Link
         href="/staff/tickets"
-        className="text-sm text-zinc-400 hover:text-zinc-200 inline-flex items-center gap-1"
+        className="text-sm text-muted-foreground hover:text-foreground inline-flex items-center gap-1"
       >
         <ArrowLeft className="w-3.5 h-3.5" />
         Voltar pra lista
@@ -165,38 +165,38 @@ export default function StaffTicketDetailPage() {
         <div className="space-y-4">
           <div>
             <h2 className="text-xl font-bold">{ticket.subject}</h2>
-            <p className="text-xs text-zinc-500 mt-1">
+            <p className="text-xs text-muted-foreground mt-1">
               Aberto em {formatDateTime(ticket.createdAt)}
               {ticket.closedAt && ` · encerrado em ${formatDateTime(ticket.closedAt)}`}
             </p>
           </div>
 
-          <div className="bg-zinc-900 border border-zinc-800 rounded-lg overflow-hidden">
-            <div className="divide-y divide-zinc-800">
+          <div className="bg-card border border-border rounded-lg overflow-hidden">
+            <div className="divide-y divide-border">
               {ticket.messages.map((m) => {
                 const isStaff = m.authorRole === "STAFF"
                 return (
-                  <div key={m.id} className={`p-4 flex gap-3 ${isStaff ? "bg-primary-950/30" : ""}`}>
+                  <div key={m.id} className={`p-4 flex gap-3 ${isStaff ? "bg-primary-50 dark:bg-primary-950/30" : ""}`}>
                     <div
                       className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 ${
                         isStaff
-                          ? "bg-primary-900/60 text-primary-300"
-                          : "bg-zinc-800 text-zinc-400"
+                          ? "bg-primary-100 dark:bg-primary-900/60 text-primary-700 dark:text-primary-300"
+                          : "bg-muted text-muted-foreground"
                       }`}
                     >
                       {isStaff ? <Headset className="w-4 h-4" /> : <UserIcon className="w-4 h-4" />}
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-baseline gap-2 flex-wrap mb-1">
-                        <span className="text-sm font-semibold text-zinc-100">{m.author.name}</span>
+                        <span className="text-sm font-semibold text-foreground">{m.author.name}</span>
                         {isStaff && (
                           <span className="text-[10px] font-bold uppercase tracking-wide bg-primary-700 text-white px-1.5 py-0.5 rounded">
                             Staff
                           </span>
                         )}
-                        <span className="text-xs text-zinc-500">{formatDateTime(m.createdAt)}</span>
+                        <span className="text-xs text-muted-foreground">{formatDateTime(m.createdAt)}</span>
                       </div>
-                      <div className="text-sm text-zinc-200 whitespace-pre-wrap">{m.body}</div>
+                      <div className="text-sm text-foreground whitespace-pre-wrap">{m.body}</div>
                     </div>
                   </div>
                 )
@@ -206,23 +206,23 @@ export default function StaffTicketDetailPage() {
           </div>
 
           {ticket.status !== "CLOSED" && (
-            <form onSubmit={submitReply} className="bg-zinc-900 border border-zinc-800 rounded-lg p-4 space-y-3">
-              <label className="block text-sm font-medium text-zinc-200">Responder</label>
+            <form onSubmit={submitReply} className="bg-card border border-border rounded-lg p-4 space-y-3">
+              <label className="block text-sm font-medium text-foreground">Responder</label>
               <textarea
                 value={reply}
                 onChange={(e) => setReply(e.target.value)}
                 rows={5}
                 placeholder="Sua resposta…"
-                className="w-full bg-zinc-950 border border-zinc-800 rounded-md px-3 py-2 text-sm text-zinc-100 placeholder:text-zinc-600 resize-y focus:outline-none focus:border-zinc-700"
+                className="w-full bg-app-bg border border-border rounded-md px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground resize-y focus:outline-none focus:border-border"
                 disabled={sending}
               />
               <div className="flex justify-between items-center gap-3 flex-wrap">
-                <label className="flex items-center gap-2 text-xs text-zinc-400">
+                <label className="flex items-center gap-2 text-xs text-muted-foreground">
                   Após enviar, marcar como:
                   <select
                     value={replyStatus}
                     onChange={(e) => setReplyStatus(e.target.value as Status | "")}
-                    className="bg-zinc-950 border border-zinc-800 rounded-md px-2 py-1 text-xs"
+                    className="bg-app-bg border border-border rounded-md px-2 py-1 text-xs"
                   >
                     <option value="">manter / IN_PROGRESS</option>
                     <option value="WAITING_CLIENT">Aguardando cliente</option>
@@ -244,13 +244,13 @@ export default function StaffTicketDetailPage() {
 
         {/* Coluna lateral — metadados + ações */}
         <aside className="space-y-3">
-          <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-4 space-y-3 text-sm">
+          <div className="bg-card border border-border rounded-lg p-4 space-y-3 text-sm">
             <div>
-              <p className="text-[10px] uppercase tracking-wide text-zinc-500 mb-1">Status</p>
+              <p className="text-[10px] uppercase tracking-wide text-muted-foreground mb-1">Status</p>
               <select
                 value={ticket.status}
                 onChange={(e) => updateField({ status: e.target.value as Status })}
-                className="w-full bg-zinc-950 border border-zinc-800 rounded-md px-2 py-1.5 text-sm"
+                className="w-full bg-app-bg border border-border rounded-md px-2 py-1.5 text-sm"
               >
                 {Object.entries(STATUS_LABEL).map(([v, l]) => (
                   <option key={v} value={v}>
@@ -260,11 +260,11 @@ export default function StaffTicketDetailPage() {
               </select>
             </div>
             <div>
-              <p className="text-[10px] uppercase tracking-wide text-zinc-500 mb-1">Prioridade</p>
+              <p className="text-[10px] uppercase tracking-wide text-muted-foreground mb-1">Prioridade</p>
               <select
                 value={ticket.priority}
                 onChange={(e) => updateField({ priority: e.target.value as Priority })}
-                className="w-full bg-zinc-950 border border-zinc-800 rounded-md px-2 py-1.5 text-sm"
+                className="w-full bg-app-bg border border-border rounded-md px-2 py-1.5 text-sm"
               >
                 <option value="LOW">Baixa</option>
                 <option value="NORMAL">Normal</option>
@@ -273,29 +273,29 @@ export default function StaffTicketDetailPage() {
               </select>
             </div>
             <div>
-              <p className="text-[10px] uppercase tracking-wide text-zinc-500 mb-1">Categoria</p>
-              <p className="text-zinc-200">{CATEGORY_LABEL[ticket.category]}</p>
+              <p className="text-[10px] uppercase tracking-wide text-muted-foreground mb-1">Categoria</p>
+              <p className="text-foreground">{CATEGORY_LABEL[ticket.category]}</p>
             </div>
             <div>
-              <p className="text-[10px] uppercase tracking-wide text-zinc-500 mb-1">Atribuído a</p>
-              <p className="text-zinc-200">{ticket.assignee?.name || "ninguém"}</p>
+              <p className="text-[10px] uppercase tracking-wide text-muted-foreground mb-1">Atribuído a</p>
+              <p className="text-foreground">{ticket.assignee?.name || "ninguém"}</p>
             </div>
           </div>
 
-          <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-4 space-y-3 text-sm">
-            <p className="text-[10px] uppercase tracking-wide text-zinc-500">Cliente</p>
+          <div className="bg-card border border-border rounded-lg p-4 space-y-3 text-sm">
+            <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Cliente</p>
             <div className="space-y-1">
-              <p className="text-zinc-100 font-medium flex items-center gap-2">
-                <Building2 className="w-3.5 h-3.5 text-zinc-500" />
+              <p className="text-foreground font-medium flex items-center gap-2">
+                <Building2 className="w-3.5 h-3.5 text-muted-foreground" />
                 {ticket.tenant.name}
               </p>
-              <p className="text-zinc-400 flex items-center gap-2 text-xs">
-                <UserIcon className="w-3.5 h-3.5 text-zinc-500" />
+              <p className="text-muted-foreground flex items-center gap-2 text-xs">
+                <UserIcon className="w-3.5 h-3.5 text-muted-foreground" />
                 {ticket.openedBy.name}
               </p>
-              <p className="text-zinc-400 flex items-center gap-2 text-xs">
-                <Mail className="w-3.5 h-3.5 text-zinc-500" />
-                <a href={`mailto:${ticket.openedBy.email}`} className="hover:text-zinc-200">
+              <p className="text-muted-foreground flex items-center gap-2 text-xs">
+                <Mail className="w-3.5 h-3.5 text-muted-foreground" />
+                <a href={`mailto:${ticket.openedBy.email}`} className="hover:text-foreground">
                   {ticket.openedBy.email}
                 </a>
               </p>

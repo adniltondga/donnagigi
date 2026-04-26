@@ -5,9 +5,25 @@ import { generateUniqueTenantSlug } from "@/lib/tenant"
 import { generateOTP, sendEmail, verifyEmailTemplate } from "@/lib/email"
 import { TRIAL_DAYS } from "@/lib/plans"
 import { checkRateLimit, rateLimitResponse, RATE_LIMITS } from "@/lib/rate-limit"
+import { isRegistrationOpen } from "@/lib/registration"
+
+// Sempre runtime — não cachear status do registro.
+export const dynamic = "force-dynamic"
 
 export async function POST(request: NextRequest) {
   try {
+    // Cadastro fechado em prod enquanto sistema está em testes finais.
+    if (!isRegistrationOpen()) {
+      return NextResponse.json(
+        {
+          error: "REGISTRATION_CLOSED",
+          message:
+            "Cadastros temporariamente fechados — estamos em testes finais. Entre na lista de espera pra ser avisado quando abrir.",
+        },
+        { status: 403 }
+      )
+    }
+
     const limited = rateLimitResponse(checkRateLimit(request, RATE_LIMITS.register))
     if (limited) return limited
 
