@@ -81,11 +81,14 @@ export async function GET(req: NextRequest) {
     const ativoTotal = caixa + mpALiberar + contasReceber
 
     /* ====== PASSIVO ====== */
+    // Reposição de estoque NÃO entra no Passivo de "contas a pagar" — é
+    // movimento do Caixa de Reposição (ver lib/cash-pools.ts).
     const pagarPending = await prisma.bill.findMany({
       where: {
         tenantId,
         type: "payable",
         status: "pending",
+        category: { not: "reposicao_estoque" },
         NOT: [
           { billCategoryId: { in: aporteOriginalIds.length > 0 ? aporteOriginalIds : ["__none__"] } },
           ...(proLaboreSub ? [{ billCategoryId: proLaboreSub.id }] : []),
@@ -158,6 +161,7 @@ export async function GET(req: NextRequest) {
         type: "payable",
         status: "paid",
         paidDate: { gte: startYear, lt: end },
+        category: { not: "reposicao_estoque" },
         NOT: [
           { billCategoryId: { in: aporteOriginalIds.length > 0 ? aporteOriginalIds : ["__none__"] } },
           ...(proLaboreSub ? [{ billCategoryId: proLaboreSub.id }] : []),
