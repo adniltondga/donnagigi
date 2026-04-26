@@ -6,9 +6,9 @@ import {
   AlertTriangle,
   Wallet,
   FileText,
+  FolderTree,
   Plus,
   ChevronRight,
-  ChevronDown,
   Trash2,
   Pencil,
   Check,
@@ -1025,11 +1025,18 @@ function CategoryTree({
     }
   };
 
+  const accent = type === 'payable'
+    ? { ring: 'ring-rose-200/60 dark:ring-rose-900/30', dot: 'bg-rose-500', chip: 'bg-rose-50 text-rose-700 dark:bg-rose-950/40 dark:text-rose-300' }
+    : { ring: 'ring-emerald-200/60 dark:ring-emerald-900/30', dot: 'bg-emerald-500', chip: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300' }
+
   return (
-    <Card>
-      <CardHeader>
-        <div className="flex items-center justify-between">
-          <CardTitle className="text-base">{title}</CardTitle>
+    <Card className={`ring-1 ${accent.ring}`}>
+      <CardHeader className="pb-3">
+        <div className="flex items-center justify-between gap-2">
+          <CardTitle className="text-base flex items-center gap-2">
+            <span className={`w-2 h-2 rounded-full ${accent.dot}`} aria-hidden />
+            {title}
+          </CardTitle>
           {canWrite && !addingRoot && (
             <Button size="sm" variant="outline" onClick={() => setAddingRoot(true)}>
               <Plus className="w-4 h-4 mr-1" />
@@ -1038,15 +1045,15 @@ function CategoryTree({
           )}
         </div>
       </CardHeader>
-      <CardContent>
+      <CardContent className="pt-0">
         {addingRoot && canWrite && (
-          <div className="flex gap-2 mb-4">
+          <div className="flex gap-2 mb-3 p-2 rounded-lg bg-muted/40 border border-border">
             <input
               autoFocus
               value={rootDraft}
               onChange={(e) => setRootDraft(e.target.value)}
               placeholder="Nome da categoria"
-              className="flex-1 border rounded-lg px-3 py-2 text-sm"
+              className="flex-1 bg-card border border-border rounded-md px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-600"
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && rootDraft.trim()) {
                   createCategory(rootDraft.trim(), null);
@@ -1069,48 +1076,79 @@ function CategoryTree({
               }}
               disabled={!rootDraft.trim()}
             >
-              Criar
+              <Check className="w-4 h-4" />
             </Button>
             <Button
               size="sm"
-              variant="outline"
+              variant="ghost"
               onClick={() => {
                 setAddingRoot(false);
                 setRootDraft('');
               }}
             >
-              Cancelar
+              <XIcon className="w-4 h-4" />
             </Button>
           </div>
         )}
 
         {nodes.length === 0 ? (
-          <div className="text-sm text-muted-foreground py-4 text-center">Sem categorias ainda.</div>
+          <div className="flex flex-col items-center gap-2 py-8 text-center text-muted-foreground">
+            <FolderTree className="w-8 h-8 opacity-40" />
+            <p className="text-sm">Sem categorias ainda.</p>
+            {canWrite && !addingRoot && (
+              <button
+                onClick={() => setAddingRoot(true)}
+                className="text-xs text-primary-600 hover:text-primary-700 font-medium"
+              >
+                Criar a primeira →
+              </button>
+            )}
+          </div>
         ) : (
-          <ul className="divide-y divide-gray-100">
+          <ul className="space-y-1">
             {nodes.map((root) => {
               const isExp = expanded.has(root.id);
               const totalBills = root._count.bills + root.children.reduce((s, c) => s + c._count.bills, 0);
+              const initial = root.name.charAt(0).toUpperCase();
               return (
-                <li key={root.id} className="py-2">
-                  <div className="flex items-center gap-2">
+                <li key={root.id}>
+                  <div
+                    className={`group flex items-center gap-2 px-2 py-2 rounded-lg transition ${
+                      root.children.length > 0 ? 'cursor-pointer hover:bg-muted/60' : 'hover:bg-muted/40'
+                    }`}
+                    onClick={() => root.children.length > 0 && toggle(root.id)}
+                  >
                     <button
-                      onClick={() => toggle(root.id)}
-                      className="p-1 hover:bg-muted rounded"
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (root.children.length > 0) toggle(root.id);
+                      }}
+                      className="text-muted-foreground shrink-0 disabled:opacity-30"
                       disabled={root.children.length === 0}
+                      aria-label={isExp ? 'Recolher' : 'Expandir'}
                     >
                       {root.children.length > 0 ? (
-                        isExp ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />
+                        <ChevronRight
+                          className={`w-4 h-4 transition-transform ${isExp ? 'rotate-90' : ''}`}
+                        />
                       ) : (
                         <span className="w-4 h-4 inline-block" />
                       )}
                     </button>
+
+                    <div
+                      className={`w-7 h-7 rounded-md ${accent.chip} flex items-center justify-center text-xs font-bold shrink-0`}
+                    >
+                      {initial}
+                    </div>
 
                     {editingId === root.id ? (
                       <input
                         autoFocus
                         value={editDraft}
                         onChange={(e) => setEditDraft(e.target.value)}
+                        onClick={(e) => e.stopPropagation()}
                         onBlur={() => {
                           if (editDraft.trim() && editDraft !== root.name) renameCategory(root.id, editDraft.trim());
                           setEditingId(null);
@@ -1121,52 +1159,78 @@ function CategoryTree({
                             setEditingId(null);
                           } else if (e.key === 'Escape') setEditingId(null);
                         }}
-                        className="flex-1 border rounded px-2 py-1 text-sm"
+                        className="flex-1 border border-border bg-card rounded-md px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-primary-600"
                       />
                     ) : (
-                      <span className="flex-1 font-medium text-foreground">{root.name}</span>
+                      <span className="flex-1 font-medium text-foreground text-sm truncate">
+                        {root.name}
+                        {root.children.length > 0 && (
+                          <span className="ml-2 text-[11px] text-muted-foreground font-normal">
+                            {root.children.length} sub
+                          </span>
+                        )}
+                      </span>
                     )}
 
-                    <span className="text-xs text-muted-foreground">
-                      {totalBills} conta{totalBills === 1 ? '' : 's'}
+                    <span
+                      className={`px-2 py-0.5 rounded-full text-[11px] font-medium tabular-nums ${accent.chip}`}
+                    >
+                      {totalBills}
                     </span>
 
                     {canWrite && editingId !== root.id && (
-                      <>
+                      <div className="flex items-center opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition">
                         <Button
                           size="sm"
                           variant="ghost"
-                          onClick={() => {
+                          className="h-7 w-7 p-0"
+                          onClick={(e) => {
+                            e.stopPropagation();
                             setAddingSubFor(root.id);
                             setSubDraft('');
                             setExpanded((prev) => new Set(prev).add(root.id));
                           }}
                           title="Adicionar subcategoria"
                         >
-                          <Plus className="w-4 h-4" />
+                          <Plus className="w-3.5 h-3.5" />
                         </Button>
                         <Button
                           size="sm"
                           variant="ghost"
-                          onClick={() => {
+                          className="h-7 w-7 p-0"
+                          onClick={(e) => {
+                            e.stopPropagation();
                             setEditingId(root.id);
                             setEditDraft(root.name);
                           }}
                           title="Renomear"
                         >
-                          <Pencil className="w-4 h-4" />
+                          <Pencil className="w-3.5 h-3.5" />
                         </Button>
-                        <Button size="sm" variant="ghost" onClick={() => deleteCategory(root.id, root.name)} title="Remover">
-                          <Trash2 className="w-4 h-4 text-red-500" />
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-7 w-7 p-0"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            deleteCategory(root.id, root.name);
+                          }}
+                          title="Remover"
+                        >
+                          <Trash2 className="w-3.5 h-3.5 text-red-500" />
                         </Button>
-                      </>
+                      </div>
                     )}
                   </div>
 
                   {isExp && (
-                    <ul className="ml-8 mt-2 space-y-1 border-l border-border pl-4">
+                    <ul className="ml-9 my-1 space-y-0.5 border-l border-border/60 pl-3">
                       {root.children.map((sub) => (
-                        <li key={sub.id} className="flex items-center gap-2 py-1">
+                        <li
+                          key={sub.id}
+                          className="group flex items-center gap-2 py-1.5 px-2 rounded-md hover:bg-muted/40"
+                        >
+                          <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground/30 shrink-0" />
                           {editingId === sub.id ? (
                             <input
                               autoFocus
@@ -1182,47 +1246,50 @@ function CategoryTree({
                                   setEditingId(null);
                                 } else if (e.key === 'Escape') setEditingId(null);
                               }}
-                              className="flex-1 border rounded px-2 py-1 text-sm"
+                              className="flex-1 border border-border bg-card rounded-md px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-primary-600"
                             />
                           ) : (
-                            <span className="flex-1 text-sm text-foreground">{sub.name}</span>
+                            <span className="flex-1 text-sm text-foreground truncate">{sub.name}</span>
                           )}
-                          <span className="text-xs text-muted-foreground">
-                            {sub._count.bills} conta{sub._count.bills === 1 ? '' : 's'}
+                          <span className="text-[11px] text-muted-foreground tabular-nums">
+                            {sub._count.bills}
                           </span>
                           {canWrite && editingId !== sub.id && (
-                            <>
+                            <div className="flex items-center opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition">
                               <Button
                                 size="sm"
                                 variant="ghost"
+                                className="h-6 w-6 p-0"
                                 onClick={() => {
                                   setEditingId(sub.id);
                                   setEditDraft(sub.name);
                                 }}
                                 title="Renomear"
                               >
-                                <Pencil className="w-4 h-4" />
+                                <Pencil className="w-3 h-3" />
                               </Button>
                               <Button
                                 size="sm"
                                 variant="ghost"
+                                className="h-6 w-6 p-0"
                                 onClick={() => deleteCategory(sub.id, sub.name)}
                                 title="Remover"
                               >
-                                <Trash2 className="w-4 h-4 text-red-500" />
+                                <Trash2 className="w-3 h-3 text-red-500" />
                               </Button>
-                            </>
+                            </div>
                           )}
                         </li>
                       ))}
                       {addingSubFor === root.id && canWrite && (
-                        <li className="flex items-center gap-2 py-1">
+                        <li className="flex items-center gap-2 py-1.5 px-2">
+                          <span className="w-1.5 h-1.5 rounded-full bg-primary-500 shrink-0" />
                           <input
                             autoFocus
                             value={subDraft}
                             onChange={(e) => setSubDraft(e.target.value)}
                             placeholder="Nome da subcategoria"
-                            className="flex-1 border rounded px-2 py-1 text-sm"
+                            className="flex-1 border border-border bg-card rounded-md px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-primary-600"
                             onKeyDown={(e) => {
                               if (e.key === 'Enter' && subDraft.trim()) {
                                 createCategory(subDraft.trim(), root.id);
@@ -1236,6 +1303,7 @@ function CategoryTree({
                           />
                           <Button
                             size="sm"
+                            className="h-6 w-6 p-0"
                             onClick={() => {
                               if (subDraft.trim()) {
                                 createCategory(subDraft.trim(), root.id);
@@ -1245,17 +1313,18 @@ function CategoryTree({
                             }}
                             disabled={!subDraft.trim()}
                           >
-                            OK
+                            <Check className="w-3 h-3" />
                           </Button>
                           <Button
                             size="sm"
                             variant="ghost"
+                            className="h-6 w-6 p-0"
                             onClick={() => {
                               setAddingSubFor(null);
                               setSubDraft('');
                             }}
                           >
-                            <XIcon className="w-4 h-4" />
+                            <XIcon className="w-3 h-3" />
                           </Button>
                         </li>
                       )}
