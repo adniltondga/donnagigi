@@ -52,7 +52,7 @@ export default function ContasPage() {
       <BillsTab initialFilter={initialFilter} />
 
       <Dialog open={showCats} onOpenChange={setShowCats}>
-        <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">
+        <DialogContent className="max-w-5xl max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>📂 Categorias</DialogTitle>
           </DialogHeader>
