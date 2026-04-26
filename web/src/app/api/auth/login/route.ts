@@ -29,7 +29,7 @@ export async function POST(request: NextRequest) {
         role: true,
         tenantId: true,
         emailVerified: true,
-        tenant: { select: { id: true, name: true, slug: true } },
+        tenant: { select: { id: true, name: true, slug: true, deletedAt: true } },
       },
     })
 
@@ -45,6 +45,19 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         { error: "Email ou senha inválidos" },
         { status: 401 }
+      )
+    }
+
+    // Tenant em soft-delete: bloqueia login e oferece restore
+    if (user.tenant.deletedAt) {
+      return NextResponse.json(
+        {
+          error: "ACCOUNT_DELETED",
+          message: "Sua conta foi excluída. Você pode restaurar até 30 dias após a exclusão.",
+          canRestore: user.role === "OWNER",
+          deletedAt: user.tenant.deletedAt.toISOString(),
+        },
+        { status: 410 }
       )
     }
 

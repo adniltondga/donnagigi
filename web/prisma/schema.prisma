@@ -20,6 +20,11 @@ model Tenant {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  // Soft delete (LGPD direito ao esquecimento). Quando preenchido,
+  // bloqueia acesso ao admin e agenda hard delete em 30 dias via
+  // cron account-purge. Usuário pode reativar antes do prazo.
+  deletedAt DateTime?
+
   users             User[]
   products          Product[]
   productVariants   ProductVariant[]
@@ -569,6 +574,30 @@ model BillCategory {
   @@unique([tenantId, parentId, name])
   @@index([tenantId])
   @@index([parentId])
+}
+
+// Audit log de exclusão de conta (LGPD). NÃO tem FK pra Tenant —
+// preserva histórico mesmo após o hard delete (cascade). Snapshots
+// dos dados essenciais ficam aqui.
+model AccountDeletionLog {
+  id              String    @id @default(cuid())
+  tenantId        String    // snapshot — pode não existir mais após purge
+  tenantSlug      String
+  tenantName      String
+  ownerEmail      String
+  ownerName       String
+  reason          String?   @db.Text  // pesquisa opcional
+  ipAddress       String?
+  userAgent       String?
+
+  // Soft-deletado em DD; hard-deletado em DD+30
+  softDeletedAt        DateTime  @default(now())
+  scheduledHardDeleteAt DateTime
+  hardDeletedAt        DateTime?  // preenchido pelo cron account-purge
+  restoredAt           DateTime?  // preenchido se user reativar
+
+  @@index([tenantId])
+  @@index([scheduledHardDeleteAt])
 }
 
 // Subscription Web Push de um device. Cada user pode ter várias (1 por

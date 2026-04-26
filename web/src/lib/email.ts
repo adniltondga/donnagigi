@@ -293,6 +293,39 @@ export function paymentOverdueTemplate(updateUrl: string) {
   };
 }
 
+export function accountDeletedTemplate(params: {
+  tenantName: string;
+  hardDeleteDate: Date | string;
+  restoreUrl: string;
+}) {
+  const body = `
+    <p>Sua conta <strong>${params.tenantName}</strong> no agLivre foi excluída.</p>
+    <p>Seus dados ainda estão preservados e podem ser restaurados até <strong>${formatDate(params.hardDeleteDate)}</strong>. Após essa data, eles serão apagados permanentemente.</p>
+    ${ctaButton(params.restoreUrl, 'Restaurar minha conta')}
+    <p style="color:#6b7280;font-size:13px">
+      Se foi você que excluiu, ignore esse email. Se não foi, restaure imediatamente e entre em contato com suporte@dgadigital.com.br.
+    </p>
+  `;
+  return {
+    subject: 'Sua conta agLivre foi excluída',
+    html: layout('Conta excluída', body),
+    text: `Sua conta foi excluída. Restaure até ${formatDate(params.hardDeleteDate)} em ${params.restoreUrl}`,
+  };
+}
+
+export function accountRestoredTemplate(params: { tenantName: string; loginUrl: string }) {
+  const body = `
+    <p>Sua conta <strong>${params.tenantName}</strong> foi <strong>restaurada com sucesso</strong>.</p>
+    <p>Todos os seus dados estão de volta. É só fazer login pra continuar de onde parou.</p>
+    ${ctaButton(params.loginUrl, 'Acessar agLivre')}
+  `;
+  return {
+    subject: 'Sua conta agLivre foi restaurada',
+    html: layout('Conta restaurada', body),
+    text: `Conta restaurada. Acesse em ${params.loginUrl}`,
+  };
+}
+
 export function subscriptionCanceledTemplate(params: {
   periodEnd: Date | string | null;
   reactivateUrl: string;
