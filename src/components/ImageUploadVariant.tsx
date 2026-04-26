@@ -4,6 +4,7 @@ import { useState, useRef, useEffect, useCallback } from 'react'
 import { Trash2, Upload, Loader2, X } from 'lucide-react'
 import Image from 'next/image'
 import { Button } from '@/components/ui/button'
+import { confirmDialog } from '@/components/ui/confirm-dialog'
 
 export interface VariantImage {
   id: string
@@ -123,7 +124,13 @@ export default function ImageUploadVariant({
   }
 
   async function handleDeleteImage(imageId: string) {
-    if (!window.confirm('Tem certeza que deseja remover esta imagem?')) {
+    const ok = await confirmDialog({
+      title: 'Remover imagem?',
+      description: 'Essa ação não pode ser desfeita.',
+      confirmLabel: 'Remover',
+      variant: 'danger',
+    })
+    if (!ok) {
       return
     }
 

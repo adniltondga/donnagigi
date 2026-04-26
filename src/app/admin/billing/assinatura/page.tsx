@@ -15,6 +15,7 @@ import { formatCurrency } from "@/lib/calculations"
 import { PageHeader } from "@/components/ui/page-header"
 import { Card } from "@/components/ui/card"
 import { UpdatePaymentModal } from "@/components/UpdatePaymentModal"
+import { confirmDialog } from "@/components/ui/confirm-dialog"
 
 type Status = "TRIAL" | "ACTIVE" | "PENDING" | "OVERDUE" | "CANCELED" | "EXPIRED"
 type Plan = "FREE" | "PRO"
@@ -86,7 +87,14 @@ export default function AssinaturaPage() {
   }, [])
 
   const onCancel = async () => {
-    if (!confirm("Tem certeza que deseja cancelar? Você perderá acesso aos recursos do plano Pro.")) return
+    const ok = await confirmDialog({
+      title: "Cancelar assinatura?",
+      description: "Você manterá acesso aos recursos do Pro até o fim do ciclo atual.",
+      confirmLabel: "Sim, cancelar",
+      cancelLabel: "Voltar",
+      variant: "danger",
+    })
+    if (!ok) return
     setCanceling(true)
     setMessage(null)
     try {

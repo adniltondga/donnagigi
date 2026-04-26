@@ -12,6 +12,7 @@ import {
 import { Button } from '@/components/ui/button'
 import CurrencyInput from '@/components/CurrencyInput'
 import { feedback } from '@/lib/feedback'
+import { confirmDialog } from '@/components/ui/confirm-dialog'
 import { X, Upload, Download, Loader } from 'lucide-react'
 
 interface Product {
@@ -125,7 +126,13 @@ export default function ProductFormDialog({ product, onClose }: ProductFormDialo
   async function handleDeleteImage(imageId: string) {
     if (!product?.id) return
 
-    if (!confirm('Tem certeza que deseja deletar esta imagem?')) return
+    const ok = await confirmDialog({
+      title: 'Deletar imagem?',
+      description: 'Essa ação não pode ser desfeita.',
+      confirmLabel: 'Deletar',
+      variant: 'danger',
+    })
+    if (!ok) return
 
     try {
       const response = await fetch(`/api/products/${product.id}/images/${imageId}`, {

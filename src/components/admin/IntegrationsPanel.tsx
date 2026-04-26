@@ -24,6 +24,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
+import { confirmDialog } from "@/components/ui/confirm-dialog"
 
 /* ============================================================
    INTEGRATIONS GRID
@@ -257,7 +258,13 @@ function MercadoLivreDialog({
   }, [open])
 
   const handleDisconnect = async () => {
-    if (!confirm("Desconectar a integração com Mercado Livre?")) return
+    const ok = await confirmDialog({
+      title: "Desconectar Mercado Livre?",
+      description: "Você precisará reconectar pra continuar sincronizando vendas.",
+      confirmLabel: "Desconectar",
+      variant: "danger",
+    })
+    if (!ok) return
     const res = await fetch("/api/mercadolivre/integration", { method: "DELETE" })
     if (res.ok) {
       onFlash("success", "Desconectado do Mercado Livre")
@@ -358,7 +365,13 @@ function MLCredentialsSection({
   }
 
   const remove = async () => {
-    if (!confirm("Remover credenciais do seu app ML? Volta a usar o app padrão do agLivre.")) return
+    const ok = await confirmDialog({
+      title: "Remover credenciais do app ML?",
+      description: "Volta a usar o app padrão do agLivre.",
+      confirmLabel: "Remover",
+      variant: "danger",
+    })
+    if (!ok) return
     await fetch("/api/ml/app-credentials", { method: "DELETE" })
     onFlash("success", "Credenciais removidas")
     onChanged()
@@ -665,7 +678,13 @@ function MercadoPagoDialog({
   }, [open])
 
   const handleDisconnect = async () => {
-    if (!confirm("Desconectar a integração com Mercado Pago?")) return
+    const ok = await confirmDialog({
+      title: "Desconectar Mercado Pago?",
+      description: "Você precisará reconectar pra continuar sincronizando liberações.",
+      confirmLabel: "Desconectar",
+      variant: "danger",
+    })
+    if (!ok) return
     const res = await fetch("/api/mp/integration", { method: "DELETE" })
     if (res.ok) {
       onFlash("success", "Desconectado do Mercado Pago")
@@ -765,7 +784,13 @@ function MPCredentialsSection({
   }
 
   const remove = async () => {
-    if (!confirm("Remover credenciais MP?")) return
+    const ok = await confirmDialog({
+      title: "Remover credenciais MP?",
+      description: "Você poderá cadastrar de novo a qualquer momento.",
+      confirmLabel: "Remover",
+      variant: "danger",
+    })
+    if (!ok) return
     await fetch("/api/mp/app-credentials", { method: "DELETE" })
     onFlash("success", "Credenciais removidas")
     onChanged()
