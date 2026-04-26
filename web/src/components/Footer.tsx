@@ -1,6 +1,32 @@
 "use client";
 
-import { Mail } from "lucide-react";
+/**
+ * Ícone de email inline (em vez de <Mail /> do lucide-react).
+ *
+ * Há um bug conhecido em algumas versões do lucide-react onde o
+ * icon renderizado no SSR não bate com o do client (paths
+ * diferentes entre versões resolvidas). Como o Footer é puramente
+ * estático, manter SVG inline garante hydration consistente.
+ */
+function MailIcon({ size = 14 }: { size?: number }) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <rect width="20" height="16" x="2" y="4" rx="2" />
+      <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" />
+    </svg>
+  );
+}
 
 export function Footer() {
   return (
@@ -30,7 +56,7 @@ export function Footer() {
               href="mailto:suporte@dgadigital.com.br"
               className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/15 text-white text-sm font-medium transition border border-white/10"
             >
-              <Mail size={14} />
+              <MailIcon size={14} />
               suporte@dgadigital.com.br
             </a>
           </div>
