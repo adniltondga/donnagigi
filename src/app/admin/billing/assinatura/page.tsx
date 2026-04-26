@@ -14,6 +14,7 @@ import {
 import { formatCurrency } from "@/lib/calculations"
 import { PageHeader } from "@/components/ui/page-header"
 import { Card } from "@/components/ui/card"
+import { UpdatePaymentModal } from "@/components/UpdatePaymentModal"
 
 type Status = "TRIAL" | "ACTIVE" | "PENDING" | "OVERDUE" | "CANCELED" | "EXPIRED"
 type Plan = "FREE" | "PRO"
@@ -53,6 +54,7 @@ interface SubResponse {
     currentPeriodEnd: string | null
     trialEndsAt: string | null
     canceledAt: string | null
+    asaasCustomerId: string | null
   }
   plan: { name: string; priceBRL: number; features: string[] }
   trialDaysLeft: number | null
@@ -69,6 +71,7 @@ export default function AssinaturaPage() {
   const [loading, setLoading] = useState(true)
   const [canceling, setCanceling] = useState(false)
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null)
+  const [showUpdateModal, setShowUpdateModal] = useState(false)
 
   const load = () => {
     setLoading(true)
@@ -241,6 +244,19 @@ export default function AssinaturaPage() {
           Ver faturas
         </Link>
 
+        {(subscription.status === "ACTIVE" ||
+          subscription.status === "PENDING" ||
+          subscription.status === "OVERDUE") &&
+          subscription.plan !== "FREE" && (
+            <button
+              onClick={() => setShowUpdateModal(true)}
+              className="inline-flex items-center gap-2 border border-border text-foreground font-semibold px-4 py-2.5 rounded-lg hover:bg-accent transition"
+            >
+              <CreditCard className="w-4 h-4" />
+              Atualizar pagamento
+            </button>
+          )}
+
         {canCancel && (
           <button
             onClick={onCancel}
@@ -252,6 +268,21 @@ export default function AssinaturaPage() {
           </button>
         )}
       </div>
+
+      {showUpdateModal && (
+        <UpdatePaymentModal
+          hasCustomer={!!subscription.asaasCustomerId}
+          onClose={() => setShowUpdateModal(false)}
+          onSuccess={() => {
+            setShowUpdateModal(false)
+            setMessage({
+              type: "success",
+              text: "Método atualizado. Aguardando confirmação do ASAAS.",
+            })
+            load()
+          }}
+        />
+      )}
 
       {/* CTA upgrade se FREE/TRIAL */}
       {(subscription.plan === "FREE" || subscription.status === "TRIAL") && (
