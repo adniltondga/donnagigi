@@ -5,6 +5,7 @@ import Link from "next/link"
 import { useParams } from "next/navigation"
 import { ArrowLeft, Loader2, Send, Headset, User as UserIcon, Building2, Mail } from "lucide-react"
 import { feedback } from "@/lib/feedback"
+import { LoadingState } from "@/components/ui/loading-state"
 
 interface Message {
   id: string
@@ -126,12 +127,7 @@ export default function StaffTicketDetailPage() {
   }
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center py-20 text-muted-foreground">
-        <Loader2 className="w-5 h-5 animate-spin mr-2" />
-        Carregando…
-      </div>
-    )
+    return <LoadingState size="md" label="Carregando…" />
   }
   if (!ticket) {
     return (

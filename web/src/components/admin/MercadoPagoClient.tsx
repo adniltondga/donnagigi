@@ -10,12 +10,12 @@ import {
   Calendar,
   ChevronDown,
   ChevronRight,
-  Loader,
   AlertCircle,
 } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { SummaryCard } from "@/components/ui/summary-card"
+import { LoadingState } from "@/components/ui/loading-state"
 import { formatCurrency } from "@/lib/calculations"
 import { PeriodFilter, PeriodPreset, resolvePreset } from "./PeriodFilter"
 
@@ -461,10 +461,7 @@ export function MercadoPagoClient() {
         </CardHeader>
         <CardContent className="p-0">
           {loading && !snap ? (
-            <div className="px-5 py-8 flex items-center justify-center text-muted-foreground">
-              <Loader className="w-4 h-4 animate-spin mr-2" />
-              Carregando...
-            </div>
+            <LoadingState variant="card" size="sm" className="px-5 py-8" />
           ) : (
             <DayList
               days={activeTab === "programadas" ? filteredDays : filteredReleased}

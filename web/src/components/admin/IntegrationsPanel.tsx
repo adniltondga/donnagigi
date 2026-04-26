@@ -25,6 +25,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { confirmDialog } from "@/components/ui/confirm-dialog"
+import { LoadingState } from "@/components/ui/loading-state"
 
 /* ============================================================
    INTEGRATIONS GRID
@@ -1044,12 +1045,7 @@ function Field({
 }
 
 function LoadingBox() {
-  return (
-    <div className="flex items-center justify-center py-8 text-muted-foreground">
-      <Loader className="w-5 h-5 animate-spin mr-2" />
-      Carregando...
-    </div>
-  )
+  return <LoadingState variant="card" className="py-8" />
 }
 
 function StatusMessage({ status, message }: { status: "success" | "error"; message: string }) {

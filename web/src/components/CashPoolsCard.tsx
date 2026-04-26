@@ -1,8 +1,9 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { Wallet, ShoppingBag, PiggyBank, Settings as SettingsIcon, Loader2 } from "lucide-react"
+import { Wallet, ShoppingBag, PiggyBank, Settings as SettingsIcon } from "lucide-react"
 import { formatCurrency } from "@/lib/calculations"
+import { LoadingState } from "@/components/ui/loading-state"
 
 interface CashPools {
   reposicaoPct: number
@@ -94,9 +95,8 @@ export function CashPoolsCard({ lucroLiquido }: { lucroLiquido?: number }) {
 
   if (loading || !data) {
     return (
-      <div className="bg-card border border-border rounded-xl p-6 text-muted-foreground">
-        <Loader2 className="w-4 h-4 animate-spin inline mr-2" />
-        Carregando caixas...
+      <div className="bg-card border border-border rounded-xl">
+        <LoadingState variant="inline" size="sm" label="Carregando caixas..." />
       </div>
     )
   }

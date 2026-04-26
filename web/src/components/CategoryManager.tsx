@@ -13,6 +13,7 @@ import {
 } from '@/components/ui/dialog'
 import { Edit2, Trash2, Plus, X } from 'lucide-react'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
+import { LoadingState } from '@/components/ui/loading-state'
 
 interface Category {
   id: string
@@ -172,7 +173,7 @@ export default function CategoryManager() {
 
       <div className="bg-card rounded-lg border overflow-hidden">
         {loading ? (
-          <div className="p-6 text-center">Carregando categorias...</div>
+          <LoadingState variant="inline" label="Carregando categorias..." />
         ) : categories.length === 0 ? (
           <div className="p-6 text-center text-muted-foreground">
             Nenhuma categoria cadastrada

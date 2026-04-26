@@ -3,7 +3,8 @@
 import { useEffect, useState } from "react"
 import { usePathname, useRouter } from "next/navigation"
 import Link from "next/link"
-import { AlertCircle, AlertTriangle, Loader2, Sparkles, XCircle } from "lucide-react"
+import { AlertCircle, AlertTriangle, Sparkles, XCircle } from "lucide-react"
+import { LoadingState } from "@/components/ui/loading-state"
 
 interface SubResponse {
   subscription: {
@@ -63,12 +64,7 @@ export function SubscriptionGuard({ children }: { children: React.ReactNode }) {
   if (isPublicAdmin) return <>{children}</>
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[50vh] text-muted-foreground">
-        <Loader2 className="w-6 h-6 animate-spin mr-2" />
-        Carregando...
-      </div>
-    )
+    return <LoadingState className="min-h-[50vh] py-0" />
   }
 
   // Sem data = não logado; o middleware já redireciona. Renderiza anyway.

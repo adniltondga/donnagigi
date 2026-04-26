@@ -15,7 +15,6 @@ import {
   DollarSign,
   Calendar,
   Package,
-  Loader2,
   AlertCircle,
   ArrowRight,
   Wallet,
@@ -24,6 +23,7 @@ import { formatCurrency } from "@/lib/calculations"
 import { PageHeader } from "@/components/ui/page-header"
 import { Card } from "@/components/ui/card"
 import { SummaryCard } from "@/components/ui/summary-card"
+import { LoadingState } from "@/components/ui/loading-state"
 
 interface Me {
   id: string
@@ -177,12 +177,7 @@ export default function Dashboard() {
     })
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center py-20 text-muted-foreground">
-        <Loader2 className="w-6 h-6 animate-spin mr-2" />
-        Carregando dashboard...
-      </div>
-    )
+    return <LoadingState label="Carregando dashboard..." />
   }
 
   return (

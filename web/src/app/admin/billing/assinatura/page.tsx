@@ -15,6 +15,7 @@ import { formatCurrency } from "@/lib/calculations"
 import { PageHeader } from "@/components/ui/page-header"
 import { Card } from "@/components/ui/card"
 import { UpdatePaymentModal } from "@/components/UpdatePaymentModal"
+import { LoadingState } from "@/components/ui/loading-state"
 import { confirmDialog } from "@/components/ui/confirm-dialog"
 
 type Status = "TRIAL" | "ACTIVE" | "PENDING" | "OVERDUE" | "CANCELED" | "EXPIRED"
@@ -114,12 +115,7 @@ export default function AssinaturaPage() {
   }
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center py-20 text-muted-foreground">
-        <Loader2 className="w-6 h-6 animate-spin mr-2" />
-        Carregando...
-      </div>
-    )
+    return <LoadingState />
   }
 
   if (!data) {

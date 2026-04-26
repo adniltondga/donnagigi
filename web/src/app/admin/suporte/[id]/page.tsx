@@ -7,6 +7,7 @@ import { ArrowLeft, Loader2, Send, Headset, User as UserIcon } from "lucide-reac
 import { PageHeader } from "@/components/ui/page-header"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
+import { LoadingState } from "@/components/ui/loading-state"
 import { feedback } from "@/lib/feedback"
 
 interface Message {
@@ -106,12 +107,7 @@ export default function TicketDetailPage() {
   }
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center py-20 text-muted-foreground">
-        <Loader2 className="w-5 h-5 animate-spin mr-2" />
-        Carregando…
-      </div>
-    )
+    return <LoadingState size="md" label="Carregando…" />
   }
   if (!ticket) {
     return (

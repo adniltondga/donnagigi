@@ -7,6 +7,7 @@ import { formatCurrency } from "@/lib/calculations"
 import { feedback } from "@/lib/feedback"
 import { maskCpfCnpj, unmaskCpfCnpj } from "@/lib/mask"
 import { PageHeader } from "@/components/ui/page-header"
+import { LoadingState } from "@/components/ui/loading-state"
 
 interface PlanInfo {
   id: "FREE" | "PRO"
@@ -99,12 +100,7 @@ export default function PlanosPage() {
   }
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center py-20 text-muted-foreground">
-        <Loader2 className="w-6 h-6 animate-spin mr-2" />
-        Carregando planos...
-      </div>
-    )
+    return <LoadingState label="Carregando planos..." />
   }
 
   return (
