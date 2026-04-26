@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation"
 import { AdminSidebar } from "@/components/AdminSidebar"
 import { AppHeader } from "@/components/AppHeader"
 import { SubscriptionGuard } from "@/components/SubscriptionGuard"
+import { ConfirmDialogHost } from "@/components/ui/confirm-dialog"
 
 // Roteamento staff vs cliente acontece no middleware.ts (lê isStaff do JWT
 // e redireciona /admin/* → /staff pra staff, /staff/* → /admin/dashboard
@@ -34,6 +35,7 @@ export default function AdminLayout({
           </div>
         </main>
       </div>
+      <ConfirmDialogHost />
     </div>
   )
 }

@@ -12,6 +12,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Edit2, Trash2, Plus, X } from 'lucide-react'
+import { confirmDialog } from '@/components/ui/confirm-dialog'
 
 interface Category {
   id: string
@@ -71,7 +72,13 @@ export default function CategoryManager() {
   }
 
   async function handleDelete(id: string) {
-    if (!confirm('Tem certeza que deseja deletar esta categoria?')) return
+    const ok = await confirmDialog({
+      title: 'Deletar categoria?',
+      description: 'Essa ação não pode ser desfeita.',
+      confirmLabel: 'Deletar',
+      variant: 'danger',
+    })
+    if (!ok) return
 
     try {
       setDeleting(id)

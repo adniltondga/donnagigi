@@ -25,6 +25,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog"
+import { confirmDialog } from "@/components/ui/confirm-dialog"
 
 type Role = "OWNER" | "ADMIN" | "VIEWER"
 
@@ -119,7 +120,13 @@ export function EquipePanel() {
   }
 
   const removeMember = async (userId: string, name: string) => {
-    if (!confirm(`Remover ${name} da equipe? Essa pessoa perde o acesso imediatamente.`)) return
+    const ok = await confirmDialog({
+      title: `Remover ${name}?`,
+      description: "Essa pessoa perde o acesso imediatamente.",
+      confirmLabel: "Remover",
+      variant: "danger",
+    })
+    if (!ok) return
     try {
       const res = await fetch(`/api/team/${userId}`, { method: "DELETE" })
       if (res.ok) {
@@ -135,7 +142,14 @@ export function EquipePanel() {
   }
 
   const cancelInvite = async (id: string, email: string) => {
-    if (!confirm(`Cancelar convite pra ${email}?`)) return
+    const ok = await confirmDialog({
+      title: "Cancelar convite?",
+      description: `O convite pra ${email} será invalidado.`,
+      confirmLabel: "Cancelar convite",
+      cancelLabel: "Voltar",
+      variant: "danger",
+    })
+    if (!ok) return
     try {
       const res = await fetch(`/api/team/invites/${id}`, { method: "DELETE" })
       if (res.ok) {

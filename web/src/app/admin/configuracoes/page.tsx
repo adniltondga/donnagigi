@@ -29,6 +29,7 @@ import { PushNotificationButton } from "@/components/PushNotificationButton"
 import { DeleteAccountSection } from "@/components/DeleteAccountSection"
 import { ExportDataButton } from "@/components/ExportDataButton"
 import { feedback } from "@/lib/feedback"
+import { confirmDialog } from "@/components/ui/confirm-dialog"
 
 type Tab = "perfil" | "senha" | "equipe" | "ml" | "assinatura"
 
@@ -402,7 +403,14 @@ function AssinaturaPanel() {
   }, [])
 
   const onCancel = async () => {
-    if (!confirm("Cancelar a assinatura? Você perderá acesso aos recursos do Pro.")) return
+    const ok = await confirmDialog({
+      title: "Cancelar assinatura?",
+      description: "Você manterá acesso aos recursos do Pro até o fim do ciclo atual.",
+      confirmLabel: "Sim, cancelar",
+      cancelLabel: "Voltar",
+      variant: "danger",
+    })
+    if (!ok) return
     setCanceling(true)
     try {
       const res = await fetch("/api/billing/cancel", { method: "POST" })

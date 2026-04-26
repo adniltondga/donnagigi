@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { feedback } from '@/lib/feedback';
+import { confirmDialog } from '@/components/ui/confirm-dialog';
 import {
   AlertTriangle,
   Wallet,
@@ -1014,7 +1015,13 @@ function CategoryTree({
   };
 
   const deleteCategory = async (id: string, label: string) => {
-    if (!confirm(`Remover a categoria "${label}"?\n\nSe tiver contas vinculadas, a remoção é bloqueada.`)) return;
+    const ok = await confirmDialog({
+      title: `Remover "${label}"?`,
+      description: "Se tiver contas vinculadas, a remoção é bloqueada.",
+      confirmLabel: "Remover",
+      variant: "danger",
+    });
+    if (!ok) return;
     const res = await fetch(`/api/bill-categories/${id}`, { method: 'DELETE' });
     if (res.ok) {
       onFlash('success', 'Categoria removida');

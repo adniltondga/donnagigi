@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { confirmDialog } from '@/components/ui/confirm-dialog'
 
 interface Supplier {
   id: string
@@ -83,7 +84,13 @@ export default function SupplierManager() {
   }
 
   async function handleDelete(id: string) {
-    if (!confirm('Tem certeza que deseja deletar este fornecedor?')) {
+    const ok = await confirmDialog({
+      title: 'Deletar fornecedor?',
+      description: 'Essa ação não pode ser desfeita.',
+      confirmLabel: 'Deletar',
+      variant: 'danger',
+    })
+    if (!ok) {
       return
     }
 
