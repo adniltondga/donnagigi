@@ -2,16 +2,13 @@
 
 import { useEffect, useMemo, useState } from "react"
 import Link from "next/link"
-import { usePathname, useRouter } from "next/navigation"
+import { usePathname } from "next/navigation"
 import {
   LayoutDashboard,
   DollarSign,
-  Settings,
-  LogOut,
   ChevronDown,
   X,
   ShoppingBag,
-  LifeBuoy,
   type LucideIcon,
 } from "lucide-react"
 
@@ -51,25 +48,8 @@ const MENU: MenuItem[] = [
   },
 ]
 
-// Itens no rodapé (acima do Sair): suporte e configurações gerais.
-const FOOTER_MENU: MenuItem[] = [
-  {
-    label: "Suporte",
-    href: "/admin/suporte",
-    icon: LifeBuoy,
-    isActive: (p) => p.startsWith("/admin/suporte"),
-  },
-  {
-    label: "Configurações",
-    href: "/admin/configuracoes",
-    icon: Settings,
-    isActive: (p) =>
-      p.startsWith("/admin/configuracoes") ||
-      p.startsWith("/admin/integracao") ||
-      p.startsWith("/admin/billing") ||
-      p.startsWith("/admin/equipe"),
-  },
-]
+// Suporte / Configurações / Sair foram movidos pro dropdown do
+// avatar (AppHeader) — pattern moderno de SaaS.
 
 interface AdminSidebarProps {
   isOpen: boolean
@@ -78,7 +58,6 @@ interface AdminSidebarProps {
 
 export function AdminSidebar({ isOpen, onClose }: AdminSidebarProps) {
   const pathname = usePathname()
-  const router = useRouter()
 
   // Estado de grupos expandidos. Auto-abre o grupo que contém a página atual.
   const initialExpanded = useMemo(() => {
@@ -105,14 +84,6 @@ export function AdminSidebar({ isOpen, onClose }: AdminSidebarProps) {
       else next.add(label)
       return next
     })
-
-  const handleLogout = async () => {
-    try {
-      await fetch("/api/auth/logout", { method: "POST" })
-    } catch {}
-    localStorage.removeItem("adminToken")
-    router.push("/admin/login")
-  }
 
   return (
     <>
@@ -234,42 +205,6 @@ export function AdminSidebar({ isOpen, onClose }: AdminSidebarProps) {
             )
           })}
         </nav>
-
-        {/* Footer menu (Configurações) */}
-        <div className="border-t border-border p-4 space-y-1">
-          {FOOTER_MENU.map((item) => {
-            const Icon = item.icon
-            const active = item.isActive ? item.isActive(pathname) : pathname === item.href
-            return (
-              <Link
-                key={item.href}
-                href={item.href!}
-                onClick={onClose}
-                className={`
-                  relative flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all duration-200
-                  ${
-                    active
-                      ? "bg-primary-50 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300 font-medium"
-                      : "text-foreground hover:bg-accent hover:text-foreground"
-                  }
-                `}
-              >
-                <Icon className={`w-5 h-5 flex-shrink-0 ${active ? "text-primary-600 dark:text-primary-400" : "text-muted-foreground"}`} />
-                <span className="flex-1">{item.label}</span>
-                {active && (
-                  <span className="absolute right-2 top-1/2 -translate-y-1/2 w-1 h-6 bg-primary-600 rounded-full" />
-                )}
-              </Link>
-            )
-          })}
-          <button
-            onClick={handleLogout}
-            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-700 dark:hover:text-red-300 transition-colors"
-          >
-            <LogOut className="w-5 h-5" />
-            <span>Sair</span>
-          </button>
-        </div>
 
         {/* Status */}
         <div className="border-t border-border dark:border-gray-800 p-4">
