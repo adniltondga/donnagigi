@@ -5,7 +5,6 @@ import { formatCurrency } from "@/lib/calculations"
 import { TrendingUp, TrendingDown, Minus, Loader } from "lucide-react"
 import { PageHeader } from "@/components/ui/page-header"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { CashPoolsCard } from "@/components/CashPoolsCard"
 
 interface DreResult {
   receitaBrutaML: number
@@ -125,8 +124,6 @@ export default function DrePage() {
               format="percent"
             />
           </div>
-
-          <CashPoolsCard lucroLiquido={data.current.lucroLiquido} />
 
           <Card>
             <CardHeader>

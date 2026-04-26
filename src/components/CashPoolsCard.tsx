@@ -13,33 +13,63 @@ interface CashPools {
   caixaReserva: number
 }
 
+interface DreApiResponse {
+  current?: { lucroLiquido?: number }
+}
+
+function buildDreUrl(): string {
+  const now = new Date()
+  return `/api/relatorios/dre?year=${now.getFullYear()}&month=${now.getMonth() + 1}&basis=caixa`
+}
+
 /**
  * Card com as 3 caixas virtuais: Operacional, Reposição, Reserva.
- * Recebe `lucroLiquido` por prop pra calcular o Operacional sem
- * duplicar a lógica do DRE.
+ *
+ * Se `lucroLiquido` for passado, usa direto. Senão, busca via
+ * /api/relatorios/dre do mês corrente — assim o componente é
+ * auto-suficiente e pode ser usado em qualquer página.
  */
 export function CashPoolsCard({ lucroLiquido }: { lucroLiquido?: number }) {
   const [data, setData] = useState<CashPools | null>(null)
+  const [lucroFetched, setLucroFetched] = useState<number | undefined>(lucroLiquido)
   const [loading, setLoading] = useState(true)
   const [editingPct, setEditingPct] = useState(false)
   const [pctInput, setPctInput] = useState("50")
   const [saving, setSaving] = useState(false)
 
-  const load = () => {
+  const load = async () => {
     setLoading(true)
-    fetch("/api/financeiro/cash-pools")
-      .then((r) => (r.ok ? r.json() : null))
-      .then((d: CashPools | null) => {
-        if (d) {
-          setData(d)
-          setPctInput(String(d.reposicaoPct))
-        }
-      })
-      .finally(() => setLoading(false))
+    try {
+      const tasks: Promise<unknown>[] = [
+        fetch("/api/financeiro/cash-pools")
+          .then((r) => (r.ok ? r.json() : null))
+          .then((d: CashPools | null) => {
+            if (d) {
+              setData(d)
+              setPctInput(String(d.reposicaoPct))
+            }
+          }),
+      ]
+      if (lucroLiquido === undefined) {
+        tasks.push(
+          fetch(buildDreUrl())
+            .then((r) => (r.ok ? r.json() : null))
+            .then((d: DreApiResponse | null) => {
+              if (d?.current?.lucroLiquido !== undefined) {
+                setLucroFetched(d.current.lucroLiquido)
+              }
+            }),
+        )
+      }
+      await Promise.all(tasks)
+    } finally {
+      setLoading(false)
+    }
   }
 
   useEffect(() => {
     load()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const savePct = async () => {
@@ -71,7 +101,7 @@ export function CashPoolsCard({ lucroLiquido }: { lucroLiquido?: number }) {
     )
   }
 
-  const operacional = lucroLiquido ?? 0
+  const operacional = lucroLiquido ?? lucroFetched ?? 0
 
   return (
     <div className="space-y-3">
