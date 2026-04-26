@@ -2,6 +2,8 @@ import { NextResponse } from "next/server"
 import prisma from "@/lib/prisma"
 import { getSession } from "@/lib/tenant"
 import { asaasCancelSubscription } from "@/lib/asaas"
+import { sendSubscriptionCanceledEmail } from "@/lib/dunning"
+import { captureError } from "@/lib/sentry"
 
 export const dynamic = "force-dynamic"
 
@@ -33,7 +35,11 @@ export async function POST() {
     try {
       await asaasCancelSubscription(sub.asaasSubscriptionId)
     } catch (err) {
-      console.error("[billing/cancel] falha ao cancelar no Asaas (marcando local mesmo assim):", err)
+      captureError(err, {
+        tenantId: session.tenantId,
+        operation: "billing-cancel-asaas",
+        extra: { asaasSubscriptionId: sub.asaasSubscriptionId },
+      })
     }
   }
 
@@ -43,6 +49,11 @@ export async function POST() {
       status: "CANCELED",
       canceledAt: new Date(),
     },
+  })
+
+  void sendSubscriptionCanceledEmail({
+    tenantId: session.tenantId,
+    periodEnd: updated.currentPeriodEnd,
   })
 
   return NextResponse.json({ ok: true, subscription: updated })

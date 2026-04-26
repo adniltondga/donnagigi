@@ -5,6 +5,7 @@ import {
   expireCanceledPastPeriod,
 } from "@/lib/subscription"
 import { checkSystemNotifications } from "@/lib/notifications"
+import { sendTrialEndingEmails, sendTrialExpiredEmails } from "@/lib/dunning"
 import { captureError } from "@/lib/sentry"
 
 export const dynamic = "force-dynamic"
@@ -31,13 +32,21 @@ export async function GET(request: Request) {
   }
 
   try {
-    const [expiredTrials, expiredOverdue, expiredCanceled, systemNotifs] =
-      await Promise.all([
-        syncExpiredTrials(),
-        expireOverdueSubscriptions(7),
-        expireCanceledPastPeriod(),
-        checkSystemNotifications(),
-      ])
+    // 1. Dispara emails T-3/T-1 ANTES de expirar (precisa do status TRIAL)
+    const trialEnding = await sendTrialEndingEmails()
+
+    // 2. Aplica expirações
+    const [expiredTrials, expiredOverdue, expiredCanceled] = await Promise.all([
+      syncExpiredTrials(),
+      expireOverdueSubscriptions(7),
+      expireCanceledPastPeriod(),
+    ])
+
+    // 3. Email de "trial expirou" pra quem acabou de expirar
+    const trialExpired = await sendTrialExpiredEmails()
+
+    // 4. Notificações in-app de sistema
+    const systemNotifs = await checkSystemNotifications()
 
     return NextResponse.json({
       ok: true,
@@ -45,6 +54,10 @@ export async function GET(request: Request) {
         trials: expiredTrials,
         overdue: expiredOverdue,
         canceled: expiredCanceled,
+      },
+      dunning: {
+        trialEnding,
+        trialExpired,
       },
       systemNotifs,
       ranAt: new Date().toISOString(),

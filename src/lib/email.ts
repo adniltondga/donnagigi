@@ -192,3 +192,128 @@ export function resetPasswordTemplate(code: string) {
 export function generateOTP(): string {
   return Math.floor(100000 + Math.random() * 900000).toString();
 }
+
+/* ============================================================
+ * BILLING / DUNNING TEMPLATES
+ * ============================================================ */
+
+const formatBRL = (v: number) =>
+  new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
+
+const formatDate = (d: Date | string | null) => {
+  if (!d) return '';
+  const date = typeof d === 'string' ? new Date(d) : d;
+  return date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+};
+
+function ctaButton(href: string, label: string) {
+  return `
+    <div style="text-align:center;margin:32px 0">
+      <a href="${href}" style="display:inline-block;background:${BRAND};color:white;font-weight:bold;padding:14px 28px;border-radius:10px;text-decoration:none;font-size:15px">
+        ${label}
+      </a>
+    </div>
+  `;
+}
+
+export function trialEndingTemplate(daysLeft: number, planUrl: string) {
+  const dayWord = daysLeft === 1 ? 'dia' : 'dias';
+  const body = `
+    <p>Seu período de teste do agLivre acaba em <strong>${daysLeft} ${dayWord}</strong>.</p>
+    <p>Pra continuar usando todas as funcionalidades sem interrupção, escolha um plano:</p>
+    ${ctaButton(planUrl, 'Ver planos')}
+    <p style="color:#6b7280;font-size:13px">
+      Se você não escolher um plano, sua conta vira o plano Free quando o trial acabar.
+      Seus dados ficam intactos — só alguns recursos premium ficam bloqueados.
+    </p>
+  `;
+  return {
+    subject: `Seu trial agLivre acaba em ${daysLeft} ${dayWord}`,
+    html: layout('Trial acabando', body),
+    text: `Seu trial acaba em ${daysLeft} ${dayWord}. Escolha um plano em ${planUrl}`,
+  };
+}
+
+export function trialExpiredTemplate(planUrl: string) {
+  const body = `
+    <p>Seu período de teste do agLivre <strong>terminou</strong> e sua conta foi movida pro plano Free.</p>
+    <p>Você ainda tem acesso aos recursos básicos, mas alguns premium (Mercado Pago, relatórios avançados, multi-usuário) estão bloqueados.</p>
+    ${ctaButton(planUrl, 'Reativar com um plano pago')}
+    <p style="color:#6b7280;font-size:13px">
+      Seus dados continuam salvos — quando voltar pro Pro, está tudo lá.
+    </p>
+  `;
+  return {
+    subject: 'Seu trial agLivre terminou',
+    html: layout('Trial terminou', body),
+    text: `Trial encerrado. Reative em ${planUrl}`,
+  };
+}
+
+export function paymentConfirmedTemplate(params: {
+  value: number;
+  nextDueDate: Date | string | null;
+  invoicesUrl: string;
+}) {
+  const body = `
+    <p>Recebemos seu pagamento de <strong>${formatBRL(params.value)}</strong>. Tudo certo!</p>
+    ${
+      params.nextDueDate
+        ? `<p>Próxima cobrança: <strong>${formatDate(params.nextDueDate)}</strong>.</p>`
+        : ''
+    }
+    ${ctaButton(params.invoicesUrl, 'Ver histórico de faturas')}
+    <p style="color:#6b7280;font-size:13px">
+      Obrigado por usar o agLivre. Qualquer dúvida, responde esse email ou manda pra suporte@dgadigital.com.br.
+    </p>
+  `;
+  return {
+    subject: 'Pagamento confirmado — agLivre',
+    html: layout('Pagamento recebido', body),
+    text: `Pagamento de ${formatBRL(params.value)} confirmado. ${
+      params.nextDueDate ? `Próxima: ${formatDate(params.nextDueDate)}.` : ''
+    }`,
+  };
+}
+
+export function paymentOverdueTemplate(updateUrl: string) {
+  const body = `
+    <p>Sua última cobrança do agLivre <strong>não foi paga</strong>.</p>
+    <p>Pode ser cartão expirado, limite insuficiente ou problema temporário do banco. Atualize seu método de pagamento pra evitar perda de acesso:</p>
+    ${ctaButton(updateUrl, 'Atualizar pagamento')}
+    <p style="color:#6b7280;font-size:13px">
+      Se você não atualizar em até 7 dias, sua conta volta pro plano Free automaticamente.
+      Seus dados ficam preservados, mas alguns recursos ficam bloqueados.
+    </p>
+  `;
+  return {
+    subject: '⚠️ Pagamento em atraso — atualize seu cartão',
+    html: layout('Pagamento em atraso', body),
+    text: `Cobrança recusada. Atualize em ${updateUrl}`,
+  };
+}
+
+export function subscriptionCanceledTemplate(params: {
+  periodEnd: Date | string | null;
+  reactivateUrl: string;
+}) {
+  const body = `
+    <p>Sua assinatura do agLivre foi <strong>cancelada</strong>.</p>
+    ${
+      params.periodEnd
+        ? `<p>Você ainda tem acesso completo até <strong>${formatDate(params.periodEnd)}</strong>. Depois disso, sua conta volta pro plano Free.</p>`
+        : '<p>Sua conta foi movida pro plano Free.</p>'
+    }
+    ${ctaButton(params.reactivateUrl, 'Reativar minha assinatura')}
+    <p style="color:#6b7280;font-size:13px">
+      Seus dados continuam salvos. Quando quiser voltar, é só reativar — sem precisar migrar nada.
+    </p>
+  `;
+  return {
+    subject: 'Sua assinatura agLivre foi cancelada',
+    html: layout('Cancelamento confirmado', body),
+    text: `Assinatura cancelada${
+      params.periodEnd ? `. Acesso até ${formatDate(params.periodEnd)}.` : '.'
+    } Reative em ${params.reactivateUrl}`,
+  };
+}

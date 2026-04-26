@@ -2,6 +2,11 @@ import { NextRequest, NextResponse } from "next/server"
 import prisma from "@/lib/prisma"
 import { asaasValidateWebhookToken } from "@/lib/asaas"
 import { captureError } from "@/lib/sentry"
+import {
+  sendPaymentConfirmedEmail,
+  sendPaymentOverdueEmail,
+  sendSubscriptionCanceledEmail,
+} from "@/lib/dunning"
 
 export const dynamic = "force-dynamic"
 
@@ -132,6 +137,29 @@ export async function POST(request: NextRequest) {
         where: { id: sub.id },
         data: subPatch,
       })
+    }
+
+    // Dispara emails de dunning (não bloqueia o webhook em caso de falha)
+    switch (event) {
+      case "PAYMENT_CONFIRMED":
+      case "PAYMENT_RECEIVED":
+        void sendPaymentConfirmedEmail({
+          tenantId: sub.tenantId,
+          value: payload.payment?.value || 0,
+          nextDueDate: payload.subscription?.nextDueDate || null,
+        })
+        break
+      case "PAYMENT_OVERDUE":
+        void sendPaymentOverdueEmail(sub.tenantId)
+        break
+      case "PAYMENT_REFUNDED":
+      case "SUBSCRIPTION_INACTIVATED":
+      case "SUBSCRIPTION_DELETED":
+        void sendSubscriptionCanceledEmail({
+          tenantId: sub.tenantId,
+          periodEnd: sub.currentPeriodEnd,
+        })
+        break
     }
 
     return NextResponse.json({ ok: true })
