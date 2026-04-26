@@ -106,14 +106,29 @@ export function AppHeader({ onOpenSidebar }: { onOpenSidebar: () => void }) {
               <ChevronDown className="w-4 h-4 text-muted-foreground hidden sm:block" />
             </button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-56">
+          <DropdownMenuContent align="end" className="w-64">
             {me && (
               <>
-                <DropdownMenuLabel className="flex flex-col gap-0.5">
-                  <span className="text-sm font-medium text-foreground truncate">{me.name}</span>
-                  <span className="text-xs text-muted-foreground truncate">{me.email}</span>
+                <DropdownMenuLabel className="flex flex-col gap-0.5 py-2">
+                  <span
+                    className="text-xs font-semibold text-foreground truncate"
+                    title={me.name}
+                  >
+                    {me.name}
+                  </span>
+                  <span
+                    className="text-[11px] text-muted-foreground truncate"
+                    title={me.email}
+                  >
+                    {me.email}
+                  </span>
                   {me.tenant?.name && (
-                    <span className="text-xs text-muted-foreground truncate">{me.tenant.name}</span>
+                    <span
+                      className="text-[11px] text-muted-foreground truncate"
+                      title={me.tenant.name}
+                    >
+                      {me.tenant.name}
+                    </span>
                   )}
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
