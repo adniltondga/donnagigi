@@ -85,7 +85,7 @@ export default function DreAnualPage() {
     row("(-) Taxa de venda ML", (i) => data.months[i].dre.taxaVendaML, data.total.taxaVendaML)
     row("(-) Taxa de envio ML", (i) => data.months[i].dre.taxaEnvioML, data.total.taxaEnvioML)
     row("Receita Líquida", (i) => data.months[i].dre.receitaLiquida, data.total.receitaLiquida)
-    row("(-) CMV", (i) => data.months[i].dre.cmv, data.total.cmv)
+    row("(-) CMV (custo da mercadoria)", (i) => data.months[i].dre.cmv, data.total.cmv)
     row("Lucro Bruto", (i) => data.months[i].dre.lucroBruto, data.total.lucroBruto)
     for (const cat of allCategories) {
       row(
@@ -224,7 +224,7 @@ export default function DreAnualPage() {
                 />
                 <BreakRow />
                 <Row
-                  label="(−) CMV"
+                  label="(−) CMV (custo da mercadoria)"
                   getValue={(i) => data.months[i].dre.cmv}
                   total={data.total.cmv}
                   indent
@@ -238,18 +238,17 @@ export default function DreAnualPage() {
                 />
                 <BreakRow />
                 <tr>
-                  <td
-                    colSpan={14}
-                    className="sticky left-0 bg-card px-3 pt-3 pb-1 text-[10px] font-semibold text-muted-foreground uppercase tracking-wide"
-                  >
+                  <td className="sticky left-0 z-10 bg-card px-3 pt-3 pb-1 text-[10px] font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap border-r border-border">
                     Despesas operacionais
                   </td>
+                  <td colSpan={13} className="bg-card pt-3 pb-1" aria-hidden />
                 </tr>
                 {allCategories.length === 0 ? (
                   <tr>
-                    <td colSpan={14} className="sticky left-0 bg-card px-3 py-2 text-muted-foreground italic pl-8">
+                    <td className="sticky left-0 z-10 bg-card px-3 py-2 text-muted-foreground italic pl-8 whitespace-nowrap border-r border-border">
                       Nenhuma despesa no ano
                     </td>
+                    <td colSpan={13} className="bg-card py-2" aria-hidden />
                   </tr>
                 ) : (
                   allCategories.map((cat) => (
