@@ -2,19 +2,18 @@
 
 import { useState } from "react"
 import { Download, Loader2 } from "lucide-react"
+import { feedback } from "@/lib/feedback"
 
 export function ExportDataButton() {
   const [loading, setLoading] = useState(false)
-  const [error, setError] = useState("")
 
   const onDownload = async () => {
     setLoading(true)
-    setError("")
     try {
       const res = await fetch("/api/account/export")
       if (!res.ok) {
         const data = await res.json().catch(() => ({}))
-        setError(data.error || "Erro ao gerar export")
+        feedback.error(data.error || "Erro ao gerar export")
         return
       }
       const blob = await res.blob()
@@ -31,8 +30,9 @@ export function ExportDataButton() {
       a.click()
       document.body.removeChild(a)
       URL.revokeObjectURL(url)
+      feedback.success("Export gerado — verifique seus downloads")
     } catch {
-      setError("Erro de conexão")
+      feedback.error("Erro de conexão")
     } finally {
       setLoading(false)
     }
@@ -56,9 +56,6 @@ export function ExportDataButton() {
         {loading ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />}
         {loading ? "Gerando ZIP…" : "Baixar ZIP"}
       </button>
-      {error && (
-        <p className="text-xs text-red-600 mt-2">{error}</p>
-      )}
     </div>
   )
 }

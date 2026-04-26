@@ -4,6 +4,7 @@ import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { ArrowRight, Check, Loader2, X, Sparkles } from "lucide-react"
 import { formatCurrency } from "@/lib/calculations"
+import { feedback } from "@/lib/feedback"
 import { maskCpfCnpj, unmaskCpfCnpj } from "@/lib/mask"
 import { PageHeader } from "@/components/ui/page-header"
 
@@ -81,16 +82,17 @@ export default function PlanosPage() {
       })
       const data = await res.json()
       if (!res.ok) {
-        setError(data.error || "Erro ao processar")
+        feedback.error(data.error || "Erro ao processar")
         return
       }
+      feedback.success("Assinatura criada — abrindo cobrança…")
       const first = data.payments?.[0]
       if (first?.invoiceUrl) {
         window.open(first.invoiceUrl, "_blank")
       }
       router.push("/admin/billing/assinatura")
     } catch {
-      setError("Erro ao conectar")
+      feedback.error("Erro ao conectar")
     } finally {
       setSubmitting(false)
     }
