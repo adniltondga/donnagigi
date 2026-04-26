@@ -243,8 +243,8 @@ export default function Home() {
                 🔒 Feito para vendedores do Mercado Livre
               </div>
               <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold mb-6 leading-tight">
-                O painel financeiro <br />
-                que o Mercado Livre não te dá.
+                Tudo do seu Mercado Livre, <br />
+                com lucro real na ponta.
               </h1>
               <p className="text-lg lg:text-xl text-white/90 mb-10 max-w-xl mx-auto lg:mx-0">
                 Veja quando cada venda libera, quanto fica de lucro real depois das taxas
