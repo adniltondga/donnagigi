@@ -40,6 +40,7 @@ export async function PATCH(req: NextRequest) {
     const data: {
       reservaMeses?: number
       reinvestPct?: number
+      reposicaoPct?: number
       saldoCaixaAtual?: number | null
       saldoAtualizadoEm?: Date | null
     } = {}
@@ -51,6 +52,10 @@ export async function PATCH(req: NextRequest) {
     if (body.reinvestPct !== undefined) {
       const n = Math.max(0, Math.min(100, Number(body.reinvestPct)))
       if (Number.isFinite(n)) data.reinvestPct = n
+    }
+    if (body.reposicaoPct !== undefined) {
+      const n = Math.max(0, Math.min(100, Number(body.reposicaoPct)))
+      if (Number.isFinite(n)) data.reposicaoPct = n
     }
     if (body.saldoCaixaAtual !== undefined) {
       if (body.saldoCaixaAtual === null || body.saldoCaixaAtual === "") {

@@ -81,6 +81,9 @@ export async function computeDre(
     ? [aporteRoot.id, ...aporteRoot.children.map((c) => c.id)]
     : []
 
+  // Reposição de estoque NÃO entra em despesas operacionais — vai pra
+  // o "Caixa de Reposição" (ver lib/cash-pools.ts). Se entrasse aqui,
+  // duplicaria o custo do produto (CMV + reposição).
   const despesasWhere =
     basis === "caixa"
       ? {
@@ -92,6 +95,7 @@ export async function computeDre(
             { category: "marketplace_fee" },
             { category: "venda" },
             { category: "aporte_amortizacao" },
+            { category: "reposicao_estoque" },
           ],
           ...(aporteIds.length > 0 ? { billCategoryId: { notIn: aporteIds } } : {}),
         }
@@ -102,6 +106,7 @@ export async function computeDre(
             { category: "marketplace_fee" },
             { category: "venda" },
             { category: "aporte_amortizacao" },
+            { category: "reposicao_estoque" },
             { status: "cancelled" },
           ],
           ...(aporteIds.length > 0 ? { billCategoryId: { notIn: aporteIds } } : {}),
