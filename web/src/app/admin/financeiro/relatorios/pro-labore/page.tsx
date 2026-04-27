@@ -237,7 +237,13 @@ export default function ProLaborePage() {
                   <p className="text-xs font-medium text-primary-700 uppercase tracking-wide">
                     Pró-labore sugerido este mês
                   </p>
-                  <p className="text-4xl font-bold text-foreground mt-1 tabular-nums">
+                  <p
+                    className={`text-4xl font-bold mt-1 tabular-nums ${
+                      data.proLaboreSeguro > 0
+                        ? "text-emerald-600 dark:text-emerald-400"
+                        : "text-rose-600 dark:text-rose-400"
+                    }`}
+                  >
                     {formatCurrency(data.proLaboreSeguro)}
                   </p>
                   <div className="flex items-center gap-1.5 mt-1">
