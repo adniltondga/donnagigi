@@ -159,14 +159,18 @@ export default function ProLaborePage() {
           {/* Fechamento do mês — ordem: entrada → custos → resultado. */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             <SummaryCard
-              label="Liberado no MP (mês)"
-              value={formatCurrency(data.receitaBruta)}
+              label="Lucro recebido (mês)"
+              value={formatCurrency(data.receitaRecebida)}
               tooltip={
                 data.receitaSource === "mp"
-                  ? "valor que o Mercado Pago realmente liberou pra saque neste mês — fonte: card MP"
-                  : "fallback: vendas marcadas como pagas (cron). Sincronize o MP pra usar dados reais."
+                  ? `liberado MP ${formatCurrency(data.receitaBruta)} − mercadoria ${formatCurrency(data.cmvDoMes)}`
+                  : `bills pagas ${formatCurrency(data.receitaBruta)} − mercadoria ${formatCurrency(data.cmvDoMes)} (sem sync MP)`
               }
-              sub={data.receitaSource === "mp" ? "fonte: Mercado Pago" : "estimado (sem sync MP)"}
+              sub={
+                data.cmvDoMes > 0
+                  ? `(−) ${formatCurrency(data.cmvDoMes)} de mercadoria`
+                  : "sem CMV cadastrado"
+              }
               icon={TrendingUp}
               tone="emerald"
             />
@@ -182,7 +186,7 @@ export default function ProLaborePage() {
               value={formatCurrency(data.lucroLiquido)}
               tooltip={
                 data.lucroLiquido >= 0
-                  ? "liberado MP − despesas pagas · dinheiro que entrou de fato"
+                  ? "lucro recebido − despesas pagas · sobra real do mês"
                   : "saiu mais do que entrou neste mês"
               }
               icon={PiggyBank}

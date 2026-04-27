@@ -132,10 +132,16 @@ export async function GET(req: NextRequest) {
       : []
     const aporteMercadoriaNoMes = aportesMercadoriaBills.reduce((s, b) => s + b.amount, 0)
 
-    // CMV = apenas productCost cadastrado. Aporte é tratado como passivo
-    // (dívida com o sócio), não despesa. Se o user não cadastrar custos
-    // em Custos ML, o CMV fica 0 e mostramos aviso.
-    const cmvDoMes = cmvCadastrado
+    // CMV proporcional ao que o MP liberou. cmvCadastrado é o custo das
+    // bills marcadas paid no mês; mpReleasedNoMes pode diferir (cron usa
+    // heurística de 30d, MP libera no dia exato). Aplicamos o ratio
+    // CMV/billsPaid pra estimar o CMV correspondente ao MP liberado.
+    //
+    // Ex: bills paid no mês somam 2.400 com 800 de productCost (ratio 33%).
+    // MP liberou 2.400 → CMV proporcional = 2.400 × 0.33 = 800.
+    // Se MP liberou 1.800 → CMV proporcional = 1.800 × 0.33 = 594.
+    const cmvRatio = billsPaidNoMes > 0 ? cmvCadastrado / billsPaidNoMes : 0
+    const cmvDoMes = mpReady ? receitaBruta * cmvRatio : cmvCadastrado
     const cmvSource: "productCost" | "aporte" | "none" =
       cmvCadastrado > 0 ? "productCost" : "none"
     const cmvFaltando = cmvCadastrado === 0 && aporteMercadoriaNoMes > 0
