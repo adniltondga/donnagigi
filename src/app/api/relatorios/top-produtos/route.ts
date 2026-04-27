@@ -3,6 +3,7 @@ import prisma from "@/lib/prisma"
 import { getTenantIdOrDefault } from "@/lib/tenant"
 import { AuthError, authErrorResponse, requireSession } from "@/lib/auth"
 import { normalizeVariationKey } from "@/lib/ml-format"
+import { getPartialRefundsForBills, refundOf } from "@/lib/refunds"
 
 export const dynamic = "force-dynamic"
 
@@ -32,6 +33,7 @@ export async function GET(req: NextRequest) {
         NOT: { status: "cancelled" },
       },
       select: {
+        id: true,
         description: true,
         notes: true,
         amount: true,
@@ -40,6 +42,11 @@ export async function GET(req: NextRequest) {
         quantity: true,
       },
     })
+
+    const refundMap = await getPartialRefundsForBills(
+      tenantId,
+      bills.map((b) => b.id),
+    )
 
     const re = /MLB\d{6,}/i
     const agg = new Map<
@@ -89,11 +96,16 @@ export async function GET(req: NextRequest) {
           ultimaVenda: null as Date | null,
         }
 
+      const refund = refundOf(refundMap, b.id)
+      const netAmount = Math.max(0, b.amount - refund.amount)
+      const netCost = b.productCost != null
+        ? Math.max(0, b.productCost - refund.costRefunded)
+        : null
       cur.vendas += 1
       cur.unidades += b.quantity || 1
-      cur.totalBruto += b.amount
-      if (b.productCost != null) {
-        cur.totalLucroComCusto += b.amount - b.productCost
+      cur.totalBruto += netAmount
+      if (netCost != null) {
+        cur.totalLucroComCusto += netAmount - netCost
         cur.pedidosComCusto += 1
       }
       if (b.paidDate && (!cur.ultimaVenda || b.paidDate > cur.ultimaVenda)) {
