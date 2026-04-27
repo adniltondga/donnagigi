@@ -428,6 +428,7 @@ model MPIntegration {
   cachedReleasedCount      Int?
   cachedDisputedTotal      Float?
   cachedDisputedCount      Int?
+  cachedAvailableBalance   Float?    // saldo disponível na conta MP (null = endpoint indisponível)
   cachedPendingDays        Json?     // array de { date, total, count, payments[] } (futuro)
   cachedReleasedDays       Json?     // mesma estrutura, release_date passado
   cachedDisputedPayments   Json?     // array de payments em mediação
