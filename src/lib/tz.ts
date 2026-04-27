@@ -8,6 +8,29 @@
  */
 
 export const TZ_BR = "America/Sao_Paulo"
+/**
+ * Offset fixo BRT. Brasil não tem mais horário de verão desde 2019,
+ * então UTC-3 é constante. Usado em parseStartOfDayBR / parseEndOfDayBR.
+ */
+const BR_OFFSET = "-03:00"
+
+/**
+ * Parseia "YYYY-MM-DD" como 00:00:00 no fuso BR. Sem isso o
+ * `new Date("2026-04-27T00:00:00")` interpreta no fuso LOCAL do
+ * servidor (UTC em prod, BR em dev), causando off-by-one no filtro
+ * de período.
+ */
+export function parseStartOfDayBR(yyyymmdd: string): Date {
+  return new Date(`${yyyymmdd}T00:00:00.000${BR_OFFSET}`)
+}
+
+/**
+ * Parseia "YYYY-MM-DD" como 23:59:59.999 no fuso BR. Pra usar em
+ * filtros `paidDate <= to` que devem incluir o dia inteiro em BR.
+ */
+export function parseEndOfDayBR(yyyymmdd: string): Date {
+  return new Date(`${yyyymmdd}T23:59:59.999${BR_OFFSET}`)
+}
 
 /**
  * Formata uma data como YYYY-MM-DD no fuso BR.

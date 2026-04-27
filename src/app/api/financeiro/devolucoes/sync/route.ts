@@ -3,6 +3,7 @@ import { getTenantIdOrDefault } from "@/lib/tenant"
 import { AuthError, authErrorResponse, requireSession } from "@/lib/auth"
 import { getMLIntegrationForTenant } from "@/lib/ml"
 import { syncRefundsForTenant } from "@/lib/refund-sync"
+import { parseStartOfDayBR } from "@/lib/tz"
 
 export const dynamic = "force-dynamic"
 export const maxDuration = 120
@@ -29,7 +30,7 @@ export async function POST(req: NextRequest) {
     }
 
     const sinceStr = req.nextUrl.searchParams.get("since")
-    const since = sinceStr ? new Date(`${sinceStr}T00:00:00`) : undefined
+    const since = sinceStr ? parseStartOfDayBR(sinceStr) : undefined
     if (sinceStr && Number.isNaN(since?.getTime())) {
       return NextResponse.json({ error: "Parâmetro since inválido" }, { status: 400 })
     }
