@@ -1,5 +1,6 @@
 import prisma from "@/lib/prisma"
 import { computeSaleNumbers } from "@/lib/sale-notes"
+import { getPartialRefundsForBills, refundOf } from "@/lib/refunds"
 
 export interface DespesaCategoria {
   name: string
@@ -41,8 +42,15 @@ export async function computeDre(
       NOT: { status: "cancelled" },
       paidDate: { gte: start, lt: end },
     },
-    select: { amount: true, notes: true, productCost: true, quantity: true },
+    select: { id: true, amount: true, notes: true, productCost: true, quantity: true },
   })
+
+  // Refunds parciais subtraem do bruto (proporcionalmente, via amount líquido)
+  // e do CMV (via costRefunded). Refunds totais já saíram pelo filtro cancelled.
+  const refundMap = await getPartialRefundsForBills(
+    tenantId,
+    vendas.map((v) => v.id),
+  )
 
   let receitaBrutaML = 0
   let taxaVendaML = 0
@@ -50,10 +58,14 @@ export async function computeDre(
   let cmv = 0
   for (const v of vendas) {
     const s = computeSaleNumbers(v)
-    receitaBrutaML += s.bruto
-    taxaVendaML += s.taxaVenda
-    taxaEnvioML += s.envio
-    cmv += s.custo
+    const refund = refundOf(refundMap, v.id)
+    // refund.amount é líquido (mesma escala de bill.amount). Pra abater do
+    // bruto, escalo proporcionalmente: brutoRefundado = bruto × (refund/amount).
+    const refundRatio = v.amount > 0 ? refund.amount / v.amount : 0
+    receitaBrutaML += s.bruto * (1 - refundRatio)
+    taxaVendaML += s.taxaVenda * (1 - refundRatio)
+    taxaEnvioML += s.envio * (1 - refundRatio)
+    cmv += Math.max(0, s.custo - refund.costRefunded)
   }
 
   const outras = await prisma.bill.findMany({

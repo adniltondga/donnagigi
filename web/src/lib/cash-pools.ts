@@ -24,6 +24,7 @@
  */
 
 import prisma from "./prisma"
+import { getPartialRefundsForBills, refundOf } from "./refunds"
 
 export const REPOSICAO_CATEGORY = "reposicao_estoque"
 
@@ -74,7 +75,7 @@ export async function calcularCaixas(params: CalcParams): Promise<CashPoolsResul
         status: { in: ["paid", "pending"] },
         paidDate: { gte: start, lt: end },
       },
-      select: { amount: true, productCost: true },
+      select: { id: true, amount: true, productCost: true },
     }),
     // Bills de reposição pagas no período (saídas pra repor estoque)
     prisma.bill.findMany({
@@ -89,9 +90,22 @@ export async function calcularCaixas(params: CalcParams): Promise<CashPoolsResul
     }),
   ])
 
-  const vendasLiquidas = vendas.reduce((s, b) => s + b.amount, 0)
+  // Refunds parciais subtraem do amount líquido e do CMV proporcionalmente.
+  // Refunds totais já saíram pelo filtro de status (bill com refund total
+  // fica com status="cancelled" e não entra nessa query).
+  const refundMap = await getPartialRefundsForBills(
+    tenantId,
+    vendas.map((b) => b.id),
+  )
+  const vendasLiquidas = vendas.reduce(
+    (s, b) => s + Math.max(0, b.amount - refundOf(refundMap, b.id).amount),
+    0,
+  )
   // productCost já é o custo total do pedido (custo unitário × quantity)
-  const cmv = vendas.reduce((s, b) => s + (b.productCost ?? 0), 0)
+  const cmv = vendas.reduce(
+    (s, b) => s + Math.max(0, (b.productCost ?? 0) - refundOf(refundMap, b.id).costRefunded),
+    0,
+  )
   const vendasSemCusto = vendas.filter((b) => b.productCost == null).length
   const gastoReposicao = reposicoes.reduce((s, b) => s + b.amount, 0)
   const alocadoReposicao = cmv
