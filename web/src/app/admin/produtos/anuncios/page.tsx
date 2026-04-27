@@ -8,6 +8,7 @@ import { EmptyState } from '@/components/ui/empty-state';
 import { Package, ChevronDown, ChevronRight, AlertTriangle } from 'lucide-react';
 import { useUserRole } from '@/lib/useUserRole';
 import CurrencyInput from '@/components/CurrencyInput';
+import { CostMixCalculator } from '@/components/CostMixCalculator';
 
 type ChildVariation = {
   kind: 'child';
@@ -437,12 +438,29 @@ export default function ProdutosCustoPage() {
                       </td>
                       <td className="px-4 py-3 text-right">
                         {!isGroup && canWrite ? (
-                          <CurrencyInput
-                            value={drafts[it.mlListingId!] ?? ''}
-                            onChange={(v) => setDrafts((d) => ({ ...d, [it.mlListingId!]: v > 0 ? String(v) : '' }))}
-                            placeholder="0,00"
-                            className="w-28 border border-border rounded px-2 py-1 text-right bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary-600"
-                          />
+                          <div className="flex items-center justify-end gap-1">
+                            <CostMixCalculator
+                              currentQty={
+                                it.mlListingId
+                                  ? stock[it.mlListingId]?.stock ?? 0
+                                  : 0
+                              }
+                              currentCost={it.productCost}
+                              itemLabel={it.title || it.mlListingId || "—"}
+                              onApply={(avg) =>
+                                setDrafts((d) => ({
+                                  ...d,
+                                  [it.mlListingId!]: avg > 0 ? avg.toFixed(2) : '',
+                                }))
+                              }
+                            />
+                            <CurrencyInput
+                              value={drafts[it.mlListingId!] ?? ''}
+                              onChange={(v) => setDrafts((d) => ({ ...d, [it.mlListingId!]: v > 0 ? String(v) : '' }))}
+                              placeholder="0,00"
+                              className="w-28 border border-border rounded px-2 py-1 text-right bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary-600"
+                            />
+                          </div>
                         ) : (
                           <span className="text-muted-foreground">—</span>
                         )}
@@ -518,14 +536,33 @@ export default function ProdutosCustoPage() {
                                       <td className="px-3 py-2 text-right text-foreground">{formatCurrency(v.price)}</td>
                                       <td className="px-3 py-2 text-right">
                                         {canWrite ? (
-                                          <CurrencyInput
-                                            value={variantDrafts[k] ?? ''}
-                                            onChange={(val) =>
-                                              setVariantDrafts((d) => ({ ...d, [k]: val > 0 ? String(val) : '' }))
-                                            }
-                                            placeholder={it.productCost != null ? String(it.productCost).replace('.', ',') : '0,00'}
-                                            className="w-24 border rounded px-2 py-1 text-right text-xs focus:outline-none focus:ring-2 focus:ring-primary-600"
-                                          />
+                                          <div className="flex items-center justify-end gap-1">
+                                            <CostMixCalculator
+                                              currentQty={(() => {
+                                                if (!it.mlListingId) return 0
+                                                const ls = stock[it.mlListingId]
+                                                if (!ls) return 0
+                                                const vid = v.kind === 'child' ? v.mlListingId : v.variationId
+                                                return ls.byVariation[vid] ?? 0
+                                              })()}
+                                              currentCost={v.productCost}
+                                              itemLabel={String(label)}
+                                              onApply={(avg) =>
+                                                setVariantDrafts((d) => ({
+                                                  ...d,
+                                                  [k]: avg > 0 ? avg.toFixed(2) : '',
+                                                }))
+                                              }
+                                            />
+                                            <CurrencyInput
+                                              value={variantDrafts[k] ?? ''}
+                                              onChange={(val) =>
+                                                setVariantDrafts((d) => ({ ...d, [k]: val > 0 ? String(val) : '' }))
+                                              }
+                                              placeholder={it.productCost != null ? String(it.productCost).replace('.', ',') : '0,00'}
+                                              className="w-24 border border-border rounded px-2 py-1 text-right bg-background text-foreground text-xs focus:outline-none focus:ring-2 focus:ring-primary-600"
+                                            />
+                                          </div>
                                         ) : (
                                           <span>{v.productCost != null ? formatCurrency(v.productCost) : '—'}</span>
                                         )}
