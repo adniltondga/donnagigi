@@ -484,38 +484,6 @@ export async function fetchMPDisputedPayments(params: {
 }
 
 /**
- * Busca o saldo disponível na conta MP via
- * `/users/{user_id}/mercadopago_account/balance`. Esse endpoint historicamente
- * retornava 403 com tokens OAuth de app — mantemos como tentativa best-effort
- * e devolvemos `null` se falhar (não quebra o sync inteiro). UI mostra
- * mensagem "indisponível" nesse caso.
- *
- * O response do MP tem o formato `{ available_balance, total_amount,
- * unavailable_balance, currency_id }` — usamos `available_balance`.
- */
-export async function fetchMPAvailableBalance(params: {
-  accessToken: string
-  userId: string
-}): Promise<number | null> {
-  try {
-    const url = `https://api.mercadopago.com/users/${params.userId}/mercadopago_account/balance`
-    const res = await fetch(url, {
-      headers: {
-        Authorization: `Bearer ${params.accessToken}`,
-        Accept: "application/json",
-      },
-      cache: "no-store",
-    })
-    if (!res.ok) return null
-    const data = (await res.json()) as { available_balance?: number }
-    if (typeof data.available_balance !== "number") return null
-    return Math.round(data.available_balance * 100) / 100
-  } catch {
-    return null
-  }
-}
-
-/**
  * Busca os 3 datasets MP (balance agregado, dias de liberação, retidos por
  * reclamação) e salva no cache da `MPIntegration`. Chamado quando o user
  * clica "Atualizar" ou via cron/rotina.
@@ -530,7 +498,6 @@ export async function syncAndCacheMP(tenantId: string): Promise<{
   releasedCount: number
   disputedTotal: number
   disputedCount: number
-  availableBalance: number | null
 }> {
   const integration = await prisma.mPIntegration.findUnique({ where: { tenantId } })
   if (!integration) throw new Error("Mercado Pago não conectado nesse tenant")
@@ -539,11 +506,10 @@ export async function syncAndCacheMP(tenantId: string): Promise<{
   const fresh = await getMPIntegrationForTenant(tenantId)
   const accessToken = fresh?.accessToken || integration.accessToken
 
-  const [pending, released, disputed, availableBalance] = await Promise.all([
+  const [pending, released, disputed] = await Promise.all([
     fetchMPPendingPayments({ accessToken }),
     fetchMPReleasedPayments({ accessToken }),
     fetchMPDisputedPayments({ accessToken }),
-    fetchMPAvailableBalance({ accessToken, userId: integration.mpUserId }),
   ])
 
   // Agrupa payments por dia (America/Sao_Paulo) — reutilizável pra pending/released.
@@ -589,7 +555,6 @@ export async function syncAndCacheMP(tenantId: string): Promise<{
       cachedReleasedCount: released.length,
       cachedDisputedTotal: disputedTotal,
       cachedDisputedCount: disputed.length,
-      cachedAvailableBalance: availableBalance,
       cachedPendingDays: pendingDays as unknown as object,
       cachedReleasedDays: releasedDays as unknown as object,
       cachedDisputedPayments: disputed as unknown as object,
@@ -605,7 +570,6 @@ export async function syncAndCacheMP(tenantId: string): Promise<{
     releasedCount: released.length,
     disputedTotal,
     disputedCount: disputed.length,
-    availableBalance,
   }
 }
 
