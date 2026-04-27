@@ -12,9 +12,7 @@ import {
   Loader,
   Settings,
   ArrowRight,
-  Info,
 } from "lucide-react"
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { PageHeader } from "@/components/ui/page-header"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -38,6 +36,7 @@ interface ProLaboreResponse {
   mpReleasedNoMes: number
   billsPaidNoMes: number
   mpSyncedAt: string | null
+  proLaboreDireto: number
   cmvDoMes: number
   reposicaoPagaNoMes: number
   cmvSource: "productCost" | "reposicao" | "none"
@@ -219,7 +218,7 @@ export default function ProLaborePage() {
             </div>
           )}
 
-          {/* Sugestão principal */}
+          {/* Card principal — fórmula direta */}
           <Card className="border-primary-200 dark:border-primary-900/50 bg-gradient-to-br from-primary-50 to-white dark:bg-none dark:bg-card">
             <CardContent className="pt-6">
               <div className="flex items-start gap-4 flex-wrap">
@@ -228,77 +227,44 @@ export default function ProLaborePage() {
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-xs font-medium text-primary-700 uppercase tracking-wide">
-                    Pró-labore sugerido este mês
+                    Pró-labore disponível este mês
                   </p>
                   <p className="text-4xl font-bold text-foreground mt-1 tabular-nums">
-                    {formatCurrency(data.proLaboreSeguro)}
+                    {formatCurrency(data.proLaboreDireto)}
                   </p>
-                  <div className="flex items-center gap-1.5 mt-1">
-                    <span className="text-sm text-muted-foreground">
-                      lucro acumulado: <strong className="text-foreground">{formatCurrency(data.lucroAcumuladoYTD)}</strong>
-                    </span>
-                    <TooltipProvider delayDuration={150}>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <button type="button" className="text-muted-foreground hover:text-muted-foreground">
-                            <Info className="w-3.5 h-3.5" />
-                          </button>
-                        </TooltipTrigger>
-                        <TooltipContent className="text-xs space-y-1 max-w-xs p-3">
-                          <div className="flex justify-between gap-4 font-semibold">
-                            <span>Lucro acumulado</span>
-                            <span>{formatCurrency(data.lucroAcumuladoYTD)}</span>
-                          </div>
-                          {data.proLaboresYTD > 0 && (
-                            <>
-                              <div className="flex justify-between gap-4">
-                                <span className="text-muted-foreground">− Pró-labores tirados</span>
-                                <span className="font-medium">{formatCurrency(data.proLaboresYTD)}</span>
-                              </div>
-                              <div className="border-t border-border pt-1 flex justify-between gap-4 font-semibold">
-                                <span>= Base disponível</span>
-                                <span>{formatCurrency(data.baseDisponivel)}</span>
-                              </div>
-                            </>
-                          )}
-                          <div className="border-t border-border pt-1 space-y-1">
-                            <p className="text-muted-foreground text-[11px] uppercase tracking-wide">deduzido para chegar no pró-labore</p>
-                            {data.aportesADevolver.amortizacaoSugerida > 0 && (
-                              <div className="flex justify-between gap-4">
-                                <span className="text-muted-foreground">− Amortização aportes</span>
-                                <span className="font-medium">{formatCurrency(data.aportesADevolver.amortizacaoSugerida)}</span>
-                              </div>
-                            )}
-                            {data.reserva.falta > 0 && (
-                              <div className="flex justify-between gap-4">
-                                <span className="text-muted-foreground">− Reserva pendente</span>
-                                <span className="font-medium">{formatCurrency(data.reserva.falta)}</span>
-                              </div>
-                            )}
-                            <div className="flex justify-between gap-4">
-                              <span className="text-muted-foreground">− Reinvestimento ({data.reinvestimento.pct}%)</span>
-                              <span className="font-medium">{formatCurrency(data.reinvestimento.sugerido)}</span>
-                            </div>
-                            <div className="flex justify-between gap-4 font-semibold text-primary-700">
-                              <span>= Pró-labore sugerido</span>
-                              <span>{formatCurrency(data.proLaboreSeguro)}</span>
-                            </div>
-                          </div>
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    do dinheiro que entrou no caixa, depois de repor estoque e pagar despesas
+                  </p>
+
+                  {/* Conta passo-a-passo */}
+                  <div className="mt-4 bg-card border border-border rounded-lg p-3 text-sm space-y-1.5 max-w-md">
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Liberado MP no mês</span>
+                      <span className="tabular-nums font-medium">{formatCurrency(data.receitaBruta)}</span>
+                    </div>
+                    <div className="flex justify-between text-rose-700 dark:text-rose-400">
+                      <span>− Reposição de estoque paga</span>
+                      <span className="tabular-nums">−{formatCurrency(data.reposicaoPagaNoMes)}</span>
+                    </div>
+                    <div className="flex justify-between text-rose-700 dark:text-rose-400">
+                      <span>− Despesas pagas</span>
+                      <span className="tabular-nums">−{formatCurrency(data.despesasPagas)}</span>
+                    </div>
+                    <div className="border-t border-border pt-1.5 flex justify-between font-semibold">
+                      <span>= Pró-labore disponível</span>
+                      <span className="tabular-nums">{formatCurrency(data.proLaboreDireto)}</span>
+                    </div>
                   </div>
-                  {data.baseDisponivel === 0 && data.lucroLiquido > 0 && (
-                    <p className="text-xs text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-900/50 rounded px-2 py-1 mt-2 inline-block">
-                      ⚠️ Mês lucrativo, mas o ano ainda acumula prejuízo. O lucro deste mês está cobrindo
-                      o déficit antes de liberar pró-labore.
-                    </p>
-                  )}
+
+                  <p className="text-xs text-muted-foreground mt-3">
+                    💡 Aporte/reinvestimento/reserva são <strong>sugestões</strong> abaixo — não descontam
+                    desse número. Você decide quanto separar.
+                  </p>
                 </div>
                 {canWrite && data.proLaboreSubcategoryId && (
                   <Button
                     onClick={() => setShowLancar(true)}
-                    disabled={data.proLaboreSeguro <= 0}
+                    disabled={data.proLaboreDireto <= 0}
                     className="whitespace-nowrap"
                   >
                     <ArrowRight className="w-4 h-4 mr-1" />
@@ -309,10 +275,14 @@ export default function ProLaborePage() {
             </CardContent>
           </Card>
 
-          {/* Hierarquia */}
+          {/* Sugestões — não descontam do número principal */}
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">Hierarquia de prioridades</CardTitle>
+              <CardTitle className="text-base">Sugestões de uso (não descontam)</CardTitle>
+              <p className="text-xs text-muted-foreground mt-1">
+                Antes de tirar tudo como pró-labore, vale a pena olhar o que mais o caixa
+                precisa. Estas referências não afetam o número acima — são guias.
+              </p>
             </CardHeader>
             <CardContent className="p-0">
               <ul className="divide-y divide-gray-100">
@@ -403,7 +373,7 @@ export default function ProLaborePage() {
       <LancarProLaboreDialog
         open={showLancar}
         onClose={() => setShowLancar(false)}
-        sugestao={data?.proLaboreSeguro ?? 0}
+        sugestao={data?.proLaboreDireto ?? 0}
         subcategoryId={data?.proLaboreSubcategoryId ?? null}
         onSuccess={() => {
           setShowLancar(false)

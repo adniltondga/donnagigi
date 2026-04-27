@@ -356,9 +356,19 @@ export async function GET(req: NextRequest) {
     // — referência, user pode pagar quanto quiser.
     const aporteAmortizacaoSugerida = Math.round((aportesADevolver / 24) * 100) / 100
 
-    // Pró-labore seguro = base disponível (lucro acumulado YTD − pró-labores
-    // já tirados no ano) − ajustes. Assim, se março deu prejuízo, o lucro de
-    // abril é "absorvido" pra cobrir o déficit antes de virar pró-labore.
+    // FÓRMULA DIRETA — o que sobra do que entrou no caixa do mês:
+    //   liberado MP − reposição paga − despesas pagas
+    // Amortização de aporte e reinvestimento são SUGESTÕES (cards
+    // informativos), NÃO descontam automaticamente. Reserva idem.
+    // Assim o user vê o número honesto e decide quanto vai amortizar
+    // ou reinvestir.
+    const proLaboreDireto = Math.max(
+      0,
+      Math.round((receitaBruta - reposicaoPagaNoMes - despesasPagasTotal) * 100) / 100,
+    )
+
+    // Pró-labore "conservador" — desconta amortização/reinvest/reserva.
+    // Mantemos no response como referência (não é o card principal).
     const sobra =
       baseDisponivel -
       aporteAmortizacaoSugerida -
@@ -442,6 +452,7 @@ export async function GET(req: NextRequest) {
         pct: settings.reinvestPct,
         sugerido: reinvestSugerido,
       },
+      proLaboreDireto,
       proLaboreSeguro,
       proLaboreSubcategoryId: proLaboreSub?.id ?? null,
       historicoPorMes: historico,
