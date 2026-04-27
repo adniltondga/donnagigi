@@ -22,6 +22,8 @@ interface SnapshotResponse {
   releasedCount: number
   disputedTotal: number
   disputedCount: number
+  /** Saldo disponível na conta MP. null = endpoint indisponível (403 OAuth) */
+  availableBalance: number | null
   pendingDays: unknown
   releasedDays: unknown
   disputedPayments: unknown
@@ -43,6 +45,7 @@ export async function GET() {
         cachedReleasedCount: true,
         cachedDisputedTotal: true,
         cachedDisputedCount: true,
+        cachedAvailableBalance: true,
         cachedPendingDays: true,
         cachedReleasedDays: true,
         cachedDisputedPayments: true,
@@ -62,6 +65,7 @@ export async function GET() {
       releasedCount: integration.cachedReleasedCount ?? 0,
       disputedTotal: integration.cachedDisputedTotal ?? 0,
       disputedCount: integration.cachedDisputedCount ?? 0,
+      availableBalance: integration.cachedAvailableBalance,
       pendingDays: integration.cachedPendingDays ?? [],
       releasedDays: integration.cachedReleasedDays ?? [],
       disputedPayments: integration.cachedDisputedPayments ?? [],
@@ -97,6 +101,7 @@ export async function POST() {
         cachedReleasedCount: true,
         cachedDisputedTotal: true,
         cachedDisputedCount: true,
+        cachedAvailableBalance: true,
         cachedPendingDays: true,
         cachedReleasedDays: true,
         cachedDisputedPayments: true,
@@ -113,6 +118,7 @@ export async function POST() {
       releasedCount: integration.cachedReleasedCount ?? 0,
       disputedTotal: integration.cachedDisputedTotal ?? 0,
       disputedCount: integration.cachedDisputedCount ?? 0,
+      availableBalance: integration.cachedAvailableBalance,
       pendingDays: integration.cachedPendingDays ?? [],
       releasedDays: integration.cachedReleasedDays ?? [],
       disputedPayments: integration.cachedDisputedPayments ?? [],
