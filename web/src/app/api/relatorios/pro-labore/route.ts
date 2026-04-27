@@ -8,21 +8,22 @@ export const dynamic = "force-dynamic"
 /**
  * GET /api/relatorios/pro-labore?month=YYYY-MM
  *
- * Calcula o pró-labore seguro seguindo "Pay Yourself Last": só o que
- * sobra depois de cobrir operação, aportes, reserva e reinvestimento.
+ * BASE DE CAIXA REAL — não competência. O pró-labore depende de
+ * dinheiro DISPONÍVEL, não lucro contábil. Vendas em pending no MP
+ * não entram (o dinheiro ainda vai cair).
  *
- * - receitaRecebida30d: bills receivable pagas no período
- * - despesasPagas30d: bills payable pagas no período (exclui aporte sócio,
- *   que é "dívida interna", não despesa operacional real)
- * - lucroLiquido: receita - despesas
- * - contasAPagarDoMes: bills payable pending com dueDate no mês
- * - aportesADevolver: bills payable pending da categoria raiz "Aporte sócio"
- * - reservaMeta: reservaMeses × média de despesas fixas dos últimos 3 meses
- * - reservaAtual: saldoCaixaAtual do settings (user-informed)
- * - reinvestSugerido: lucroLiquido × reinvestPct
- * - proLaboreSeguro: lucroLiquido − contasAPagarDoMes − amortizaçãoAporte
- *   − reinvestSugerido − (reservaMeta − reservaAtual) (se faltar reserva)
- * - historicoPorMes: últimos 6 meses de pró-labore realmente lançados
+ * Fonte da receita do mês:
+ *  - PRIMÁRIA: MPIntegration.cachedReleasedDays (o que o MP REALMENTE
+ *    liberou no mês — alimentado pelo botão "Atualizar" do card MP).
+ *  - FALLBACK: bills receivable status=paid no mês (heurística do cron
+ *    release-and-refunds que flipa pending→paid após dueDate).
+ *
+ * Despesas: bills payable status=paid (igual antes — já era caixa real).
+ *
+ * Cálculo:
+ *  - caixaNovoMes = receitaDisponivelMes − despesasPagasMes
+ *  - baseDisponivel = max(0, caixaAcumuladoYTD − proLaboresYTD)
+ *  - proLaboreSeguro = baseDisponivel − amortização − reinvest − reservaFaltando
  */
 export async function GET(req: NextRequest) {
   try {
@@ -79,18 +80,41 @@ export async function GET(req: NextRequest) {
       select: { id: true },
     })
 
-    // Receita recebida no mês (receivable, paga) com productCost pra CMV
-    const receitas = await prisma.bill.findMany({
+    // ---- RECEITA DISPONÍVEL DO MÊS — base de caixa real ----
+    // PRIMÁRIA: MP.cachedReleasedDays filtrado pelo mês selecionado.
+    // FALLBACK: bills receivable status=paid no mês.
+    interface MPReleasedDay {
+      date: string
+      total: number
+      count: number
+    }
+    const mpIntegration = await prisma.mPIntegration.findUnique({
+      where: { tenantId },
+      select: { cachedReleasedDays: true, cachedSyncedAt: true },
+    })
+    const releasedDays = (mpIntegration?.cachedReleasedDays as unknown as MPReleasedDay[] | null) ?? []
+    const ymOf = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`
+    const monthYM = ymOf(start)
+    const releasedDoMes = releasedDays.filter((d) => d.date.slice(0, 7) === monthYM)
+    const mpReleasedNoMes = releasedDoMes.reduce((s, d) => s + d.total, 0)
+    const mpReady = mpIntegration != null && releasedDays.length > 0
+
+    // Pra CMV, lucro contábil informativo e fallback: bills paid no mês
+    const receitasPagasMes = await prisma.bill.findMany({
       where: {
         tenantId,
         type: "receivable",
-        NOT: { status: "cancelled" },
+        status: "paid",
         paidDate: { gte: start, lt: end },
       },
       select: { amount: true, productCost: true },
     })
-    const receitaBruta = receitas.reduce((s, b) => s + b.amount, 0)
-    const cmvCadastrado = receitas.reduce((s, b) => s + (b.productCost || 0), 0)
+    const billsPaidNoMes = receitasPagasMes.reduce((s, b) => s + b.amount, 0)
+    const cmvCadastrado = receitasPagasMes.reduce((s, b) => s + (b.productCost || 0), 0)
+
+    // Fonte autoritária da receita disponível: MP se tiver dados, senão bills paid
+    const receitaBruta = mpReady ? mpReleasedNoMes : billsPaidNoMes
+    const receitaSource: "mp" | "bills_paid" = mpReady ? "mp" : "bills_paid"
 
     // Aportes de mercadoria do mês — proxy do CMV quando user não cadastra
     // productCost mas registra a compra como aporte.
@@ -159,16 +183,16 @@ export async function GET(req: NextRequest) {
     const custoOperacionalTotal = despesasPagasTotal
     const lucroLiquido = receitaRecebida - custoOperacionalTotal
 
-    // ---- RESULTADO ACUMULADO YTD (mês a mês) ----
-    // Lucros dos meses de janeiro até o mês selecionado (inclusive).
-    // Assim o pró-labore desconta prejuízos acumulados dos meses anteriores.
+    // ---- CAIXA ACUMULADO YTD (mês a mês) ----
+    // Receita liberada (paid) − despesas pagas, jan até o mês selecionado.
+    // Assim o pró-labore desconta meses ruins anteriores.
     const inicioAno = new Date(year, 0, 1, 0, 0, 0, 0)
     const [receitasAno, despesasAno, aportesAnoAll, proLaboresAnoAll] = await Promise.all([
       prisma.bill.findMany({
         where: {
           tenantId,
           type: "receivable",
-          NOT: { status: "cancelled" },
+          status: "paid",
           paidDate: { gte: inicioAno, lt: end },
         },
         select: { amount: true, productCost: true },
@@ -345,8 +369,12 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json({
       month: `${year}-${String(month0 + 1).padStart(2, "0")}`,
-      // Fechamento do mês selecionado — base de competência do pró-labore
+      // Caixa real do mês — base do pró-labore
       receitaBruta: Math.round(receitaBruta * 100) / 100,
+      receitaSource,
+      mpReleasedNoMes: Math.round(mpReleasedNoMes * 100) / 100,
+      billsPaidNoMes: Math.round(billsPaidNoMes * 100) / 100,
+      mpSyncedAt: mpIntegration?.cachedSyncedAt ? mpIntegration.cachedSyncedAt.toISOString() : null,
       cmvDoMes: Math.round(cmvDoMes * 100) / 100,
       receitaRecebida: Math.round(receitaRecebida * 100) / 100,
       despesasPagas: Math.round(despesasPagasTotal * 100) / 100,
