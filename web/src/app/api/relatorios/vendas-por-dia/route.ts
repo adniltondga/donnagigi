@@ -1,6 +1,7 @@
 import prisma from '@/lib/prisma';
 import { getTenantIdOrDefault } from '@/lib/tenant';
 import { computeSaleNumbers } from '@/lib/sale-notes';
+import { dayOfMonthBR } from '@/lib/tz';
 import { NextRequest, NextResponse } from 'next/server';
 
 export const dynamic = 'force-dynamic';
@@ -69,7 +70,9 @@ export async function GET(req: NextRequest) {
 
     for (const b of bills) {
       if (!b.paidDate) continue;
-      const dia = b.paidDate.getDate();
+      // dia do mês no fuso BR — em prod (UTC) o getDate() puro
+      // erra venda fechada após 21h BR.
+      const dia = dayOfMonthBR(b.paidDate);
       const agg = map.get(dia);
       if (!agg) continue;
 
