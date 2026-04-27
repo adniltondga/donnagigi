@@ -4,6 +4,7 @@ import { resolveCostsBatch, costKey } from "@/lib/cost-resolver"
 import { createNotification } from "@/lib/notifications"
 import { captureError } from "@/lib/sentry"
 import { sendPushToTenant } from "@/lib/push"
+import { loggedFetch } from "@/lib/api-log"
 
 interface MLOrderItem {
   item: {
@@ -65,8 +66,11 @@ export async function syncMLOrder(params: {
   const { tenantId, accessToken, orderId } = params
 
   try {
-    const orderRes = await fetch(`https://api.mercadolibre.com/orders/${orderId}`, {
+    const orderRes = await loggedFetch(`https://api.mercadolibre.com/orders/${orderId}`, {
       headers: { Authorization: `Bearer ${accessToken}` },
+      provider: "ml",
+      tenantId,
+      endpoint: "/orders/{id}",
     })
     if (!orderRes.ok) {
       return { ok: false, action: "error", error: `ML /orders/${orderId} → ${orderRes.status}` }
@@ -144,9 +148,14 @@ export async function syncMLOrder(params: {
     let shippingFee = 0
     if (order.shipping?.id) {
       try {
-        const shippingRes = await fetch(
+        const shippingRes = await loggedFetch(
           `https://api.mercadolibre.com/shipments/${order.shipping.id}`,
-          { headers: { Authorization: `Bearer ${accessToken}` } },
+          {
+            headers: { Authorization: `Bearer ${accessToken}` },
+            provider: "ml",
+            tenantId,
+            endpoint: "/shipments/{id}",
+          },
         )
         if (shippingRes.ok) {
           const detail = await shippingRes.json()

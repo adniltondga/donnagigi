@@ -13,14 +13,17 @@ import {
   Wallet,
   ShoppingBag,
   ArrowRight,
+  Pencil,
+  Trash2,
+  HelpCircle,
 } from "lucide-react"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
@@ -35,6 +38,7 @@ interface IntegrationStatus {
   configured: boolean
   isExpired?: boolean
   identifier?: string // sellerID (ML) ou mpUserId (MP)
+  expiresAt?: string | null
 }
 
 interface IntegrationsPanelProps {
@@ -68,6 +72,7 @@ export function IntegrationsPanel({
             configured: mlRes.configured,
             isExpired: mlRes.isExpired,
             identifier: mlRes.sellerID,
+            expiresAt: mlRes.expiresAt ?? null,
           }
         : { configured: false }
     )
@@ -77,6 +82,7 @@ export function IntegrationsPanel({
             configured: mpRes.configured,
             isExpired: mpRes.isExpired,
             identifier: mpRes.mpUserId,
+            expiresAt: mpRes.expiresAt ?? null,
           }
         : { configured: false }
     )
@@ -196,6 +202,14 @@ function IntegrationCard({
                 {identifierLabel}: {status.identifier}
               </p>
             )}
+            {status?.configured && status.expiresAt && (
+              <p className="text-xs text-muted-foreground mt-1">
+                {status.isExpired ? "Expirou em" : "Válido até"}:{" "}
+                <span className="text-foreground font-medium">
+                  {new Date(status.expiresAt).toLocaleString("pt-BR")}
+                </span>
+              </p>
+            )}
             <div className="mt-3 inline-flex items-center gap-1 text-xs text-primary-600 font-semibold opacity-0 group-hover:opacity-100 transition">
               Configurar <ArrowRight className="w-3 h-3" />
             </div>
@@ -283,18 +297,6 @@ function MercadoLivreDialog({
             <ShoppingBag className="w-5 h-5 text-amber-600" />
             Mercado Livre
           </DialogTitle>
-          <DialogDescription>
-            Registre seu app no{" "}
-            <a
-              href="https://developers.mercadolivre.com.br/devcenter"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-primary-600 underline"
-            >
-              ML DevCenter
-            </a>
-            , cole as credenciais e conecte sua conta de vendedor.
-          </DialogDescription>
         </DialogHeader>
 
         {loading ? (
@@ -305,9 +307,7 @@ function MercadoLivreDialog({
             <div className="border-t border-border" />
             <MLConnectionSection
               integration={integration}
-              webhookUrl={creds?.webhookUrl}
               onDisconnect={handleDisconnect}
-              onFlash={onFlash}
             />
           </div>
         )}
@@ -328,15 +328,14 @@ function MLCredentialsSection({
   const [editing, setEditing] = useState(false)
   const [clientId, setClientId] = useState("")
   const [clientSecret, setClientSecret] = useState("")
-  const [redirectUri, setRedirectUri] = useState("")
   const [showSecret, setShowSecret] = useState(false)
   const [submitting, setSubmitting] = useState(false)
 
   const startEdit = () => {
     setEditing(true)
-    setClientId("")
+    // Só pré-preenche o clientId se já está cadastrado pelo tenant (não pelo env mascarado)
+    setClientId(data?.configured && data.clientId && !data.clientId.includes("…") ? data.clientId : "")
     setClientSecret("")
-    setRedirectUri(data?.customRedirectUri || "")
   }
 
   const save = async (e: React.FormEvent) => {
@@ -349,7 +348,7 @@ function MLCredentialsSection({
         body: JSON.stringify({
           clientId: clientId.trim(),
           clientSecret: clientSecret.trim(),
-          redirectUri: redirectUri.trim() || null,
+          redirectUri: null,
         }),
       })
       const d = await res.json().catch(() => ({}))
@@ -378,7 +377,6 @@ function MLCredentialsSection({
     onChanged()
   }
 
-  const copy = (text: string) => navigator.clipboard.writeText(text)
   const hasOwn = data?.configured && data.source === "tenant"
 
   return (
@@ -399,14 +397,17 @@ function MLCredentialsSection({
         <form onSubmit={save} className="space-y-3">
           <Field label="Client ID" value={clientId} onChange={setClientId} placeholder="1234567890123456" mono />
           <div>
-            <label className="block text-xs font-medium text-foreground mb-1">Client Secret</label>
+            <label className="block text-xs font-medium text-foreground mb-1">
+              Client Secret
+              {hasOwn && <span className="text-muted-foreground font-normal"> (deixe em branco pra manter o atual)</span>}
+            </label>
             <div className="relative">
               <input
                 type={showSecret ? "text" : "password"}
                 value={clientSecret}
                 onChange={(e) => setClientSecret(e.target.value)}
-                required
-                placeholder="••••••••••••••••"
+                required={!hasOwn}
+                placeholder={hasOwn ? data?.clientSecretMasked || "••••••••" : "••••••••••••••••"}
                 className="w-full px-3 py-2 pr-10 border border-border rounded-lg font-mono text-sm focus:ring-2 focus:ring-primary-600 outline-none"
               />
               <button
@@ -418,22 +419,15 @@ function MLCredentialsSection({
               </button>
             </div>
           </div>
-          <Field
-            label="Redirect URI (opcional)"
-            value={redirectUri}
-            onChange={setRedirectUri}
-            placeholder={data?.redirectUri || "https://seudominio/api/ml/oauth/callback"}
-            mono
-          />
-          <p className="text-xs text-muted-foreground">
-            Esta URI precisa estar cadastrada no app do ML DevCenter. Padrão:{" "}
-            <code className="font-mono">{data?.redirectUri || "—"}</code>
-          </p>
           <div className="flex gap-2 justify-end">
             <Button type="button" variant="outline" size="sm" onClick={() => setEditing(false)}>
               Cancelar
             </Button>
-            <Button type="submit" disabled={submitting || !clientId.trim() || !clientSecret.trim()} size="sm">
+            <Button
+              type="submit"
+              disabled={submitting || !clientId.trim() || (!hasOwn && !clientSecret.trim())}
+              size="sm"
+            >
               {submitting && <Loader className="w-4 h-4 animate-spin mr-2" />}
               Salvar
             </Button>
@@ -441,36 +435,60 @@ function MLCredentialsSection({
         </form>
       ) : hasOwn ? (
         <div className="space-y-3">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
-            <div>
-              <div className="text-xs text-muted-foreground uppercase tracking-wide">Client ID</div>
-              <div className="font-mono text-foreground mt-1">{data.clientId}</div>
+          <div className="flex items-start gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm flex-1 min-w-0">
+              <div>
+                <div className="text-xs text-muted-foreground uppercase tracking-wide">Client ID</div>
+                <div className="font-mono text-foreground mt-1 truncate">{data.clientId}</div>
+              </div>
+              <div>
+                <div className="text-xs text-muted-foreground uppercase tracking-wide">Secret</div>
+                <div className="font-mono text-foreground mt-1 truncate">{data.clientSecretMasked}</div>
+              </div>
             </div>
-            <div>
-              <div className="text-xs text-muted-foreground uppercase tracking-wide">Secret</div>
-              <div className="font-mono text-foreground mt-1">{data.clientSecretMasked}</div>
-            </div>
-          </div>
-          <div>
-            <div className="text-xs text-muted-foreground mb-1">Redirect URI (cadastre no DevCenter)</div>
-            <div className="flex items-center gap-2 bg-muted px-3 py-2 rounded-lg border border-border">
-              <code className="flex-1 text-xs font-mono break-all">{data.redirectUri}</code>
+            <div className="flex gap-1 flex-shrink-0">
               <button
-                onClick={() => copy(data.redirectUri)}
-                className="text-xs text-primary-600 hover:text-primary-700 font-medium whitespace-nowrap"
+                onClick={startEdit}
+                title="Editar"
+                className="p-2 rounded-md text-muted-foreground hover:bg-accent hover:text-foreground transition"
               >
-                Copiar
+                <Pencil className="w-4 h-4" />
+              </button>
+              <button
+                onClick={remove}
+                title="Remover"
+                className="p-2 rounded-md text-muted-foreground hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20 transition"
+              >
+                <Trash2 className="w-4 h-4" />
               </button>
             </div>
           </div>
-          <div className="flex gap-2">
-            <Button variant="outline" size="sm" onClick={startEdit}>
-              Editar
-            </Button>
-            <Button variant="destructive" size="sm" onClick={remove}>
-              Remover
-            </Button>
-          </div>
+          <WebhookHint
+            label="Redirect URI (cadastre no DevCenter)"
+            url={data.redirectUri}
+            help={
+              <>
+                No <strong>ML DevCenter</strong> → seu app → <strong>Editar</strong> → campo
+                <strong> &quot;Redirect URI&quot;</strong>. Cole esta URL exatamente como está.
+                É usada quando o seller clica em &quot;Conectar Mercado Livre&quot;.
+              </>
+            }
+          />
+          <WebhookHint
+            label="Webhook URL (cadastre no DevCenter)"
+            url={data.webhookUrl}
+            help={
+              <>
+                No <strong>ML DevCenter</strong> → seu app → aba
+                <strong> &quot;Notificações&quot;</strong> (ou <strong>&quot;Tópicos&quot;</strong>) →
+                cole esta URL e marque os tópicos
+                <code className="mx-1 px-1 bg-gray-700 rounded">orders_v2</code>
+                e
+                <code className="mx-1 px-1 bg-gray-700 rounded">items</code>.
+                Cada venda ou mudança de anúncio cai no sistema em segundos.
+              </>
+            }
+          />
         </div>
       ) : (
         <div className="space-y-3">
@@ -490,46 +508,11 @@ function MLCredentialsSection({
 
 function MLConnectionSection({
   integration,
-  webhookUrl,
   onDisconnect,
-  onFlash,
 }: {
   integration: MLIntegrationResponse | null
-  webhookUrl?: string
   onDisconnect: () => void
-  onFlash: (t: "success" | "error", msg: string) => void
 }) {
-  // Cada tipo tem seu próprio loading independente — clicar em "vendas"
-  // não trava o botão de "anúncios" e vice-versa.
-  const [syncingOrders, setSyncingOrders] = useState(false)
-  const [syncingListings, setSyncingListings] = useState(false)
-
-  const runSync = async (kind: "orders" | "listings") => {
-    const setLoading = kind === "orders" ? setSyncingOrders : setSyncingListings
-    const isLoading = kind === "orders" ? syncingOrders : syncingListings
-    if (isLoading) return
-    setLoading(true)
-    try {
-      const url = kind === "orders" ? "/api/ml/sync-orders" : "/api/ml/sync"
-      const res = await fetch(url, { method: "GET" })
-      const data = await res.json().catch(() => null)
-      if (!res.ok) {
-        onFlash("error", data?.error || `Falha ao sincronizar ${kind === "orders" ? "vendas" : "anúncios"}`)
-        return
-      }
-      const stats = data?.stats
-      const label = kind === "orders" ? "Vendas" : "Anúncios"
-      const detail = stats
-        ? ` · ${stats.synced ?? stats.created ?? stats.total ?? 0} itens`
-        : ""
-      onFlash("success", `${label} sincronizados${detail}`)
-    } catch (err) {
-      onFlash("error", err instanceof Error ? err.message : "Erro desconhecido")
-    } finally {
-      setLoading(false)
-    }
-  }
-
   if (!integration?.configured) {
     return (
       <section className="space-y-3">
@@ -545,86 +528,21 @@ function MLConnectionSection({
     )
   }
 
-  const expired = integration.isExpired
   return (
-    <section className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h4 className="text-sm font-semibold text-foreground">Conexão</h4>
-        <Badge variant={expired ? "destructive" : "default"} className="text-xs">
-          {expired ? "Expirada" : "Ativa"}
-        </Badge>
-      </div>
-      <div className="bg-muted/40 rounded-lg p-3 grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
-        <div>
-          <div className="text-xs text-muted-foreground">Seller ID</div>
-          <div className="font-mono font-semibold text-foreground mt-0.5">{integration.sellerID}</div>
-        </div>
-        <div>
-          <div className="text-xs text-muted-foreground">
-            {expired ? "Expirou em" : "Válido até"}
-          </div>
-          <div className="text-foreground mt-0.5">
-            {integration.expiresAt ? new Date(integration.expiresAt).toLocaleString("pt-BR") : "—"}
-          </div>
-        </div>
-      </div>
-
-      {!expired && (
-        <>
-          <p className="text-xs text-muted-foreground">
-            🤖 O sistema puxa vendas, taxas e liberações automaticamente todo dia às 03:00 (horário BR). Use os botões só pra forçar uma atualização agora.
-          </p>
-          <WebhookHint
-            label="Webhook ML (tempo real)"
-            url={webhookUrl}
-            instructions={
-              <>
-                No <a href="https://developers.mercadolivre.com.br/devcenter" target="_blank" rel="noopener noreferrer" className="underline">DevCenter</a>, abra seu app → <strong>Tópicos</strong> → cadastre essa URL e marque <code>orders_v2</code> e <code>items</code>. Assim cada venda cai no sistema em segundos.
-              </>
-            }
-          />
-        </>
-      )}
-
-      {expired ? (
-        <Button className="w-full" onClick={() => (window.location.href = "/api/ml/oauth/login")}>
-          <RefreshCw className="w-4 h-4 mr-2" />
-          Reconectar
-        </Button>
-      ) : (
-        <>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-            <Button
-              variant="outline"
-              onClick={() => runSync("orders")}
-              disabled={syncingOrders}
-            >
-              {syncingOrders ? (
-                <Loader className="w-4 h-4 mr-2 animate-spin" />
-              ) : (
-                <RefreshCw className="w-4 h-4 mr-2" />
-              )}
-              Sincronizar vendas
-            </Button>
-            <Button
-              variant="outline"
-              onClick={() => runSync("listings")}
-              disabled={syncingListings}
-            >
-              {syncingListings ? (
-                <Loader className="w-4 h-4 mr-2 animate-spin" />
-              ) : (
-                <RefreshCw className="w-4 h-4 mr-2" />
-              )}
-              Sincronizar anúncios
-            </Button>
-          </div>
-          <Button variant="ghost" size="sm" onClick={onDisconnect} className="w-full text-rose-600 hover:text-rose-700 hover:bg-rose-50 dark:text-rose-400 dark:hover:bg-rose-900/20">
+    <section className="space-y-3">
+      <div className="flex gap-2">
+        {integration.isExpired ? (
+          <Button className="flex-1" onClick={() => (window.location.href = "/api/ml/oauth/login")}>
+            <RefreshCw className="w-4 h-4 mr-2" />
+            Reconectar
+          </Button>
+        ) : (
+          <Button variant="destructive" size="sm" onClick={onDisconnect}>
             <LogOut className="w-4 h-4 mr-2" />
             Desconectar
           </Button>
-        </>
-      )}
+        )}
+      </div>
     </section>
   )
 }
@@ -707,18 +625,6 @@ function MercadoPagoDialog({
             <Wallet className="w-5 h-5 text-sky-600" />
             Mercado Pago
           </DialogTitle>
-          <DialogDescription>
-            Registre seu app no{" "}
-            <a
-              href="https://www.mercadopago.com.br/developers/panel/app"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-primary-600 underline"
-            >
-              MP DevCenter
-            </a>{" "}
-            e autorize o acesso ao seu saldo e movimentos.
-          </DialogDescription>
         </DialogHeader>
 
         {loading ? (
@@ -729,7 +635,6 @@ function MercadoPagoDialog({
             <div className="border-t border-border" />
             <MPConnectionSection
               integration={integration}
-              webhookUrl={creds?.webhookUrl}
               onDisconnect={handleDisconnect}
             />
           </div>
@@ -751,15 +656,13 @@ function MPCredentialsSection({
   const [editing, setEditing] = useState(false)
   const [clientId, setClientId] = useState("")
   const [clientSecret, setClientSecret] = useState("")
-  const [redirectUri, setRedirectUri] = useState("")
   const [showSecret, setShowSecret] = useState(false)
   const [submitting, setSubmitting] = useState(false)
 
   const startEdit = () => {
     setEditing(true)
-    setClientId("")
+    setClientId(data?.configured && data.clientId && !data.clientId.includes("…") ? data.clientId : "")
     setClientSecret("")
-    setRedirectUri(data?.customRedirectUri || "")
   }
 
   const save = async (e: React.FormEvent) => {
@@ -772,7 +675,7 @@ function MPCredentialsSection({
         body: JSON.stringify({
           clientId: clientId.trim(),
           clientSecret: clientSecret.trim(),
-          redirectUri: redirectUri.trim() || null,
+          redirectUri: null,
         }),
       })
       const d = await res.json().catch(() => ({}))
@@ -801,7 +704,6 @@ function MPCredentialsSection({
     onChanged()
   }
 
-  const copy = (text: string) => navigator.clipboard.writeText(text)
   const hasOwn = data?.configured && data.source === "tenant"
 
   return (
@@ -822,14 +724,17 @@ function MPCredentialsSection({
         <form onSubmit={save} className="space-y-3">
           <Field label="APP ID / Client ID" value={clientId} onChange={setClientId} placeholder="1234567890123456" mono />
           <div>
-            <label className="block text-xs font-medium text-foreground mb-1">Secret Key / Client Secret</label>
+            <label className="block text-xs font-medium text-foreground mb-1">
+              Secret Key / Client Secret
+              {hasOwn && <span className="text-muted-foreground font-normal"> (deixe em branco pra manter o atual)</span>}
+            </label>
             <div className="relative">
               <input
                 type={showSecret ? "text" : "password"}
                 value={clientSecret}
                 onChange={(e) => setClientSecret(e.target.value)}
-                required
-                placeholder="••••••••••••••••"
+                required={!hasOwn}
+                placeholder={hasOwn ? data?.clientSecretMasked || "••••••••" : "••••••••••••••••"}
                 className="w-full px-3 py-2 pr-10 border border-border rounded-lg font-mono text-sm focus:ring-2 focus:ring-primary-600 outline-none"
               />
               <button
@@ -841,22 +746,15 @@ function MPCredentialsSection({
               </button>
             </div>
           </div>
-          <Field
-            label="Redirect URI (opcional)"
-            value={redirectUri}
-            onChange={setRedirectUri}
-            placeholder={data?.redirectUri || "https://seudominio/api/mp/oauth/callback"}
-            mono
-          />
-          <p className="text-xs text-muted-foreground">
-            Cadastre essa URI no seu app MP. Padrão:{" "}
-            <code className="font-mono">{data?.redirectUri || "—"}</code>
-          </p>
           <div className="flex gap-2 justify-end">
             <Button type="button" variant="outline" size="sm" onClick={() => setEditing(false)}>
               Cancelar
             </Button>
-            <Button type="submit" disabled={submitting || !clientId.trim() || !clientSecret.trim()} size="sm">
+            <Button
+              type="submit"
+              disabled={submitting || !clientId.trim() || (!hasOwn && !clientSecret.trim())}
+              size="sm"
+            >
               {submitting && <Loader className="w-4 h-4 animate-spin mr-2" />}
               Salvar
             </Button>
@@ -864,36 +762,57 @@ function MPCredentialsSection({
         </form>
       ) : hasOwn ? (
         <div className="space-y-3">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
-            <div>
-              <div className="text-xs text-muted-foreground uppercase tracking-wide">APP ID</div>
-              <div className="font-mono text-foreground mt-1">{data.clientId}</div>
+          <div className="flex items-start gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm flex-1 min-w-0">
+              <div>
+                <div className="text-xs text-muted-foreground uppercase tracking-wide">APP ID</div>
+                <div className="font-mono text-foreground mt-1 truncate">{data.clientId}</div>
+              </div>
+              <div>
+                <div className="text-xs text-muted-foreground uppercase tracking-wide">Secret</div>
+                <div className="font-mono text-foreground mt-1 truncate">{data.clientSecretMasked}</div>
+              </div>
             </div>
-            <div>
-              <div className="text-xs text-muted-foreground uppercase tracking-wide">Secret</div>
-              <div className="font-mono text-foreground mt-1">{data.clientSecretMasked}</div>
-            </div>
-          </div>
-          <div>
-            <div className="text-xs text-muted-foreground mb-1">Redirect URI (cadastre no MP)</div>
-            <div className="flex items-center gap-2 bg-muted px-3 py-2 rounded-lg border border-border">
-              <code className="flex-1 text-xs font-mono break-all">{data.redirectUri}</code>
+            <div className="flex gap-1 flex-shrink-0">
               <button
-                onClick={() => copy(data.redirectUri)}
-                className="text-xs text-primary-600 hover:text-primary-700 font-medium whitespace-nowrap"
+                onClick={startEdit}
+                title="Editar"
+                className="p-2 rounded-md text-muted-foreground hover:bg-accent hover:text-foreground transition"
               >
-                Copiar
+                <Pencil className="w-4 h-4" />
+              </button>
+              <button
+                onClick={remove}
+                title="Remover"
+                className="p-2 rounded-md text-muted-foreground hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20 transition"
+              >
+                <Trash2 className="w-4 h-4" />
               </button>
             </div>
           </div>
-          <div className="flex gap-2">
-            <Button variant="outline" size="sm" onClick={startEdit}>
-              Editar
-            </Button>
-            <Button variant="destructive" size="sm" onClick={remove}>
-              Remover
-            </Button>
-          </div>
+          <WebhookHint
+            label="Redirect URI (cadastre no MP)"
+            url={data.redirectUri}
+            help={
+              <>
+                No <strong>painel MP Developers</strong> → seu app → seção
+                <strong> &quot;Redirect URIs&quot;</strong> → cole esta URL.
+                É usada quando o seller clica em &quot;Conectar Mercado Pago&quot;.
+              </>
+            }
+          />
+          <WebhookHint
+            label="Webhook URL (cadastre no MP)"
+            url={data.webhookUrl}
+            help={
+              <>
+                No <strong>painel MP Developers</strong> → seu app →
+                <strong> Notificações &gt; Webhooks</strong> → cole esta URL e marque o evento
+                <code className="mx-1 px-1 bg-gray-700 rounded">payment</code>.
+                Liberações e disputas atualizam automaticamente.
+              </>
+            }
+          />
         </div>
       ) : (
         <div className="space-y-3">
@@ -911,11 +830,9 @@ function MPCredentialsSection({
 
 function MPConnectionSection({
   integration,
-  webhookUrl,
   onDisconnect,
 }: {
   integration: MPIntegrationResponse | null
-  webhookUrl?: string
   onDisconnect: () => void
 }) {
   if (!integration?.configured) {
@@ -935,32 +852,6 @@ function MPConnectionSection({
 
   return (
     <section className="space-y-3">
-      <h4 className="text-sm font-semibold text-foreground">Conexão ativa</h4>
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
-        <div>
-          <div className="text-xs text-muted-foreground uppercase tracking-wide">User ID MP</div>
-          <div className="font-mono font-semibold text-foreground mt-1">{integration.mpUserId}</div>
-        </div>
-        <div>
-          <div className="text-xs text-muted-foreground uppercase tracking-wide">
-            {integration.isExpired ? "Expirou em" : "Válido até"}
-          </div>
-          <div className="font-medium text-foreground mt-1">
-            {integration.expiresAt ? new Date(integration.expiresAt).toLocaleString("pt-BR") : "—"}
-          </div>
-        </div>
-      </div>
-      {!integration.isExpired && (
-        <WebhookHint
-          label="Webhook MP (tempo real)"
-          url={webhookUrl}
-          instructions={
-            <>
-              No <a href="https://www.mercadopago.com.br/developers/panel" target="_blank" rel="noopener noreferrer" className="underline">painel MP Developers</a>, abra seu app → <strong>Notificações &gt; Webhooks</strong> → cadastre essa URL e marque o evento <code>payment</code>. Assim liberações e disputas atualizam automaticamente.
-            </>
-          }
-        />
-      )}
       <div className="flex gap-2">
         {integration.isExpired ? (
           <Button className="flex-1" onClick={() => (window.location.href = "/api/mp/oauth/login")}>
@@ -981,11 +872,11 @@ function MPConnectionSection({
 function WebhookHint({
   label,
   url,
-  instructions,
+  help,
 }: {
   label: string
   url?: string
-  instructions: React.ReactNode
+  help?: React.ReactNode
 }) {
   const [copied, setCopied] = useState(false)
   if (!url) return null
@@ -999,20 +890,37 @@ function WebhookHint({
     }
   }
   return (
-    <div className="bg-muted border border-border rounded-lg p-3 text-xs text-foreground space-y-2">
-      <p className="font-semibold text-foreground">📡 {label}</p>
-      <div className="flex items-center gap-2">
-        <code className="flex-1 bg-card border border-border rounded px-2 py-1 text-[11px] font-mono break-all">
-          {url}
-        </code>
+    <div>
+      <div className="flex items-center gap-1 mb-1">
+        <span className="text-xs text-muted-foreground">{label}</span>
+        {help && (
+          <TooltipProvider delayDuration={150}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  className="text-muted-foreground hover:text-foreground transition"
+                  aria-label="Ajuda"
+                >
+                  <HelpCircle className="w-3.5 h-3.5" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="top" className="max-w-xs leading-relaxed">
+                {help}
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        )}
+      </div>
+      <div className="flex items-center gap-2 bg-muted px-3 py-2 rounded-lg border border-border">
+        <code className="flex-1 text-xs font-mono break-all">{url}</code>
         <button
           onClick={copy}
-          className="shrink-0 text-[11px] font-medium bg-gray-900 hover:bg-gray-700 text-white px-2.5 py-1 rounded"
+          className="text-xs text-primary-600 hover:text-primary-700 font-medium whitespace-nowrap"
         >
           {copied ? "Copiado" : "Copiar"}
         </button>
       </div>
-      <p className="text-[11px] text-muted-foreground leading-relaxed">{instructions}</p>
     </div>
   )
 }
