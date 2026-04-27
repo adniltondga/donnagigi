@@ -12,7 +12,9 @@ import {
   Loader,
   Settings,
   ArrowRight,
+  Info,
 } from "lucide-react"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { PageHeader } from "@/components/ui/page-header"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -238,55 +240,68 @@ export default function ProLaborePage() {
                   <p className="text-4xl font-bold text-foreground mt-1 tabular-nums">
                     {formatCurrency(data.proLaboreSeguro)}
                   </p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    do que entrou de fato, descontado o que precisa repor + despesas + sugestões
-                  </p>
-
-                  {/* Conta passo-a-passo */}
-                  <div className="mt-4 bg-card border border-border rounded-lg p-3 text-sm space-y-1.5 max-w-md">
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Liberado MP no mês</span>
-                      <span className="tabular-nums font-medium">{formatCurrency(data.receitaBruta)}</span>
-                    </div>
-                    <div className="flex justify-between text-rose-700 dark:text-rose-400">
-                      <span>
-                        − Reservado pra estoque
-                        <span className="text-[11px] text-muted-foreground ml-1">
-                          (max CMV/reposição)
-                        </span>
-                      </span>
-                      <span className="tabular-nums">−{formatCurrency(data.descontoPraEstoque)}</span>
-                    </div>
-                    <div className="flex justify-between text-rose-700 dark:text-rose-400">
-                      <span>− Despesas pagas</span>
-                      <span className="tabular-nums">−{formatCurrency(data.despesasPagas)}</span>
-                    </div>
-                    <div className="border-t border-border pt-1.5 flex justify-between text-foreground font-medium">
-                      <span>Caixa do mês</span>
-                      <span className="tabular-nums">{formatCurrency(data.caixaDoMes)}</span>
-                    </div>
-                    {data.aportesADevolver.amortizacaoSugerida > 0 && (
-                      <div className="flex justify-between text-rose-700 dark:text-rose-400">
-                        <span>− Amortização aporte (sugerido)</span>
-                        <span className="tabular-nums">−{formatCurrency(data.aportesADevolver.amortizacaoSugerida)}</span>
-                      </div>
-                    )}
-                    {data.reinvestimento.sugerido > 0 && (
-                      <div className="flex justify-between text-rose-700 dark:text-rose-400">
-                        <span>− Reinvestimento ({data.reinvestimento.pct}%)</span>
-                        <span className="tabular-nums">−{formatCurrency(data.reinvestimento.sugerido)}</span>
-                      </div>
-                    )}
-                    {data.reserva.falta > 0 && (
-                      <div className="flex justify-between text-rose-700 dark:text-rose-400">
-                        <span>− Reserva pendente</span>
-                        <span className="tabular-nums">−{formatCurrency(data.reserva.falta)}</span>
-                      </div>
-                    )}
-                    <div className="border-t border-border pt-1.5 flex justify-between font-bold text-primary-700 dark:text-primary-400">
-                      <span>= Pró-labore</span>
-                      <span className="tabular-nums">{formatCurrency(data.proLaboreSeguro)}</span>
-                    </div>
+                  <div className="flex items-center gap-1.5 mt-1">
+                    <span className="text-sm text-muted-foreground">
+                      caixa do mês: <strong className="text-foreground">{formatCurrency(data.caixaDoMes)}</strong>
+                    </span>
+                    <TooltipProvider delayDuration={150}>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <button type="button" className="text-muted-foreground hover:text-foreground">
+                            <Info className="w-3.5 h-3.5" />
+                          </button>
+                        </TooltipTrigger>
+                        <TooltipContent className="text-xs space-y-1 max-w-xs p-3">
+                          <div className="flex justify-between gap-4">
+                            <span className="text-muted-foreground">Liberado MP</span>
+                            <span className="font-medium tabular-nums">{formatCurrency(data.receitaBruta)}</span>
+                          </div>
+                          <div className="flex justify-between gap-4">
+                            <span className="text-muted-foreground">− Reservado pra estoque</span>
+                            <span className="font-medium tabular-nums">−{formatCurrency(data.descontoPraEstoque)}</span>
+                          </div>
+                          <div className="flex justify-between gap-4">
+                            <span className="text-muted-foreground">− Despesas pagas</span>
+                            <span className="font-medium tabular-nums">−{formatCurrency(data.despesasPagas)}</span>
+                          </div>
+                          <div className="border-t border-border pt-1 flex justify-between gap-4 font-semibold">
+                            <span>= Caixa do mês</span>
+                            <span className="tabular-nums">{formatCurrency(data.caixaDoMes)}</span>
+                          </div>
+                          {(data.aportesADevolver.amortizacaoSugerida > 0 ||
+                            data.reinvestimento.sugerido > 0 ||
+                            data.reserva.falta > 0) && (
+                            <div className="border-t border-border pt-1 space-y-1">
+                              <p className="text-muted-foreground text-[11px] uppercase tracking-wide">
+                                deduções sugeridas
+                              </p>
+                              {data.aportesADevolver.amortizacaoSugerida > 0 && (
+                                <div className="flex justify-between gap-4">
+                                  <span className="text-muted-foreground">− Amortização aporte</span>
+                                  <span className="font-medium tabular-nums">−{formatCurrency(data.aportesADevolver.amortizacaoSugerida)}</span>
+                                </div>
+                              )}
+                              {data.reinvestimento.sugerido > 0 && (
+                                <div className="flex justify-between gap-4">
+                                  <span className="text-muted-foreground">− Reinvestimento ({data.reinvestimento.pct}%)</span>
+                                  <span className="font-medium tabular-nums">−{formatCurrency(data.reinvestimento.sugerido)}</span>
+                                </div>
+                              )}
+                              {data.reserva.falta > 0 && (
+                                <div className="flex justify-between gap-4">
+                                  <span className="text-muted-foreground">− Reserva pendente</span>
+                                  <span className="font-medium tabular-nums">−{formatCurrency(data.reserva.falta)}</span>
+                                </div>
+                              )}
+                            </div>
+                          )}
+                          <div className="border-t border-border pt-1 flex justify-between gap-4 font-bold text-primary-700">
+                            <span>= Pró-labore</span>
+                            <span className="tabular-nums">{formatCurrency(data.proLaboreSeguro)}</span>
+                          </div>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
                   </div>
                 </div>
                 {canWrite && data.proLaboreSubcategoryId && (
