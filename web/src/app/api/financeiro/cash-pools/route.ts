@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { getTenantIdOrDefault } from "@/lib/tenant"
 import { calcularCaixas } from "@/lib/cash-pools"
+import { parseStartOfDayBR } from "@/lib/tz"
 
 export const dynamic = "force-dynamic"
 
@@ -14,8 +15,8 @@ export async function GET(req: NextRequest) {
     const sp = req.nextUrl.searchParams
     const startStr = sp.get("start")
     const endStr = sp.get("end")
-    const start = startStr ? new Date(`${startStr}T00:00:00`) : undefined
-    const end = endStr ? new Date(`${endStr}T00:00:00`) : undefined
+    const start = startStr ? parseStartOfDayBR(startStr) : undefined
+    const end = endStr ? parseStartOfDayBR(endStr) : undefined
 
     const result = await calcularCaixas({ tenantId, start, end })
     return NextResponse.json(result)

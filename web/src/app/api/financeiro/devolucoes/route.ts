@@ -3,6 +3,7 @@ import prisma from "@/lib/prisma"
 import { getTenantIdOrDefault } from "@/lib/tenant"
 import { AuthError, authErrorResponse, requireSession } from "@/lib/auth"
 import { parseSaleDescription } from "@/lib/ml-format"
+import { parseStartOfDayBR } from "@/lib/tz"
 
 export const dynamic = "force-dynamic"
 
@@ -48,10 +49,10 @@ export async function GET(req: NextRequest) {
     const endStr = sp.get("end")
     const now = new Date()
     const start = startStr
-      ? new Date(`${startStr}T00:00:00`)
+      ? parseStartOfDayBR(startStr)
       : new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0)
     const end = endStr
-      ? new Date(`${endStr}T00:00:00`)
+      ? parseStartOfDayBR(endStr)
       : new Date(now.getFullYear(), now.getMonth() + 1, 1, 0, 0, 0, 0)
 
     const refunds = await prisma.billRefund.findMany({

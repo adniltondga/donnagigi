@@ -1,6 +1,7 @@
 import prisma from '@/lib/prisma';
 import { getTenantIdOrDefault } from '@/lib/tenant';
 import { AuthError, authErrorResponse, requireRole } from '@/lib/auth';
+import { parseStartOfDayBR, parseEndOfDayBR } from '@/lib/tz';
 import { NextRequest, NextResponse } from 'next/server';
 
 export async function GET(req: NextRequest) {
@@ -29,13 +30,13 @@ export async function GET(req: NextRequest) {
     if (status) where.status = status;
     if (dueFrom || dueTo) {
       where.dueDate = {};
-      if (dueFrom) where.dueDate.gte = new Date(`${dueFrom}T00:00:00.000`);
-      if (dueTo) where.dueDate.lte = new Date(`${dueTo}T23:59:59.999`);
+      if (dueFrom) where.dueDate.gte = parseStartOfDayBR(dueFrom);
+      if (dueTo) where.dueDate.lte = parseEndOfDayBR(dueTo);
     }
     if (paidFrom || paidTo) {
       where.paidDate = {};
-      if (paidFrom) where.paidDate.gte = new Date(`${paidFrom}T00:00:00.000`);
-      if (paidTo) where.paidDate.lte = new Date(`${paidTo}T23:59:59.999`);
+      if (paidFrom) where.paidDate.gte = parseStartOfDayBR(paidFrom);
+      if (paidTo) where.paidDate.lte = parseEndOfDayBR(paidTo);
     }
     if (q) {
       where.OR = [

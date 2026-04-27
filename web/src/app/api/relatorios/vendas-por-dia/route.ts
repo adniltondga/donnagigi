@@ -1,7 +1,7 @@
 import prisma from '@/lib/prisma';
 import { getTenantIdOrDefault } from '@/lib/tenant';
 import { computeSaleNumbers } from '@/lib/sale-notes';
-import { dayOfMonthBR } from '@/lib/tz';
+import { dayOfMonthBR, parseStartOfDayBR, parseEndOfDayBR } from '@/lib/tz';
 import { NextRequest, NextResponse } from 'next/server';
 
 export const dynamic = 'force-dynamic';
@@ -24,11 +24,11 @@ export async function GET(req: NextRequest) {
     const toParam = sp.get('to');
 
     const from = fromParam
-      ? new Date(`${fromParam}T00:00:00`)
+      ? parseStartOfDayBR(fromParam)
       : new Date(now.getFullYear(), 0, 1);
 
     const to = toParam
-      ? new Date(`${toParam}T23:59:59.999`)
+      ? parseEndOfDayBR(toParam)
       : new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
 
     const tenantId = await getTenantIdOrDefault();

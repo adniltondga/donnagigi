@@ -95,7 +95,7 @@ function aggregateKPIs(bills: BillRow[]): KPIs {
   return k;
 }
 
-import { dateKeyBR } from '@/lib/tz';
+import { dateKeyBR, parseStartOfDayBR, parseEndOfDayBR } from '@/lib/tz';
 
 const dateKey = dateKeyBR;
 
@@ -108,10 +108,10 @@ export async function GET(req: NextRequest) {
     const toParam = sp.get('to');
 
     const from = fromParam
-      ? new Date(`${fromParam}T00:00:00`)
+      ? parseStartOfDayBR(fromParam)
       : new Date(now.getFullYear(), 0, 1);
     const to = toParam
-      ? new Date(`${toParam}T23:59:59.999`)
+      ? parseEndOfDayBR(toParam)
       : new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
 
     const windowMs = to.getTime() - from.getTime();

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import prisma from "@/lib/prisma"
 import { getTenantIdOrDefault } from "@/lib/tenant"
 import { AuthError, authErrorResponse, requireSession } from "@/lib/auth"
+import { parseStartOfDayBR, parseEndOfDayBR } from "@/lib/tz"
 
 export const dynamic = "force-dynamic"
 
@@ -30,11 +31,11 @@ export async function GET(req: NextRequest) {
 
     const from =
       fromStr && /^\d{4}-\d{2}-\d{2}$/.test(fromStr)
-        ? new Date(`${fromStr}T00:00:00`)
+        ? parseStartOfDayBR(fromStr)
         : defaultFrom
     const to =
       toStr && /^\d{4}-\d{2}-\d{2}$/.test(toStr)
-        ? new Date(`${toStr}T23:59:59.999`)
+        ? parseEndOfDayBR(toStr)
         : defaultTo
 
     // Bills pagas/recebidas no período (usa paidDate como data efetiva)
