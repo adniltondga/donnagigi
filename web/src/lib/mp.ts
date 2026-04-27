@@ -203,6 +203,8 @@ interface MPPaymentRaw {
     items?: Array<{ id?: string; title?: string; quantity?: number }>
   } | null
   payer?: { id?: number | string; email?: string; nickname?: string | null } | null
+  /** Aceita tanto collector.id (objeto) quanto collector_id (raiz). */
+  collector?: { id?: number | string } | null
   collector_id?: number | string | null
 }
 
@@ -213,27 +215,43 @@ interface MPPaymentSearchResult {
 
 /**
  * Filtro defensivo: só payments onde o seller é o COLLECTOR (recebedor).
- * O search do MP às vezes retorna payments onde o token aparece como
- * payer (compras feitas pelo seller via PIX/transferência) — esses
- * vazariam pra "Liberados/Vendas" se não fossem filtrados aqui.
+ * O search do MP retorna payments onde o token também aparece como
+ * payer (compras feitas pelo seller via PIX, frete cobrado pelo ML
+ * com description "marketplace_shipment", certificado digital MELI,
+ * etc). Esses vazariam pra "Liberados/Vendas" se não fossem filtrados.
  *
- * Operation types aceitos: regular_payment (venda comum). Outros como
- * money_transfer, recurring_payment, pos_payment já são filtrados pela
- * query, mas a validação local cobre o caso do filtro do server falhar.
+ * Camadas:
+ * 1. operation_type=regular_payment (query) — descarta money_transfer.
+ * 2. external_reference começando com "MELI_" — produtos internos do
+ *    MELI (ex: certificado digital Soluti).
+ * 3. description == "marketplace_shipment" — frete cobrado pelo ML,
+ *    é despesa do seller, não venda.
+ * 4. collector.id == mpUserId (validação por id quando o MP retorna).
+ * 5. payer.id != mpUserId (descarta quando o seller é o pagador).
  */
 function isSellerReceiving(p: MPPaymentRaw, collectorId?: string): boolean {
-  // Se a query já filtrou regular_payment, isso é redundante mas seguro.
+  // Operation type não-venda
   if (p.operation_type && p.operation_type !== "regular_payment") return false
-  // Sem collectorId, confiamos só no operation_type acima.
+
+  // Produtos internos do MELI (certificado digital, etc)
+  if (p.external_reference?.startsWith("MELI_")) return false
+
+  // Frete cobrado pelo ML — description vem como "marketplace_shipment"
+  if (p.description?.toLowerCase().includes("marketplace_shipment")) return false
+
   if (!collectorId) return true
-  // Quando o MP devolve collector_id, valida que bate com o seller.
-  if (p.collector_id != null) {
-    return String(p.collector_id) === String(collectorId)
+
+  // Valida collector.id (objeto) ou collector_id (raiz) bate com o seller
+  const collId = p.collector?.id ?? p.collector_id
+  if (collId != null) {
+    return String(collId) === String(collectorId)
   }
-  // Fallback: se o payer tem id e bate com o seller, é uma compra dele — exclui.
+
+  // Fallback: se o payer é o próprio seller, é compra dele
   if (p.payer?.id != null && String(p.payer.id) === String(collectorId)) {
     return false
   }
+
   return true
 }
 
