@@ -248,6 +248,20 @@ export function MercadoPagoClient() {
         </Button>
       </div>
 
+      {/* Filtro de período — afeta cards Liberado/A liberar e listas abaixo */}
+      <div className="bg-card border border-border rounded-lg px-3 py-2 flex flex-wrap items-end gap-3">
+        <PeriodFilter
+          from={periodFrom}
+          to={periodTo}
+          preset={periodPreset}
+          onChange={(n) => {
+            setPeriodFrom(n.from)
+            setPeriodTo(n.to)
+            setPeriodPreset(n.preset)
+          }}
+        />
+      </div>
+
       {hasError && (
         <Card className="border-red-200 bg-red-50/40">
           <CardContent className="pt-4 flex items-start gap-2 text-sm text-red-800">
@@ -427,20 +441,6 @@ export function MercadoPagoClient() {
             </span>
           </div>
 
-          {/* Filtros */}
-          <div className="flex flex-wrap items-end gap-3">
-            <PeriodFilter
-              from={periodFrom}
-              to={periodTo}
-              preset={periodPreset}
-              onChange={(n) => {
-                setPeriodFrom(n.from)
-                setPeriodTo(n.to)
-                setPeriodPreset(n.preset)
-              }}
-            />
-
-          </div>
         </CardHeader>
         <CardContent className="p-0">
           {loading && !snap ? (
