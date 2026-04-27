@@ -185,35 +185,17 @@ export function MercadoPagoClient() {
   const filteredReleasedTotal = filteredReleased.reduce((s, d) => s + d.total, 0)
   const filteredReleasedCount = filteredReleased.reduce((s, d) => s + d.count, 0)
 
-  // Totais do MÊS ATUAL (KPIs fixos, não dependem do filter).
-  const sumInCurrentMonth = (days: Day[] | undefined): { total: number; count: number } => {
-    if (!days) return { total: 0, count: 0 }
-    const now = new Date()
-    const y = now.getFullYear()
-    const m = now.getMonth()
-    const monthStart = `${y}-${String(m + 1).padStart(2, "0")}-01`
-    const last = new Date(y, m + 1, 0)
-    const monthEnd = `${y}-${String(m + 1).padStart(2, "0")}-${String(last.getDate()).padStart(2, "0")}`
-    let total = 0
-    let count = 0
-    for (const d of days) {
-      if (d.date >= monthStart && d.date <= monthEnd) {
-        total += d.total
-        count += d.count
-      }
+  // Sufixo do label dos cards baseado no preset/range selecionado.
+  const periodSuffix = useMemo(() => {
+    if (periodPreset === "hoje") return "hoje"
+    if (periodPreset === "7dias") return "(7 dias)"
+    if (periodPreset === "mes") return "no mês"
+    const fmt = (iso: string) => {
+      const [y, m, d] = iso.split("-")
+      return `${d}/${m}/${y.slice(2)}`
     }
-    return { total: Math.round(total * 100) / 100, count }
-  }
-  const releasedMesAtual = useMemo(
-    () => sumInCurrentMonth(snap?.releasedDays),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [snap?.releasedDays]
-  )
-  const pendingMesAtual = useMemo(
-    () => sumInCurrentMonth(snap?.pendingDays),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [snap?.pendingDays]
-  )
+    return `${fmt(periodFrom)} a ${fmt(periodTo)}`
+  }, [periodPreset, periodFrom, periodTo])
 
   // Caso especial: MP não conectado
   if (notConfigured) {
@@ -275,24 +257,25 @@ export function MercadoPagoClient() {
         </Card>
       )}
 
-      {/* Grid: Já liberado (mês) · A liberar (mês) · Em mediação */}
+      {/* Grid: Liberado · A liberar · Em mediação. Liberado/A liberar
+          respeitam o filtro de período; mediação é sempre o presente. */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <SummaryCard
             tone="emerald"
             icon={<Clock className="w-5 h-5" />}
-            label="Liberado no mês"
-            value={releasedMesAtual.total}
-            sub={`${releasedMesAtual.count} pagamento${releasedMesAtual.count === 1 ? "" : "s"}`}
-            tooltip={`${releasedMesAtual.count} pagamento${releasedMesAtual.count === 1 ? "" : "s"} caíram no MP este mês e já estão disponíveis pra saque.`}
+            label={`Liberado ${periodSuffix}`}
+            value={filteredReleasedTotal}
+            sub={`${filteredReleasedCount} pagamento${filteredReleasedCount === 1 ? "" : "s"}`}
+            tooltip={`${filteredReleasedCount} pagamento${filteredReleasedCount === 1 ? "" : "s"} caíram no MP no período selecionado e já estão disponíveis pra saque.`}
             loading={loading && !snap}
           />
           <SummaryCard
             tone="sky"
             icon={<Clock className="w-5 h-5" />}
-            label="A liberar no mês"
-            value={pendingMesAtual.total}
-            sub={`${pendingMesAtual.count} pagamento${pendingMesAtual.count === 1 ? "" : "s"}`}
-            tooltip={`${pendingMesAtual.count} pagamento${pendingMesAtual.count === 1 ? "" : "s"} com liberação prevista até o fim deste mês.`}
+            label={`A liberar ${periodSuffix}`}
+            value={filteredPendingTotal}
+            sub={`${filteredPendingCount} pagamento${filteredPendingCount === 1 ? "" : "s"}`}
+            tooltip={`${filteredPendingCount} pagamento${filteredPendingCount === 1 ? "" : "s"} com liberação prevista no período selecionado.`}
             loading={loading && !snap}
           />
           <SummaryCard
