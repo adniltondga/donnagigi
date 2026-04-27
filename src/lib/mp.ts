@@ -239,6 +239,14 @@ function isSellerReceiving(p: MPPaymentRaw, collectorId?: string): boolean {
   // Frete cobrado pelo ML — description vem como "marketplace_shipment"
   if (p.description?.toLowerCase().includes("marketplace_shipment")) return false
 
+  // PIX recebido cru: sem external_reference, sem items, sem description.
+  // Vendas reais ML sempre têm pelo menos um desses campos preenchido.
+  // É transferência avulsa (alguém te mandou PIX direto), não venda.
+  const noDescription = !p.description?.trim()
+  const noExt = !p.external_reference
+  const noItems = !p.additional_info?.items?.length
+  if (noDescription && noExt && noItems) return false
+
   if (!collectorId) return true
 
   // Valida collector.id (objeto) ou collector_id (raiz) bate com o seller
