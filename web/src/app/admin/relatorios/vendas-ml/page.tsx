@@ -9,6 +9,7 @@ import { PageHeader } from '@/components/ui/page-header';
 import { Card } from '@/components/ui/card';
 import { EmptyState } from '@/components/ui/empty-state';
 import { ProductLabel } from '@/components/ProductLabel';
+import { parseSaleDescription } from '@/lib/ml-format';
 import { PeriodFilter, resolvePreset, type PeriodPreset } from '@/components/admin/PeriodFilter';
 import { SummaryCard } from '@/components/ui/summary-card';
 import { computeSaleNumbers } from '@/lib/sale-notes';
@@ -93,6 +94,24 @@ export default function VendasMLPage() {
   const [totals, setTotals] = useState<PeriodTotals | null>(null);
   const [totalsLoading, setTotalsLoading] = useState(false);
   const [exporting, setExporting] = useState(false);
+  // Mapa mlListingId → thumbnail vindo de /api/ml/all-listings.
+  // Cobre só anúncios ainda ativos no ML; vendas de anúncios encerrados
+  // mostram placeholder Package.
+  const [thumbsByMlb, setThumbsByMlb] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    fetch('/api/ml/all-listings')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (!d?.items) return;
+        const map: Record<string, string> = {};
+        for (const it of d.items as Array<{ mlListingId: string; thumbnail: string | null }>) {
+          if (it.thumbnail) map[it.mlListingId] = it.thumbnail;
+        }
+        setThumbsByMlb(map);
+      })
+      .catch(() => {});
+  }, []);
 
   const fetchBills = async () => {
     setLoading(true);
@@ -437,10 +456,33 @@ export default function VendasMLPage() {
                       {formatDate(b.dueDate)}
                     </TableCell>
                     <TableCell className="text-sm">
-                      <ProductLabel description={b.description} quantity={b.quantity} />
-                      {b.mlPackId && (
-                        <div className="text-xs text-muted-foreground font-mono mt-0.5">Pack #{b.mlPackId}</div>
-                      )}
+                      {(() => {
+                        const mlb = parseSaleDescription(b.description).mlListingId;
+                        const thumb = mlb ? thumbsByMlb[mlb] : null;
+                        return (
+                          <div className="flex items-start gap-3 min-w-0">
+                            {thumb ? (
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img
+                                src={thumb}
+                                alt=""
+                                loading="lazy"
+                                className="w-12 h-12 rounded-lg object-cover border border-border bg-muted shrink-0"
+                              />
+                            ) : (
+                              <div className="w-12 h-12 rounded-lg border border-border bg-muted flex items-center justify-center shrink-0">
+                                <ShoppingCart className="w-5 h-5 text-muted-foreground/60" />
+                              </div>
+                            )}
+                            <div className="min-w-0 flex-1">
+                              <ProductLabel description={b.description} quantity={b.quantity} />
+                              {b.mlPackId && (
+                                <div className="text-xs text-muted-foreground font-mono mt-0.5">Pack #{b.mlPackId}</div>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })()}
                     </TableCell>
                     <TableCell className="text-sm font-semibold text-right whitespace-nowrap">
                       <div className="flex items-center gap-2 justify-end">

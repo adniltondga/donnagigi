@@ -67,14 +67,19 @@ export async function POST(request: NextRequest) {
     redirectUri?: string | null
   }
 
-  if (!clientId || !clientSecret) {
-    return NextResponse.json(
-      { error: "Client ID e Client Secret são obrigatórios" },
-      { status: 400 }
-    )
+  if (!clientId || clientId.trim().length < 6) {
+    return NextResponse.json({ error: "Client ID inválido" }, { status: 400 })
   }
-  if (clientId.trim().length < 6 || clientSecret.trim().length < 6) {
-    return NextResponse.json({ error: "Credenciais muito curtas" }, { status: 400 })
+
+  // Secret em branco no update = mantém o atual (UX: usuário só está mudando clientId/redirectUri)
+  const existing = await prisma.mPAppCredentials.findUnique({
+    where: { tenantId: session.tenantId },
+    select: { clientSecret: true },
+  })
+  const incomingSecret = clientSecret?.trim() || ""
+  const finalSecret = incomingSecret || existing?.clientSecret || ""
+  if (!finalSecret || finalSecret.length < 6) {
+    return NextResponse.json({ error: "Client Secret é obrigatório" }, { status: 400 })
   }
 
   let normalizedUri: string | null = null
@@ -94,12 +99,12 @@ export async function POST(request: NextRequest) {
     create: {
       tenantId: session.tenantId,
       clientId: clientId.trim(),
-      clientSecret: clientSecret.trim(),
+      clientSecret: finalSecret,
       redirectUri: normalizedUri,
     },
     update: {
       clientId: clientId.trim(),
-      clientSecret: clientSecret.trim(),
+      clientSecret: finalSecret,
       redirectUri: normalizedUri,
     },
     select: { updatedAt: true },

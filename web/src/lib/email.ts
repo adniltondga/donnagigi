@@ -59,15 +59,29 @@ async function sendViaMailtrap(input: SendEmailInput) {
 async function sendViaResend(input: SendEmailInput) {
   const key = process.env.RESEND_API_KEY;
   if (!key) return sendViaJsonTransport(input);
-  const { Resend } = await import('resend');
-  const resend = new Resend(key);
-  return resend.emails.send({
-    from: FROM,
-    to: input.to,
-    subject: input.subject,
-    html: input.html,
-    text: input.text,
+  // Chamada direta via fetch (não SDK) pra poder logar via loggedFetch.
+  const { loggedFetch } = await import('./api-log');
+  const res = await loggedFetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${key}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      from: FROM,
+      to: input.to,
+      subject: input.subject,
+      html: input.html,
+      text: input.text,
+    }),
+    provider: 'resend',
+    endpoint: '/emails',
   });
+  if (!res.ok) {
+    const errText = await res.text().catch(() => '');
+    throw new Error(`Resend ${res.status}: ${errText}`);
+  }
+  return res.json();
 }
 
 export async function sendEmail(input: SendEmailInput) {

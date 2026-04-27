@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
-import { Users, LogOut, Tickets, Wrench, Mail } from "lucide-react"
+import { Users, LogOut, Tickets, Wrench, Mail, Activity } from "lucide-react"
 import { ThemeToggle } from "@/components/ThemeToggle"
 
 interface StaffUser {
@@ -14,6 +14,7 @@ const NAV = [
   { href: "/staff/tickets", label: "Tickets", icon: Tickets },
   { href: "/staff/clientes", label: "Clientes", icon: Users },
   { href: "/staff/waitlist", label: "Lista de espera", icon: Mail },
+  { href: "/staff/api-usage", label: "API Usage", icon: Activity },
 ]
 
 export function StaffShell({ user, children }: { user: StaffUser; children: React.ReactNode }) {
