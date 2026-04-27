@@ -7,6 +7,7 @@ import { Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from '@
 import { PageHeader } from '@/components/ui/page-header'
 import { Card } from '@/components/ui/card'
 import { EmptyState } from '@/components/ui/empty-state'
+import { KpiCard } from '@/components/ui/kpi-card'
 import type { PotencialItem } from '@/app/api/relatorios/potencial-estoque/route'
 
 interface Summary {
@@ -21,34 +22,6 @@ interface Summary {
   margemMedia: number
   semCusto: number
   taxaPct: number
-}
-
-function KpiCard({
-  label,
-  value,
-  sub,
-  highlight,
-  warning,
-}: {
-  label: string
-  value: string
-  sub?: string
-  highlight?: boolean
-  warning?: boolean
-}) {
-  return (
-    <Card className="p-4 space-y-1">
-      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{label}</p>
-      <p
-        className={`text-2xl font-bold ${
-          highlight ? 'text-emerald-600' : warning ? 'text-amber-600' : 'text-foreground'
-        }`}
-      >
-        {value}
-      </p>
-      {sub && <p className="text-xs text-muted-foreground">{sub}</p>}
-    </Card>
-  )
 }
 
 export default function PotencialEstoquePage() {
@@ -139,7 +112,7 @@ export default function PotencialEstoquePage() {
               label="Taxa ML (est.)"
               value={fmt(summary.totalTaxaML)}
               sub={`${summary.taxaPct}% sobre bruto`}
-              warning
+              accent="amber"
             />
             <KpiCard
               label="Líquido (após taxas)"
@@ -150,8 +123,7 @@ export default function PotencialEstoquePage() {
               label="Lucro potencial"
               value={fmt(summary.totalLucro)}
               sub={`margem ${pct(summary.margemMedia)}`}
-              highlight={summary.totalLucro > 0}
-              warning={summary.totalLucro <= 0}
+              accent={summary.totalLucro > 0 ? "emerald" : "amber"}
             />
             <KpiCard
               label="Ticket médio"

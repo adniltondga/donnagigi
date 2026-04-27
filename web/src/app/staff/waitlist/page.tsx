@@ -4,6 +4,7 @@ import { useEffect, useState } from "react"
 import { Loader2, Mail, Send, AlertTriangle } from "lucide-react"
 import { feedback } from "@/lib/feedback"
 import { LoadingState } from "@/components/ui/loading-state"
+import { KpiCard } from "@/components/ui/kpi-card"
 
 interface Signup {
   id: string
@@ -86,9 +87,9 @@ export default function StaffWaitlistPage() {
 
       {stats && (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-          <KPI label="Total" value={String(stats.total)} />
-          <KPI label="A avisar" value={String(stats.pending)} accent="amber" />
-          <KPI label="Já avisados" value={String(stats.notified)} accent="emerald" />
+          <KpiCard label="Total" value={String(stats.total)} />
+          <KpiCard label="A avisar" value={String(stats.pending)} accent="amber" />
+          <KpiCard label="Já avisados" value={String(stats.notified)} accent="emerald" />
         </div>
       )}
 
@@ -201,24 +202,3 @@ export default function StaffWaitlistPage() {
   )
 }
 
-function KPI({
-  label,
-  value,
-  accent = "default",
-}: {
-  label: string
-  value: string
-  accent?: "default" | "amber" | "emerald"
-}) {
-  const accentCls = {
-    default: "text-foreground",
-    amber: "text-amber-600 dark:text-amber-400",
-    emerald: "text-emerald-600 dark:text-emerald-400",
-  }[accent]
-  return (
-    <div className="bg-card border border-border rounded-lg p-4">
-      <p className="text-[10px] uppercase tracking-wide text-muted-foreground">{label}</p>
-      <p className={`text-2xl font-bold mt-1 ${accentCls}`}>{value}</p>
-    </div>
-  )
-}

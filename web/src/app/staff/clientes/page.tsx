@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react"
 import { Search, Building2, Plug, Receipt, Tickets as TicketsIcon } from "lucide-react"
 import { LoadingState } from "@/components/ui/loading-state"
+import { KpiCard } from "@/components/ui/kpi-card"
 
 interface TenantRow {
   id: string
@@ -119,11 +120,11 @@ export default function StaffClientesPage() {
 
       {kpis && (
         <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-          <KPI label="Total" value={String(kpis.total)} />
-          <KPI label="Ativos" value={String(kpis.active)} accent="emerald" />
-          <KPI label="Em trial" value={String(kpis.trial)} accent="blue" />
-          <KPI label="Tickets abertos" value={String(kpis.ticketsOpen)} accent="amber" />
-          <KPI label="MRR estimado" value={formatCurrency(kpis.mrr)} accent="primary" />
+          <KpiCard label="Total" value={String(kpis.total)} />
+          <KpiCard label="Ativos" value={String(kpis.active)} accent="emerald" />
+          <KpiCard label="Em trial" value={String(kpis.trial)} accent="blue" />
+          <KpiCard label="Tickets abertos" value={String(kpis.ticketsOpen)} accent="amber" />
+          <KpiCard label="MRR estimado" value={formatCurrency(kpis.mrr)} accent="primary" />
         </div>
       )}
 
@@ -230,18 +231,3 @@ export default function StaffClientesPage() {
   )
 }
 
-function KPI({ label, value, accent = "default" }: { label: string; value: string; accent?: "default" | "emerald" | "blue" | "amber" | "primary" }) {
-  const accentCls = {
-    default: "text-foreground",
-    emerald: "text-emerald-600 dark:text-emerald-400",
-    blue: "text-blue-600 dark:text-blue-400",
-    amber: "text-amber-600 dark:text-amber-400",
-    primary: "text-primary-600 dark:text-primary-400",
-  }[accent]
-  return (
-    <div className="bg-card border border-border rounded-lg p-4">
-      <p className="text-[10px] uppercase tracking-wide text-muted-foreground">{label}</p>
-      <p className={`text-2xl font-bold mt-1 ${accentCls}`}>{value}</p>
-    </div>
-  )
-}
