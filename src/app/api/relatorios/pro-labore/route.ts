@@ -83,10 +83,16 @@ export async function GET(req: NextRequest) {
     // ---- RECEITA DISPONÍVEL DO MÊS — base de caixa real ----
     // PRIMÁRIA: MP.cachedReleasedDays filtrado pelo mês selecionado.
     // FALLBACK: bills receivable status=paid no mês.
+    interface MPReleasedPayment {
+      id: number
+      externalReference: string | null
+      netAmount: number
+    }
     interface MPReleasedDay {
       date: string
       total: number
       count: number
+      payments?: MPReleasedPayment[]
     }
     const mpIntegration = await prisma.mPIntegration.findUnique({
       where: { tenantId },
@@ -99,7 +105,39 @@ export async function GET(req: NextRequest) {
     const mpReleasedNoMes = releasedDoMes.reduce((s, d) => s + d.total, 0)
     const mpReady = mpIntegration != null && releasedDays.length > 0
 
-    // Pra CMV, lucro contábil informativo e fallback: bills paid no mês
+    // ---- CMV CORRESPONDENTE — matching exato dos pagamentos liberados ----
+    // Cada payment do MP tem externalReference que costuma ser o ID do
+    // pedido ML. A nossa Bill guarda mlOrderId="order_${id}". Casamos os
+    // dois e somamos o productCost das bills correspondentes — assim o
+    // CMV reflete exatamente o que originou os R$ liberados (não importa
+    // a data do pedido — pode ser do mês passado, é o caso normal).
+    const paymentsLiberadosNoMes = releasedDoMes.flatMap((d) => d.payments ?? [])
+    const externalRefs = paymentsLiberadosNoMes
+      .map((p) => p.externalReference)
+      .filter((r): r is string => !!r)
+    // ML order_id pode aparecer nu ou prefixado — tenta as duas formas
+    const orderIdCandidates = Array.from(
+      new Set(externalRefs.flatMap((r) => [r, `order_${r}`])),
+    )
+    const billsCorrespondentes = orderIdCandidates.length > 0
+      ? await prisma.bill.findMany({
+          where: { tenantId, mlOrderId: { in: orderIdCandidates } },
+          select: { mlOrderId: true, amount: true, productCost: true },
+        })
+      : []
+    const cmvCorrespondente = billsCorrespondentes.reduce(
+      (s, b) => s + (b.productCost ?? 0),
+      0,
+    )
+    const billsCorrespondentesSemCusto = billsCorrespondentes.filter(
+      (b) => b.productCost == null,
+    ).length
+    const paymentsSemMatch = Math.max(
+      0,
+      paymentsLiberadosNoMes.length - billsCorrespondentes.length,
+    )
+
+    // Pra fallback (sem MP): bills paid no mês com seu CMV ratio
     const receitasPagasMes = await prisma.bill.findMany({
       where: {
         tenantId,
@@ -146,23 +184,36 @@ export async function GET(req: NextRequest) {
     })
     const reposicaoPagaNoMes = reposicaoPagaBills.reduce((s, b) => s + b.amount, 0)
 
-    // CMV do mês — duas estratégias:
-    //  1) productCost cadastrado: CMV proporcional = MP liberado × ratio
-    //     (cmvCadastrado/billsPaidNoMes). Mais preciso.
-    //  2) Sem productCost: usa reposição paga como proxy. O dinheiro que
-    //     saiu pra repor estoque é uma boa aproximação do que custou as
-    //     vendas (esp. se o seller repõe imediatamente o que vende).
-    //  3) Nenhum dos dois: zero, com aviso.
+    // CMV do mês — preferência:
+    //  1) cmvCorrespondente (matching MP↔bill, exato): usa direto.
+    //  2) Sem MP ou sem matches: cmvCadastrado proporcional (fallback).
+    //  3) Sem nada: 0.
     const cmvRatio = billsPaidNoMes > 0 ? cmvCadastrado / billsPaidNoMes : 0
     const cmvProporcional = mpReady ? receitaBruta * cmvRatio : cmvCadastrado
-    const usingReposicaoProxy = cmvCadastrado === 0 && reposicaoPagaNoMes > 0
-    const cmvDoMes = usingReposicaoProxy ? reposicaoPagaNoMes : cmvProporcional
-    const cmvSource: "productCost" | "reposicao" | "none" =
-      cmvCadastrado > 0 ? "productCost" : reposicaoPagaNoMes > 0 ? "reposicao" : "none"
+    const cmvDoMes = mpReady && cmvCorrespondente > 0
+      ? cmvCorrespondente
+      : cmvProporcional
+    const cmvSource: "matching_exact" | "productCost_proportional" | "none" =
+      mpReady && cmvCorrespondente > 0
+        ? "matching_exact"
+        : cmvCadastrado > 0
+          ? "productCost_proportional"
+          : "none"
     const cmvFaltando = cmvCadastrado === 0 && aporteMercadoriaNoMes > 0
 
-    // "Lucro real recebido" = receita − CMV. Aporte NÃO entra aqui.
-    const receitaRecebida = receitaBruta - cmvDoMes
+    // RESERVA PARA ESTOQUE — peça-chave do modelo:
+    // O CMV das vendas que liberaram dinheiro este mês JÁ É um
+    // compromisso, mesmo que você ainda não tenha pago a reposição
+    // (gap de 30d entre venda e liberação MP).
+    // Desconta o MAIOR entre cmvDoMes e reposicaoPagaNoMes:
+    //   - Se reposição < CMV: você ainda precisa repor (CMV − pago)
+    //   - Se reposição ≥ CMV: você já adiantou estoque pra meses futuros
+    const descontoPraEstoque = Math.max(cmvDoMes, reposicaoPagaNoMes)
+    const pendenteReposicao = Math.max(0, cmvDoMes - reposicaoPagaNoMes)
+    const adiantadoReposicao = Math.max(0, reposicaoPagaNoMes - cmvDoMes)
+
+    // "Lucro real recebido" = receita − reserva pra estoque.
+    const receitaRecebida = receitaBruta - descontoPraEstoque
 
     // Despesas operacionais pagas no mês (status=paid, exclui aporte
     // e reposição de estoque — esta já entrou como CMV proxy quando
@@ -356,25 +407,17 @@ export async function GET(req: NextRequest) {
     // — referência, user pode pagar quanto quiser.
     const aporteAmortizacaoSugerida = Math.round((aportesADevolver / 24) * 100) / 100
 
-    // FÓRMULA DIRETA — o que sobra do que entrou no caixa do mês:
-    //   liberado MP − reposição paga − despesas pagas
-    // Amortização de aporte e reinvestimento são SUGESTÕES (cards
-    // informativos), NÃO descontam automaticamente. Reserva idem.
-    // Assim o user vê o número honesto e decide quanto vai amortizar
-    // ou reinvestir.
-    const proLaboreDireto = Math.max(
-      0,
-      Math.round((receitaBruta - reposicaoPagaNoMes - despesasPagasTotal) * 100) / 100,
-    )
+    // CAIXA DO MÊS — o que sobrou após cobrir estoque e despesas:
+    //   liberado MP − max(CMV, reposição paga) − despesas pagas
+    const caixaDoMes = receitaBruta - descontoPraEstoque - despesasPagasTotal
 
-    // Pró-labore "conservador" — desconta amortização/reinvest/reserva.
-    // Mantemos no response como referência (não é o card principal).
-    const sobra =
-      baseDisponivel -
-      aporteAmortizacaoSugerida -
-      reinvestSugerido -
-      faltaParaReserva
+    // PRÓ-LABORE FINAL — caixa do mês menos compromissos sugeridos:
+    //   − amortização do aporte (empréstimo do sócio)
+    //   − reinvestimento (% pra crescer)
+    //   − reserva pendente (colchão)
+    const sobra = caixaDoMes - aporteAmortizacaoSugerida - reinvestSugerido - faltaParaReserva
     const proLaboreSeguro = Math.max(0, Math.round(sobra * 100) / 100)
+    const proLaboreDireto = Math.max(0, Math.round(caixaDoMes * 100) / 100)
 
     // Histórico últimos 6 meses de pró-labore lançado
     let historico: Array<{ month: string; total: number }> = []
@@ -408,13 +451,21 @@ export async function GET(req: NextRequest) {
       billsPaidNoMes: Math.round(billsPaidNoMes * 100) / 100,
       mpSyncedAt: mpIntegration?.cachedSyncedAt ? mpIntegration.cachedSyncedAt.toISOString() : null,
       cmvDoMes: Math.round(cmvDoMes * 100) / 100,
+      cmvCorrespondente: Math.round(cmvCorrespondente * 100) / 100,
+      cmvSource,
+      paymentsLiberadosCount: paymentsLiberadosNoMes.length,
+      paymentsSemMatch,
+      billsCorrespondentesSemCusto,
       reposicaoPagaNoMes: Math.round(reposicaoPagaNoMes * 100) / 100,
+      descontoPraEstoque: Math.round(descontoPraEstoque * 100) / 100,
+      pendenteReposicao: Math.round(pendenteReposicao * 100) / 100,
+      adiantadoReposicao: Math.round(adiantadoReposicao * 100) / 100,
+      caixaDoMes: Math.round(caixaDoMes * 100) / 100,
       receitaRecebida: Math.round(receitaRecebida * 100) / 100,
       despesasPagas: Math.round(despesasPagasTotal * 100) / 100,
       aportesNoMes: Math.round(aportesNoMesTotal * 100) / 100,
       aporteMercadoriaNoMes: Math.round(aporteMercadoriaNoMes * 100) / 100,
       aportesOperacionaisNoMes: Math.round(aportesOperacionaisNoMes * 100) / 100,
-      cmvSource,
       cmvFaltando,
       custoOperacionalTotal: Math.round(custoOperacionalTotal * 100) / 100,
       lucroLiquido: Math.round(lucroLiquido * 100) / 100,

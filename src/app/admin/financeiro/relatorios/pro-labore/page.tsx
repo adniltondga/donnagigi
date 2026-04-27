@@ -38,8 +38,16 @@ interface ProLaboreResponse {
   mpSyncedAt: string | null
   proLaboreDireto: number
   cmvDoMes: number
+  cmvCorrespondente: number
+  cmvSource: "matching_exact" | "productCost_proportional" | "none"
+  paymentsLiberadosCount: number
+  paymentsSemMatch: number
+  billsCorrespondentesSemCusto: number
   reposicaoPagaNoMes: number
-  cmvSource: "productCost" | "reposicao" | "none"
+  descontoPraEstoque: number
+  pendenteReposicao: number
+  adiantadoReposicao: number
+  caixaDoMes: number
   cmvFaltando: boolean
   receitaRecebida: number
   despesasPagas: number
@@ -162,17 +170,15 @@ export default function ProLaborePage() {
               label="Lucro recebido (mês)"
               value={formatCurrency(data.receitaRecebida)}
               tooltip={
-                data.cmvSource === "productCost"
-                  ? `liberado MP ${formatCurrency(data.receitaBruta)} − mercadoria ${formatCurrency(data.cmvDoMes)} (custos cadastrados)`
-                  : data.cmvSource === "reposicao"
-                  ? `liberado MP ${formatCurrency(data.receitaBruta)} − reposição paga ${formatCurrency(data.cmvDoMes)} (proxy do CMV)`
-                  : `liberado MP ${formatCurrency(data.receitaBruta)} — sem CMV cadastrado nem reposição paga`
+                data.cmvSource === "matching_exact"
+                  ? `liberado MP ${formatCurrency(data.receitaBruta)} − reservado pra estoque ${formatCurrency(data.descontoPraEstoque)} (CMV exato das vendas liberadas)`
+                  : data.cmvSource === "productCost_proportional"
+                  ? `liberado MP ${formatCurrency(data.receitaBruta)} − reservado pra estoque ${formatCurrency(data.descontoPraEstoque)} (CMV proporcional)`
+                  : `liberado MP ${formatCurrency(data.receitaBruta)} — sem CMV cadastrado`
               }
               sub={
-                data.cmvSource === "productCost"
-                  ? `(−) ${formatCurrency(data.cmvDoMes)} de mercadoria`
-                  : data.cmvSource === "reposicao"
-                  ? `(−) ${formatCurrency(data.cmvDoMes)} de reposição`
+                data.descontoPraEstoque > 0
+                  ? `(−) ${formatCurrency(data.descontoPraEstoque)} reservado pra estoque`
                   : "sem CMV cadastrado"
               }
               icon={TrendingUp}
@@ -218,7 +224,7 @@ export default function ProLaborePage() {
             </div>
           )}
 
-          {/* Card principal — fórmula direta */}
+          {/* Card principal — pró-labore final */}
           <Card className="border-primary-200 dark:border-primary-900/50 bg-gradient-to-br from-primary-50 to-white dark:bg-none dark:bg-card">
             <CardContent className="pt-6">
               <div className="flex items-start gap-4 flex-wrap">
@@ -227,13 +233,13 @@ export default function ProLaborePage() {
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-xs font-medium text-primary-700 uppercase tracking-wide">
-                    Pró-labore disponível este mês
+                    Pró-labore sugerido este mês
                   </p>
                   <p className="text-4xl font-bold text-foreground mt-1 tabular-nums">
-                    {formatCurrency(data.proLaboreDireto)}
+                    {formatCurrency(data.proLaboreSeguro)}
                   </p>
                   <p className="text-xs text-muted-foreground mt-1">
-                    do dinheiro que entrou no caixa, depois de repor estoque e pagar despesas
+                    do que entrou de fato, descontado o que precisa repor + despesas + sugestões
                   </p>
 
                   {/* Conta passo-a-passo */}
@@ -243,28 +249,50 @@ export default function ProLaborePage() {
                       <span className="tabular-nums font-medium">{formatCurrency(data.receitaBruta)}</span>
                     </div>
                     <div className="flex justify-between text-rose-700 dark:text-rose-400">
-                      <span>− Reposição de estoque paga</span>
-                      <span className="tabular-nums">−{formatCurrency(data.reposicaoPagaNoMes)}</span>
+                      <span>
+                        − Reservado pra estoque
+                        <span className="text-[11px] text-muted-foreground ml-1">
+                          (max CMV/reposição)
+                        </span>
+                      </span>
+                      <span className="tabular-nums">−{formatCurrency(data.descontoPraEstoque)}</span>
                     </div>
                     <div className="flex justify-between text-rose-700 dark:text-rose-400">
                       <span>− Despesas pagas</span>
                       <span className="tabular-nums">−{formatCurrency(data.despesasPagas)}</span>
                     </div>
-                    <div className="border-t border-border pt-1.5 flex justify-between font-semibold">
-                      <span>= Pró-labore disponível</span>
-                      <span className="tabular-nums">{formatCurrency(data.proLaboreDireto)}</span>
+                    <div className="border-t border-border pt-1.5 flex justify-between text-foreground font-medium">
+                      <span>Caixa do mês</span>
+                      <span className="tabular-nums">{formatCurrency(data.caixaDoMes)}</span>
+                    </div>
+                    {data.aportesADevolver.amortizacaoSugerida > 0 && (
+                      <div className="flex justify-between text-rose-700 dark:text-rose-400">
+                        <span>− Amortização aporte (sugerido)</span>
+                        <span className="tabular-nums">−{formatCurrency(data.aportesADevolver.amortizacaoSugerida)}</span>
+                      </div>
+                    )}
+                    {data.reinvestimento.sugerido > 0 && (
+                      <div className="flex justify-between text-rose-700 dark:text-rose-400">
+                        <span>− Reinvestimento ({data.reinvestimento.pct}%)</span>
+                        <span className="tabular-nums">−{formatCurrency(data.reinvestimento.sugerido)}</span>
+                      </div>
+                    )}
+                    {data.reserva.falta > 0 && (
+                      <div className="flex justify-between text-rose-700 dark:text-rose-400">
+                        <span>− Reserva pendente</span>
+                        <span className="tabular-nums">−{formatCurrency(data.reserva.falta)}</span>
+                      </div>
+                    )}
+                    <div className="border-t border-border pt-1.5 flex justify-between font-bold text-primary-700 dark:text-primary-400">
+                      <span>= Pró-labore</span>
+                      <span className="tabular-nums">{formatCurrency(data.proLaboreSeguro)}</span>
                     </div>
                   </div>
-
-                  <p className="text-xs text-muted-foreground mt-3">
-                    💡 Aporte/reinvestimento/reserva são <strong>sugestões</strong> abaixo — não descontam
-                    desse número. Você decide quanto separar.
-                  </p>
                 </div>
                 {canWrite && data.proLaboreSubcategoryId && (
                   <Button
                     onClick={() => setShowLancar(true)}
-                    disabled={data.proLaboreDireto <= 0}
+                    disabled={data.proLaboreSeguro <= 0}
                     className="whitespace-nowrap"
                   >
                     <ArrowRight className="w-4 h-4 mr-1" />
@@ -275,14 +303,47 @@ export default function ProLaborePage() {
             </CardContent>
           </Card>
 
-          {/* Sugestões — não descontam do número principal */}
+          {/* Status da reposição de estoque */}
+          {data.cmvCorrespondente > 0 ? (
+            data.pendenteReposicao > 0 ? (
+              <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-900/50 rounded-lg p-3 flex items-start gap-2 text-sm text-amber-900 dark:text-amber-200">
+                <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
+                <div>
+                  <strong>Falta repor {formatCurrency(data.pendenteReposicao)}</strong> — o
+                  custo das vendas que liberaram esse mês foi {formatCurrency(data.cmvCorrespondente)},
+                  mas você só pagou {formatCurrency(data.reposicaoPagaNoMes)} de reposição. Compre
+                  estoque pra ficar em dia.
+                  {data.billsCorrespondentesSemCusto > 0 && (
+                    <span className="block mt-1 text-xs">
+                      ⚠️ {data.billsCorrespondentesSemCusto} venda(s) sem custo cadastrado — CMV pode estar subestimado.
+                    </span>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <div className="bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-900/50 rounded-lg p-3 flex items-start gap-2 text-sm text-emerald-900 dark:text-emerald-200">
+                <CheckCircle2 className="w-4 h-4 shrink-0 mt-0.5" />
+                <div>
+                  <strong>Reposição em dia ✓</strong> — você pagou {formatCurrency(data.reposicaoPagaNoMes)} de reposição
+                  contra {formatCurrency(data.cmvCorrespondente)} de custo das vendas liberadas
+                  {data.adiantadoReposicao > 0 && ` (adiantou ${formatCurrency(data.adiantadoReposicao)} pra próximos meses)`}.
+                </div>
+              </div>
+            )
+          ) : data.paymentsLiberadosCount > 0 && data.paymentsSemMatch === data.paymentsLiberadosCount ? (
+            <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-900/50 rounded-lg p-3 flex items-start gap-2 text-sm text-amber-900 dark:text-amber-200">
+              <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
+              <div>
+                Não consegui calcular o CMV correspondente — nenhum pagamento liberado no mês casou
+                com vendas no banco. Verifique se as vendas do ML estão sincronizadas.
+              </div>
+            </div>
+          ) : null}
+
+          {/* Hierarquia */}
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">Sugestões de uso (não descontam)</CardTitle>
-              <p className="text-xs text-muted-foreground mt-1">
-                Antes de tirar tudo como pró-labore, vale a pena olhar o que mais o caixa
-                precisa. Estas referências não afetam o número acima — são guias.
-              </p>
+              <CardTitle className="text-base">Hierarquia de prioridades</CardTitle>
             </CardHeader>
             <CardContent className="p-0">
               <ul className="divide-y divide-gray-100">
@@ -373,7 +434,7 @@ export default function ProLaborePage() {
       <LancarProLaboreDialog
         open={showLancar}
         onClose={() => setShowLancar(false)}
-        sugestao={data?.proLaboreDireto ?? 0}
+        sugestao={data?.proLaboreSeguro ?? 0}
         subcategoryId={data?.proLaboreSubcategoryId ?? null}
         onSuccess={() => {
           setShowLancar(false)
