@@ -34,6 +34,10 @@ import { useUserRole } from "@/lib/useUserRole"
 interface ProLaboreResponse {
   month: string
   receitaBruta: number
+  receitaSource: "mp" | "bills_paid"
+  mpReleasedNoMes: number
+  billsPaidNoMes: number
+  mpSyncedAt: string | null
   cmvDoMes: number
   cmvSource: "productCost" | "aporte" | "none"
   cmvFaltando: boolean
@@ -155,35 +159,45 @@ export default function ProLaborePage() {
           {/* Fechamento do mês — ordem: entrada → custos → resultado. */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             <SummaryCard
-              label="Lucro real recebido"
-              value={formatCurrency(data.receitaRecebida)}
+              label="Liberado no MP (mês)"
+              value={formatCurrency(data.receitaBruta)}
               tooltip={
-                data.cmvDoMes > 0
-                  ? `recebido ${formatCurrency(data.receitaBruta)} − mercadoria ${formatCurrency(data.cmvDoMes)} (via Custos ML)`
-                  : "recebido já sem taxas ML · sem custo cadastrado"
+                data.receitaSource === "mp"
+                  ? "valor que o Mercado Pago realmente liberou pra saque neste mês — fonte: card MP"
+                  : "fallback: vendas marcadas como pagas (cron). Sincronize o MP pra usar dados reais."
               }
+              sub={data.receitaSource === "mp" ? "fonte: Mercado Pago" : "estimado (sem sync MP)"}
               icon={TrendingUp}
               tone="emerald"
             />
             <SummaryCard
               label="Despesas pagas"
               value={formatCurrency(data.despesasPagas)}
-              sub="faturas pagas"
+              sub="faturas pagas no mês"
               icon={Wallet}
               tone="rose"
             />
             <SummaryCard
-              label="Lucro líquido do mês"
+              label="Caixa novo do mês"
               value={formatCurrency(data.lucroLiquido)}
               tooltip={
                 data.lucroLiquido >= 0
-                  ? "lucro real − despesas pagas · o que sobrou"
-                  : "prejuízo — despesas maiores que o lucro real"
+                  ? "liberado MP − despesas pagas · dinheiro que entrou de fato"
+                  : "saiu mais do que entrou neste mês"
               }
               icon={PiggyBank}
               tone={data.lucroLiquido >= 0 ? "emerald" : "rose"}
             />
           </div>
+
+          {data.receitaSource === "bills_paid" && (
+            <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-900/50 rounded-lg p-3 flex items-start gap-2 text-sm text-amber-900 dark:text-amber-200">
+              <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
+              <div>
+                <strong>Receita estimada</strong> — o Mercado Pago não foi sincronizado, então estamos usando vendas marcadas como pagas (heurística de 30 dias). Pra ver o valor exato que o MP liberou, abre <a href="/admin/financeiro/mercado-pago" className="underline font-medium">Mercado Pago</a> e clica em Atualizar.
+              </div>
+            </div>
+          )}
 
           {data.cmvFaltando && (
             <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-900/50 rounded-lg p-3 flex items-start gap-2 text-sm text-amber-900 dark:text-amber-200">
