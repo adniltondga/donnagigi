@@ -1,7 +1,6 @@
 "use client"
 
 import { Suspense, useEffect, useState } from "react"
-import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
 import {
   User,
@@ -37,6 +36,8 @@ import { IntegrationsPanel } from "@/components/admin/IntegrationsPanel"
 import { PushNotificationButton } from "@/components/PushNotificationButton"
 import { DeleteAccountSection } from "@/components/DeleteAccountSection"
 import { ExportDataButton } from "@/components/ExportDataButton"
+import { FaturasView } from "@/components/admin/billing/FaturasView"
+import { PlanosView } from "@/components/admin/billing/PlanosView"
 import { feedback } from "@/lib/feedback"
 import { confirmDialog } from "@/components/ui/confirm-dialog"
 
@@ -535,10 +536,36 @@ interface SubscriptionData {
   trialDaysLeft: number | null
 }
 
+type AssinaturaView = "atual" | "faturas" | "planos"
+
+const ASSINATURA_SUB_TABS: Array<{ key: AssinaturaView; label: string }> = [
+  { key: "atual", label: "Plano atual" },
+  { key: "faturas", label: "Faturas" },
+  { key: "planos", label: "Planos disponíveis" },
+]
+
 function AssinaturaPanel() {
+  const router = useRouter()
+  const params = useSearchParams()
   const [data, setData] = useState<SubscriptionData | null>(null)
   const [loading, setLoading] = useState(true)
   const [canceling, setCanceling] = useState(false)
+  const [view, setView] = useState<AssinaturaView>("atual")
+
+  // Sincroniza ?view= com o estado.
+  useEffect(() => {
+    const v = params.get("view") as AssinaturaView | null
+    if (v && ASSINATURA_SUB_TABS.some((t) => t.key === v)) setView(v)
+  }, [params])
+
+  const switchView = (v: AssinaturaView) => {
+    setView(v)
+    const next = new URLSearchParams(params.toString())
+    next.set("tab", "assinatura")
+    if (v === "atual") next.delete("view")
+    else next.set("view", v)
+    router.replace(`/admin/configuracoes?${next.toString()}`, { scroll: false })
+  }
 
   const load = () => {
     setLoading(true)
@@ -573,6 +600,69 @@ function AssinaturaPanel() {
     }
   }
 
+  return (
+    <div className="space-y-4">
+      {/* Sub-tabs */}
+      <div className="border-b border-border flex flex-wrap gap-1">
+        {ASSINATURA_SUB_TABS.map((t) => {
+          const active = view === t.key
+          return (
+            <button
+              key={t.key}
+              type="button"
+              onClick={() => switchView(t.key)}
+              className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+                active
+                  ? "border-primary-600 text-primary-600 dark:text-primary-400"
+                  : "border-transparent text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              {t.label}
+            </button>
+          )
+        })}
+      </div>
+
+      {view === "atual" && (
+        <AssinaturaAtualView
+          data={data}
+          loading={loading}
+          canceling={canceling}
+          onCancel={onCancel}
+          onClickFaturas={() => switchView("faturas")}
+          onClickUpgrade={() => switchView("planos")}
+        />
+      )}
+      {view === "faturas" && <FaturasView />}
+      {view === "planos" && (
+        <PlanosView
+          onSuccess={() => {
+            switchView("atual")
+            load()
+          }}
+        />
+      )}
+    </div>
+  )
+}
+
+interface AssinaturaAtualViewProps {
+  data: SubscriptionData | null
+  loading: boolean
+  canceling: boolean
+  onCancel: () => void
+  onClickFaturas: () => void
+  onClickUpgrade: () => void
+}
+
+function AssinaturaAtualView({
+  data,
+  loading,
+  canceling,
+  onCancel,
+  onClickFaturas,
+  onClickUpgrade,
+}: AssinaturaAtualViewProps) {
   if (loading) return <LoadingState variant="card" />
   if (!data) {
     return (
@@ -591,8 +681,8 @@ function AssinaturaPanel() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Assinatura</CardTitle>
-        <CardDescription>Seu plano atual e dados de cobrança.</CardDescription>
+        <CardTitle>Plano atual</CardTitle>
+        <CardDescription>Seu plano e dados de cobrança.</CardDescription>
       </CardHeader>
       <CardContent className="space-y-5">
         <div className="flex items-start justify-between flex-wrap gap-3">
@@ -653,17 +743,13 @@ function AssinaturaPanel() {
         </div>
 
         <div className="flex flex-wrap gap-2 pt-2">
-          <Button asChild>
-            <Link href="/admin/billing/planos">
-              <CreditCard className="w-4 h-4" />
-              {isPaid ? "Trocar de plano" : "Fazer upgrade"}
-            </Link>
+          <Button onClick={onClickUpgrade}>
+            <CreditCard className="w-4 h-4" />
+            {isPaid ? "Trocar de plano" : "Fazer upgrade"}
           </Button>
-          <Button asChild variant="outline">
-            <Link href="/admin/billing/faturas">
-              <FileText className="w-4 h-4" />
-              Ver faturas
-            </Link>
+          <Button variant="outline" onClick={onClickFaturas}>
+            <FileText className="w-4 h-4" />
+            Ver faturas
           </Button>
           {canCancel && (
             <Button variant="outline" onClick={onCancel} disabled={canceling}>
