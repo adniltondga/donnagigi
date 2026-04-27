@@ -76,13 +76,30 @@ export async function syncMLOrder(params: {
     const isCancelled = order.status === "cancelled"
     const mlOrderId = `order_${order.id}`
 
-    const existing = await prisma.bill.findUnique({ where: { mlOrderId } })
+    const existing = await prisma.bill.findUnique({
+      where: { mlOrderId },
+      include: { refunds: { where: { source: "ml_order_cancelled" }, select: { id: true } } },
+    })
     if (existing) {
       if (isCancelled && existing.status !== "cancelled") {
-        const refundNote = `\n\nDevolução detectada em ${new Date().toLocaleDateString("pt-BR")} (order cancelled)`
+        // Cria refund total (se ainda não existe) E marca status cancelled
+        // como atalho de compat. Bill.amount fica intacta — auditoria.
+        if (existing.refunds.length === 0) {
+          await prisma.billRefund.create({
+            data: {
+              billId: existing.id,
+              tenantId,
+              amount: existing.amount,
+              costRefunded: existing.productCost,
+              source: "ml_order_cancelled",
+              mlOrderId,
+              mlPaymentId: null,
+            },
+          })
+        }
         const updated = await prisma.bill.update({
           where: { id: existing.id },
-          data: { status: "cancelled", notes: (existing.notes || "") + refundNote },
+          data: { status: "cancelled" },
         })
         const formatBRL = new Intl.NumberFormat("pt-BR", {
           style: "currency",
@@ -93,7 +110,7 @@ export async function syncMLOrder(params: {
           type: "refund",
           title: `Venda cancelada: ${formatBRL(existing.amount)}`,
           body: `Pedido ML #${order.id} · ${order.buyer?.nickname || ""}`.trim(),
-          link: `/admin/relatorios/vendas-ml`,
+          link: `/admin/financeiro/devolucoes`,
         })
         return { ok: true, action: "updated-cancelled", billId: updated.id }
       }
@@ -192,10 +209,6 @@ Bruto: R$ ${order.total_amount.toFixed(2)} | Taxas: ${taxBreakdown} (Total: R$ $
     const estimatedReleaseDate = new Date(closedDate)
     estimatedReleaseDate.setDate(estimatedReleaseDate.getDate() + 30)
 
-    const cancelledSuffix = isCancelled
-      ? `\n\nDevolução detectada em ${new Date().toLocaleDateString("pt-BR")} (order cancelled no ML)`
-      : ""
-
     const saleBill = await prisma.bill.create({
       data: {
         type: "receivable",
@@ -208,13 +221,29 @@ Bruto: R$ ${order.total_amount.toFixed(2)} | Taxas: ${taxBreakdown} (Total: R$ $
         mlOrderId,
         mlPackId: order.pack_id ? String(order.pack_id) : null,
         mlVariationId: firstVariationId,
-        notes: `PRODUTO ML ID: ${itemId || "SEM ID"}\n\n${notesContent}${cancelledSuffix}`,
+        notes: `PRODUTO ML ID: ${itemId || "SEM ID"}\n\n${notesContent}`,
         productId: null,
         productCost,
         quantity,
         tenantId,
       },
     })
+
+    // Bill nova já chegou cancelada — registra refund correspondente
+    // pra refletir na receita líquida do DRE.
+    if (isCancelled) {
+      await prisma.billRefund.create({
+        data: {
+          billId: saleBill.id,
+          tenantId,
+          amount: netAmount,
+          costRefunded: productCost,
+          source: "ml_order_cancelled",
+          mlOrderId,
+          mlPaymentId: null,
+        },
+      })
+    }
 
     if (!isCancelled) {
       const formatBRL = new Intl.NumberFormat("pt-BR", {

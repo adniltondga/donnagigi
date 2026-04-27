@@ -43,6 +43,7 @@ model Tenant {
   pushSubscriptions PushSubscription[]
   financialSettings FinancialSettings?
   tickets           Ticket[]
+  billRefunds       BillRefund[]
 }
 
 // Credenciais do app do cliente no Mercado Livre DevCenter.
@@ -530,6 +531,7 @@ model Bill {
   mlVariationId   String?  // variation_id do ML no item vendido (usado pelo cost-resolver)
   tenantId        String
   tenant          Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  refunds         BillRefund[]
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
@@ -539,6 +541,33 @@ model Bill {
   @@index([tenantId, dueDate])
   @@index([tenantId, type, status])
   @@index([mlPackId])
+}
+
+// Devolução / refund de uma Bill (parcial ou total). A Bill original
+// permanece IMUTÁVEL — refunds são linhas separadas. Permite auditoria
+// (saber o valor vendido vs devolvido), evita reescrita destrutiva da
+// venda original, e simplifica DRE: receita líquida = sum(bill.amount)
+// − sum(refund.amount).
+model BillRefund {
+  id           String   @id @default(cuid())
+  billId       String
+  bill         Bill     @relation(fields: [billId], references: [id], onDelete: Cascade)
+  amount       Float    // valor devolvido (líquido, mesmo critério de bill.amount)
+  costRefunded Float?   // CMV proporcional revertido (productCost × ratio)
+  refundedAt   DateTime @default(now())
+  source       String   // ml_order_cancelled | ml_partial_refund | manual
+  reason       String?  // nota livre — motivo, contexto, etc.
+  mlOrderId    String?  // pra rastreabilidade quando vem do ML
+  mlPaymentId  String?  // payment_id do ML/MP — usado pra idempotência
+  tenantId     String
+  tenant       Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  createdAt    DateTime @default(now())
+
+  // Idempotência: o mesmo payment do ML não pode gerar 2 refunds.
+  // mlPaymentId nullable + unique composto + status null permitido pelo Postgres
+  @@unique([billId, mlPaymentId])
+  @@index([tenantId, refundedAt])
+  @@index([billId])
 }
 
 // Configurações financeiras do tenant — alimenta o relatório de
