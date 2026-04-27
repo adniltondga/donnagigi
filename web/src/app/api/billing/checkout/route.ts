@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server"
+import type { SubscriptionPlan } from "@prisma/client"
 import prisma from "@/lib/prisma"
 import { getSession } from "@/lib/tenant"
-import { planInfo } from "@/lib/plans"
+import { planInfo, isCheckoutable } from "@/lib/plans"
 import {
   asaasCreateCustomer,
   asaasCreateSubscription,
@@ -31,14 +32,14 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    const plan = String(body.plan || "").toUpperCase()
+    const plan = String(body.plan || "").toUpperCase() as SubscriptionPlan
     const billingType = String(body.billingType || "").toUpperCase() as AsaasBillingType
     const cpfCnpj = String(body.cpfCnpj || "").trim()
     const mobilePhone = body.mobilePhone ? String(body.mobilePhone).trim() : undefined
 
-    if (plan !== "PRO") {
+    if (!isCheckoutable(plan)) {
       return NextResponse.json(
-        { error: "Plano inválido. Use 'PRO'." },
+        { error: "Plano inválido. Use 'PRO' ou 'BUSINESS'." },
         { status: 400 }
       )
     }
@@ -76,7 +77,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const info = planInfo("PRO")
+    const info = planInfo(plan)
 
     // Cria customer no Asaas se ainda não existir
     let asaasCustomerId = subscription?.asaasCustomerId ?? null
@@ -101,7 +102,7 @@ export async function POST(request: NextRequest) {
 
     // Persiste local
     const baseData = {
-      plan: "PRO" as const,
+      plan,
       status: "PENDING" as const,
       billingType,
       value: info.priceBRL,

@@ -7,13 +7,19 @@ import { feedback } from "@/lib/feedback"
 import { maskCpfCnpj, unmaskCpfCnpj } from "@/lib/mask"
 import { LoadingState } from "@/components/ui/loading-state"
 
+type PlanId = "FREE" | "PRO" | "BUSINESS" | "ENTERPRISE"
+type CheckoutablePlan = "PRO" | "BUSINESS"
+
 interface PlanInfo {
-  id: "FREE" | "PRO"
+  id: PlanId
   name: string
   tagline: string
   priceBRL: number
   features: string[]
   popular?: boolean
+  contactOnly?: boolean
+  priceLabel?: string
+  contactHref?: string
 }
 
 type BillingType = "PIX" | "BOLETO" | "CREDIT_CARD"
@@ -35,8 +41,8 @@ interface PlanosViewProps {
  */
 export function PlanosView({ onSuccess }: PlanosViewProps) {
   const [plans, setPlans] = useState<PlanInfo[] | null>(null)
-  const [currentPlan, setCurrentPlan] = useState<"FREE" | "PRO" | null>(null)
-  const [selected, setSelected] = useState<"PRO" | null>(null)
+  const [currentPlan, setCurrentPlan] = useState<PlanId | null>(null)
+  const [selected, setSelected] = useState<CheckoutablePlan | null>(null)
   const [loading, setLoading] = useState(true)
 
   const [cpfCnpj, setCpfCnpj] = useState("")
@@ -111,10 +117,11 @@ export function PlanosView({ onSuccess }: PlanosViewProps) {
 
   return (
     <div>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
         {(plans || []).map((p) => {
           const isCurrent = currentPlan === p.id
           const isFree = p.id === "FREE"
+          const isContactOnly = !!p.contactOnly
           return (
             <div
               key={p.id}
@@ -142,9 +149,13 @@ export function PlanosView({ onSuccess }: PlanosViewProps) {
 
               <div className="mb-6">
                 <span className={`text-4xl font-bold ${p.popular ? "text-white" : "text-foreground"}`}>
-                  {p.priceBRL === 0 ? "Grátis" : formatCurrency(p.priceBRL)}
+                  {p.priceLabel
+                    ? p.priceLabel
+                    : p.priceBRL === 0
+                      ? "Grátis"
+                      : formatCurrency(p.priceBRL)}
                 </span>
-                {p.priceBRL > 0 && (
+                {!p.priceLabel && p.priceBRL > 0 && (
                   <span className={`text-sm ml-1 ${p.popular ? "text-primary-100" : "text-muted-foreground"}`}>
                     /mês
                   </span>
@@ -182,9 +193,21 @@ export function PlanosView({ onSuccess }: PlanosViewProps) {
                 >
                   Plano grátis
                 </button>
+              ) : isContactOnly ? (
+                <a
+                  href={p.contactHref || "mailto:comercial@dgadigital.com.br"}
+                  className={`w-full py-2.5 rounded-lg font-semibold transition flex items-center justify-center gap-2 ${
+                    p.popular
+                      ? "bg-white text-primary-700 hover:bg-primary-50"
+                      : "bg-primary-600 text-white hover:bg-primary-700"
+                  }`}
+                >
+                  Falar com a gente
+                  <ArrowRight className="w-4 h-4" />
+                </a>
               ) : (
                 <button
-                  onClick={() => setSelected("PRO")}
+                  onClick={() => setSelected(p.id as CheckoutablePlan)}
                   className={`w-full py-2.5 rounded-lg font-semibold transition flex items-center justify-center gap-2 ${
                     p.popular
                       ? "bg-white text-primary-700 hover:bg-primary-50"
@@ -205,10 +228,19 @@ export function PlanosView({ onSuccess }: PlanosViewProps) {
           <div className="bg-card rounded-2xl max-w-md w-full p-6 space-y-4">
             <div className="flex items-start justify-between">
               <div>
-                <h2 className="text-xl font-bold text-foreground">Assinar Plano Pro</h2>
-                <p className="text-sm text-muted-foreground mt-1">
-                  {formatCurrency(plans?.find((p) => p.id === "PRO")?.priceBRL || 0)} / mês
-                </p>
+                {(() => {
+                  const sel = plans?.find((p) => p.id === selected)
+                  return (
+                    <>
+                      <h2 className="text-xl font-bold text-foreground">
+                        Assinar Plano {sel?.name ?? selected}
+                      </h2>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        {formatCurrency(sel?.priceBRL || 0)} / mês
+                      </p>
+                    </>
+                  )
+                })()}
               </div>
               <button
                 onClick={closeModal}
