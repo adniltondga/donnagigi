@@ -32,6 +32,7 @@ const MENU: MenuItem[] = [
       { label: "Pró-labore", href: "/admin/financeiro/relatorios/pro-labore" },
       { label: "Contas", href: "/admin/financeiro/contas" },
       { label: "Mercado Pago", href: "/admin/financeiro/mercado-pago" },
+      { label: "Devoluções", href: "/admin/financeiro/devolucoes" },
       { label: "Relatórios", href: "/admin/financeiro/relatorios" },
     ],
   },
@@ -41,6 +42,7 @@ const MENU: MenuItem[] = [
     isActive: (p) => p.startsWith("/admin/produtos"),
     children: [
       { label: "Anúncios", href: "/admin/produtos/anuncios" },
+      { label: "Recomendações", href: "/admin/produtos/recomendacoes" },
       { label: "Ranking", href: "/admin/produtos/ranking" },
       { label: "Relatório", href: "/admin/produtos/relatorio" },
     ],
