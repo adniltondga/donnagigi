@@ -122,6 +122,8 @@ model Invoice {
 enum SubscriptionPlan {
   FREE
   PRO
+  BUSINESS
+  ENTERPRISE
 }
 
 enum SubscriptionStatus {
@@ -732,5 +734,26 @@ model WaitlistSignup {
   notified  Boolean  @default(false) // marcamos true quando enviarmos o "tá no ar"
   createdAt DateTime @default(now())
 
+  @@index([createdAt])
+}
+
+// Log de chamadas a APIs externas (ML, MP, ASAAS, Resend) — alimenta
+// o dashboard /staff/api-usage. Insert é fire-and-forget no helper
+// loggedFetch (lib/api-log.ts) pra não bloquear a request original.
+// Cron diário /api/cron/api-log-retention apaga registros >30d.
+model ApiCallLog {
+  id          String   @id @default(cuid())
+  tenantId    String?  // null = chamada global (cron, webhook sem tenant)
+  provider    String   // "ml" | "mp" | "asaas" | "resend"
+  endpoint    String   // path normalizado, ex: "/orders/{id}", "/items?multiget"
+  method      String
+  statusCode  Int
+  durationMs  Int
+  errorBody   String?  @db.Text  // só preenchido em status >= 400
+  createdAt   DateTime @default(now())
+
+  @@index([provider, createdAt(sort: Desc)])
+  @@index([tenantId, createdAt(sort: Desc)])
+  @@index([statusCode, createdAt(sort: Desc)])
   @@index([createdAt])
 }
