@@ -3,10 +3,12 @@
  *
  * Em vez de tratar compra de mercadoria como despesa (que duplicaria
  * o custo no DRE — uma vez como CMV, outra como despesa operacional),
- * separamos um percentual da receita líquida num "Caixa de Reposição".
+ * separamos o CMV (custo das mercadorias vendidas) num "Caixa de
+ * Reposição" — exatamente o valor que precisa entrar de volta no
+ * estoque pra repor o que saiu.
  *
  * Caixas:
- *  - Reposição de Estoque: % da receita líquida × pct − bills com
+ *  - Reposição de Estoque: CMV do período − bills com
  *    category='reposicao_estoque' pagas no período. Saldo positivo
  *    significa "tenho R$ X reservados pra próxima compra de produto".
  *  - Operacional: lucro líquido real do mês (receita − taxas − CMV
@@ -15,22 +17,28 @@
  *
  * Valores são SIMULADOS — nenhum dinheiro é movido entre contas
  * reais. É só uma forma de visualizar o caixa em compartimentos.
+ *
+ * Nota: vendas sem `productCost` cadastrado não entram no CMV. A UI
+ * deve avisar o usuário quando `vendasSemCusto > 0` pra ele saber
+ * que a Caixa de Reposição está subestimada.
  */
 
 import prisma from "./prisma"
-import { TRIAL_DAYS as _ } from "./plans"
-void _
 
 export const REPOSICAO_CATEGORY = "reposicao_estoque"
 
 export interface CashPoolsResult {
   /** Período analisado */
   period: { start: Date; end: Date }
-  /** % aplicado da receita líquida pra reposição (tirado de FinancialSettings) */
-  reposicaoPct: number
   /** Vendas líquidas no período (receita − taxas) */
   vendasLiquidas: number
-  /** Quanto foi alocado pro caixa de reposição (vendasLiquidas × reposicaoPct/100) */
+  /** CMV: soma do productCost das vendas no período (custo total já inclui quantity) */
+  cmv: number
+  /** Quantas vendas no período não têm productCost cadastrado (CMV está subestimado) */
+  vendasSemCusto: number
+  /** Total de vendas no período (com e sem custo) */
+  vendasTotais: number
+  /** Quanto foi alocado pro caixa de reposição (= cmv) */
   alocadoReposicao: number
   /** Quanto saiu como reposição de estoque (bills pagas com category=reposicao_estoque) */
   gastoReposicao: number
@@ -66,7 +74,7 @@ export async function calcularCaixas(params: CalcParams): Promise<CashPoolsResul
         status: { in: ["paid", "pending"] },
         paidDate: { gte: start, lt: end },
       },
-      select: { amount: true },
+      select: { amount: true, productCost: true },
     }),
     // Bills de reposição pagas no período (saídas pra repor estoque)
     prisma.bill.findMany({
@@ -81,17 +89,21 @@ export async function calcularCaixas(params: CalcParams): Promise<CashPoolsResul
     }),
   ])
 
-  const reposicaoPct = settings?.reposicaoPct ?? 50
   const vendasLiquidas = vendas.reduce((s, b) => s + b.amount, 0)
+  // productCost já é o custo total do pedido (custo unitário × quantity)
+  const cmv = vendas.reduce((s, b) => s + (b.productCost ?? 0), 0)
+  const vendasSemCusto = vendas.filter((b) => b.productCost == null).length
   const gastoReposicao = reposicoes.reduce((s, b) => s + b.amount, 0)
-  const alocadoReposicao = vendasLiquidas * (reposicaoPct / 100)
+  const alocadoReposicao = cmv
   const caixaReposicao = alocadoReposicao - gastoReposicao
   const caixaReserva = settings?.saldoCaixaAtual ?? 0
 
   return {
     period: { start, end },
-    reposicaoPct,
     vendasLiquidas,
+    cmv,
+    vendasSemCusto,
+    vendasTotais: vendas.length,
     alocadoReposicao,
     gastoReposicao,
     caixaReposicao,
