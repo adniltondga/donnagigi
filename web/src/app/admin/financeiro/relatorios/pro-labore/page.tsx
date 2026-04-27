@@ -130,7 +130,7 @@ export default function ProLaborePage() {
     <div className="space-y-6">
       <PageHeader
         title="💼 Pró-labore seguro"
-        description="Quanto você pode tirar esse mês sem comer a operação — Pay Yourself Last."
+        description="Quanto você pode tirar esse mês sem comer a operação. Calculado em cima do que o Mercado Pago liberou no mês — não em vendas pendentes."
         actions={
           <div className="flex items-center gap-2">
             <input
