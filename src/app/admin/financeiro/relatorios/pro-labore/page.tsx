@@ -39,7 +39,8 @@ interface ProLaboreResponse {
   billsPaidNoMes: number
   mpSyncedAt: string | null
   cmvDoMes: number
-  cmvSource: "productCost" | "aporte" | "none"
+  reposicaoPagaNoMes: number
+  cmvSource: "productCost" | "reposicao" | "none"
   cmvFaltando: boolean
   receitaRecebida: number
   despesasPagas: number
@@ -162,13 +163,17 @@ export default function ProLaborePage() {
               label="Lucro recebido (mês)"
               value={formatCurrency(data.receitaRecebida)}
               tooltip={
-                data.receitaSource === "mp"
-                  ? `liberado MP ${formatCurrency(data.receitaBruta)} − mercadoria ${formatCurrency(data.cmvDoMes)}`
-                  : `bills pagas ${formatCurrency(data.receitaBruta)} − mercadoria ${formatCurrency(data.cmvDoMes)} (sem sync MP)`
+                data.cmvSource === "productCost"
+                  ? `liberado MP ${formatCurrency(data.receitaBruta)} − mercadoria ${formatCurrency(data.cmvDoMes)} (custos cadastrados)`
+                  : data.cmvSource === "reposicao"
+                  ? `liberado MP ${formatCurrency(data.receitaBruta)} − reposição paga ${formatCurrency(data.cmvDoMes)} (proxy do CMV)`
+                  : `liberado MP ${formatCurrency(data.receitaBruta)} — sem CMV cadastrado nem reposição paga`
               }
               sub={
-                data.cmvDoMes > 0
+                data.cmvSource === "productCost"
                   ? `(−) ${formatCurrency(data.cmvDoMes)} de mercadoria`
+                  : data.cmvSource === "reposicao"
+                  ? `(−) ${formatCurrency(data.cmvDoMes)} de reposição`
                   : "sem CMV cadastrado"
               }
               icon={TrendingUp}
