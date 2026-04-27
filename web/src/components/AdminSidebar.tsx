@@ -38,11 +38,10 @@ const MENU: MenuItem[] = [
   {
     label: "Produtos",
     icon: ShoppingBag,
-    isActive: (p) => p.startsWith("/admin/produtos") || p.startsWith("/admin/top-produtos"),
+    isActive: (p) => p.startsWith("/admin/produtos"),
     children: [
-      { label: "Custo", href: "/admin/produtos/custo" },
-      { label: "Mais vendidos", href: "/admin/top-produtos/mais-vendidos" },
-      { label: "Menos vendidos", href: "/admin/top-produtos/menos-vendidos" },
+      { label: "Anúncios", href: "/admin/produtos/anuncios" },
+      { label: "Ranking", href: "/admin/produtos/ranking" },
       { label: "Relatório", href: "/admin/produtos/relatorio" },
     ],
   },
