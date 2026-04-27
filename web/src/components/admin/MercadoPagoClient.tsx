@@ -45,8 +45,6 @@ interface Snapshot {
   releasedCount?: number
   disputedTotal?: number
   disputedCount?: number
-  /** Saldo disponível (null = endpoint indisponível). */
-  availableBalance?: number | null
   pendingDays?: Day[]
   releasedDays?: Day[]
   disputedPayments?: Payment[]
@@ -277,25 +275,8 @@ export function MercadoPagoClient() {
         </Card>
       )}
 
-      {/* Grid: Saldo disponível · Liberado (mês) · A liberar (mês) · Em mediação */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <SummaryCard
-            tone="primary"
-            icon={<Wallet className="w-5 h-5" />}
-            label="Saldo disponível"
-            value={snap?.availableBalance ?? 0}
-            sub={
-              snap?.availableBalance == null && snap?.configured
-                ? "Indisponível via API"
-                : "saldo na conta MP pra saque"
-            }
-            tooltip={
-              snap?.availableBalance == null && snap?.configured
-                ? "O Mercado Pago não expõe esse saldo via API com OAuth de app — confira no app do MP."
-                : "Saldo disponível na conta MP, pronto pra ser sacado pra sua conta bancária."
-            }
-            loading={loading && !snap}
-          />
+      {/* Grid: Já liberado (mês) · A liberar (mês) · Em mediação */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <SummaryCard
             tone="emerald"
             icon={<Clock className="w-5 h-5" />}
