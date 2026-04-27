@@ -499,21 +499,26 @@ function MLConnectionSection({
   onDisconnect: () => void
   onFlash: (t: "success" | "error", msg: string) => void
 }) {
-  const [syncing, setSyncing] = useState<null | "orders" | "products">(null)
+  // Cada tipo tem seu próprio loading independente — clicar em "vendas"
+  // não trava o botão de "anúncios" e vice-versa.
+  const [syncingOrders, setSyncingOrders] = useState(false)
+  const [syncingListings, setSyncingListings] = useState(false)
 
-  const runSync = async (kind: "orders" | "products") => {
-    if (syncing) return
-    setSyncing(kind)
+  const runSync = async (kind: "orders" | "listings") => {
+    const setLoading = kind === "orders" ? setSyncingOrders : setSyncingListings
+    const isLoading = kind === "orders" ? syncingOrders : syncingListings
+    if (isLoading) return
+    setLoading(true)
     try {
       const url = kind === "orders" ? "/api/ml/sync-orders" : "/api/ml/sync"
       const res = await fetch(url, { method: "GET" })
       const data = await res.json().catch(() => null)
       if (!res.ok) {
-        onFlash("error", data?.error || `Falha ao sincronizar ${kind === "orders" ? "vendas" : "produtos"}`)
+        onFlash("error", data?.error || `Falha ao sincronizar ${kind === "orders" ? "vendas" : "anúncios"}`)
         return
       }
       const stats = data?.stats
-      const label = kind === "orders" ? "Vendas" : "Produtos"
+      const label = kind === "orders" ? "Vendas" : "Anúncios"
       const detail = stats
         ? ` · ${stats.synced ?? stats.created ?? stats.total ?? 0} itens`
         : ""
@@ -521,7 +526,7 @@ function MLConnectionSection({
     } catch (err) {
       onFlash("error", err instanceof Error ? err.message : "Erro desconhecido")
     } finally {
-      setSyncing(null)
+      setLoading(false)
     }
   }
 
@@ -542,18 +547,23 @@ function MLConnectionSection({
 
   const expired = integration.isExpired
   return (
-    <section className="space-y-3">
-      <h4 className="text-sm font-semibold text-foreground">Conexão ativa</h4>
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+    <section className="space-y-4">
+      <div className="flex items-center justify-between">
+        <h4 className="text-sm font-semibold text-foreground">Conexão</h4>
+        <Badge variant={expired ? "destructive" : "default"} className="text-xs">
+          {expired ? "Expirada" : "Ativa"}
+        </Badge>
+      </div>
+      <div className="bg-muted/40 rounded-lg p-3 grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
         <div>
-          <div className="text-xs text-muted-foreground uppercase tracking-wide">Seller ID</div>
-          <div className="font-mono font-semibold text-foreground mt-1">{integration.sellerID}</div>
+          <div className="text-xs text-muted-foreground">Seller ID</div>
+          <div className="font-mono font-semibold text-foreground mt-0.5">{integration.sellerID}</div>
         </div>
         <div>
-          <div className="text-xs text-muted-foreground uppercase tracking-wide">
+          <div className="text-xs text-muted-foreground">
             {expired ? "Expirou em" : "Válido até"}
           </div>
-          <div className="font-medium text-foreground mt-1">
+          <div className="text-foreground mt-0.5">
             {integration.expiresAt ? new Date(integration.expiresAt).toLocaleString("pt-BR") : "—"}
           </div>
         </div>
@@ -561,13 +571,9 @@ function MLConnectionSection({
 
       {!expired && (
         <>
-          <div className="bg-sky-50 border border-sky-200 rounded-lg p-3 text-xs text-sky-900 space-y-1">
-            <p className="font-semibold">🤖 Sincronização automática ativa</p>
-            <p>
-              O sistema puxa vendas, taxas e liberações do ML todo dia às 03:00 (horário BR). Normalmente
-              você não precisa clicar aqui — use só pra forçar uma atualização imediata.
-            </p>
-          </div>
+          <p className="text-xs text-muted-foreground">
+            🤖 O sistema puxa vendas, taxas e liberações automaticamente todo dia às 03:00 (horário BR). Use os botões só pra forçar uma atualização agora.
+          </p>
           <WebhookHint
             label="Webhook ML (tempo real)"
             url={webhookUrl}
@@ -591,10 +597,9 @@ function MLConnectionSection({
             <Button
               variant="outline"
               onClick={() => runSync("orders")}
-              disabled={syncing !== null}
-              className="border-sky-300 text-sky-700 hover:bg-sky-50"
+              disabled={syncingOrders}
             >
-              {syncing === "orders" ? (
+              {syncingOrders ? (
                 <Loader className="w-4 h-4 mr-2 animate-spin" />
               ) : (
                 <RefreshCw className="w-4 h-4 mr-2" />
@@ -603,19 +608,18 @@ function MLConnectionSection({
             </Button>
             <Button
               variant="outline"
-              onClick={() => runSync("products")}
-              disabled={syncing !== null}
-              className="border-emerald-300 text-emerald-700 hover:bg-emerald-50"
+              onClick={() => runSync("listings")}
+              disabled={syncingListings}
             >
-              {syncing === "products" ? (
+              {syncingListings ? (
                 <Loader className="w-4 h-4 mr-2 animate-spin" />
               ) : (
                 <RefreshCw className="w-4 h-4 mr-2" />
               )}
-              Sincronizar produtos
+              Sincronizar anúncios
             </Button>
           </div>
-          <Button variant="destructive" size="sm" onClick={onDisconnect} className="w-full">
+          <Button variant="ghost" size="sm" onClick={onDisconnect} className="w-full text-rose-600 hover:text-rose-700 hover:bg-rose-50 dark:text-rose-400 dark:hover:bg-rose-900/20">
             <LogOut className="w-4 h-4 mr-2" />
             Desconectar
           </Button>
