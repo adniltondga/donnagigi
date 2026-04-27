@@ -2,10 +2,11 @@
 
 import { useEffect, useState } from "react"
 import { formatCurrency } from "@/lib/calculations"
-import { Trophy, Loader } from "lucide-react"
+import { Trophy, Package, TrendingDown, TrendingUp } from "lucide-react"
 import { PageHeader } from "@/components/ui/page-header"
 import { Card } from "@/components/ui/card"
 import { EmptyState } from "@/components/ui/empty-state"
+import { LoadingState } from "@/components/ui/loading-state"
 import { ProductLabel } from "@/components/ProductLabel"
 
 interface Item {
@@ -19,19 +20,30 @@ interface Item {
   ultimaVenda: string | null
 }
 
-export function TopProdutosTable({
-  direction,
-  title,
-  description,
-}: {
-  direction: "mais" | "menos"
-  title: string
-  description: string
-}) {
+type Direction = "mais" | "menos"
+
+const COPY: Record<Direction, { title: string; description: string; icon: typeof Trophy; emoji: string }> = {
+  mais: {
+    title: "Ranking de produtos",
+    description: "Ranking dos produtos (com variação) que mais vendem em unidades, considerando vendas não canceladas.",
+    icon: Trophy,
+    emoji: "🏆",
+  },
+  menos: {
+    title: "Ranking de produtos",
+    description: "Produtos que venderam menos unidades — útil pra identificar anúncios com baixa rotatividade.",
+    icon: TrendingDown,
+    emoji: "📉",
+  },
+}
+
+export default function ProdutosRankingPage() {
+  const [direction, setDirection] = useState<Direction>("mais")
   const [items, setItems] = useState<Item[]>([])
   const [total, setTotal] = useState(0)
   const [limit, setLimit] = useState(50)
   const [loading, setLoading] = useState(true)
+  const [thumbs, setThumbs] = useState<Record<string, string | null>>({})
 
   useEffect(() => {
     setLoading(true)
@@ -44,11 +56,29 @@ export function TopProdutosTable({
       .finally(() => setLoading(false))
   }, [direction, limit])
 
+  // Fire-and-forget: enriquece com thumbnails do ML.
+  useEffect(() => {
+    if (Object.keys(thumbs).length > 0) return
+    fetch("/api/ml/all-listings")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (!d?.items) return
+        const map: Record<string, string | null> = {}
+        for (const it of d.items as Array<{ mlListingId: string; thumbnail: string | null }>) {
+          map[it.mlListingId] = it.thumbnail
+        }
+        setThumbs(map)
+      })
+      .catch(() => {})
+  }, [thumbs])
+
+  const copy = COPY[direction]
+
   return (
     <div className="space-y-6">
       <PageHeader
-        title={title}
-        description={description}
+        title={`${copy.emoji} ${copy.title}`}
+        description={copy.description}
         actions={
           <select
             value={limit}
@@ -63,18 +93,44 @@ export function TopProdutosTable({
         }
       />
 
-      <div className="text-sm text-muted-foreground">
-        {loading
-          ? "Carregando..."
-          : `${items.length} de ${total} produto${total === 1 ? "" : "s"} com venda`}
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <div className="inline-flex bg-muted rounded-lg p-1">
+          <button
+            type="button"
+            onClick={() => setDirection("mais")}
+            className={`flex items-center gap-2 px-4 py-1.5 rounded-md text-sm font-semibold transition ${
+              direction === "mais"
+                ? "bg-card text-foreground shadow-sm"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <TrendingUp className="w-4 h-4" />
+            Mais vendidos
+          </button>
+          <button
+            type="button"
+            onClick={() => setDirection("menos")}
+            className={`flex items-center gap-2 px-4 py-1.5 rounded-md text-sm font-semibold transition ${
+              direction === "menos"
+                ? "bg-card text-foreground shadow-sm"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <TrendingDown className="w-4 h-4" />
+            Menos vendidos
+          </button>
+        </div>
+
+        <div className="text-sm text-muted-foreground">
+          {loading
+            ? "Carregando..."
+            : `${items.length} de ${total} produto${total === 1 ? "" : "s"} com venda`}
+        </div>
       </div>
 
       <Card className="overflow-hidden">
         {loading ? (
-          <div className="flex items-center justify-center py-12 text-muted-foreground">
-            <Loader className="w-5 h-5 animate-spin mr-2" />
-            Calculando ranking...
-          </div>
+          <LoadingState variant="card" label="Calculando ranking..." />
         ) : items.length === 0 ? (
           <EmptyState
             icon={Trophy}
@@ -88,7 +144,6 @@ export function TopProdutosTable({
                 <tr>
                   <th className="px-4 py-3 text-left w-12">#</th>
                   <th className="px-4 py-3 text-left">Produto</th>
-                  <th className="px-4 py-3 text-left">MLB</th>
                   <th className="px-4 py-3 text-right">Unidades</th>
                   <th className="px-4 py-3 text-right">Pedidos</th>
                   <th className="px-4 py-3 text-right">Bruto</th>
@@ -106,14 +161,33 @@ export function TopProdutosTable({
                       : idx === 2
                       ? "text-orange-700"
                       : "text-muted-foreground"
+                  const thumb = thumbs[it.listingId]
                   return (
                     <tr key={`${it.listingId}-${it.variation || ""}`} className="hover:bg-accent">
                       <td className={`px-4 py-3 font-bold text-center ${rankColor}`}>{idx + 1}</td>
                       <td className="px-4 py-3 max-w-md">
-                        <ProductLabel title={it.title} variation={it.variation} hideMlb />
-                      </td>
-                      <td className="px-4 py-3 font-mono text-xs text-muted-foreground whitespace-nowrap">
-                        {it.listingId}
+                        <div className="flex items-start gap-3 min-w-0">
+                          {thumb ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img
+                              src={thumb}
+                              alt=""
+                              loading="lazy"
+                              className="w-12 h-12 rounded-lg object-cover border border-border bg-muted shrink-0"
+                            />
+                          ) : (
+                            <div className="w-12 h-12 rounded-lg border border-border bg-muted flex items-center justify-center shrink-0">
+                              <Package className="w-5 h-5 text-muted-foreground/60" />
+                            </div>
+                          )}
+                          <div className="min-w-0 flex-1">
+                            <ProductLabel
+                              title={it.title}
+                              variation={it.variation}
+                              mlListingId={it.listingId}
+                            />
+                          </div>
+                        </div>
                       </td>
                       <td className="px-4 py-3 text-right font-bold text-foreground">
                         {it.unidades}
