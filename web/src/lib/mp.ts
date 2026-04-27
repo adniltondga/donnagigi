@@ -192,6 +192,8 @@ interface MPPaymentRaw {
   transaction_amount?: number
   external_reference?: string | null
   payment_method_id?: string
+  /** regular_payment | money_transfer | recurring_payment | pos_payment | ... */
+  operation_type?: string
   fee_details?: Array<{ amount?: number }>
   transaction_details?: {
     net_received_amount?: number
@@ -200,12 +202,39 @@ interface MPPaymentRaw {
   additional_info?: {
     items?: Array<{ id?: string; title?: string; quantity?: number }>
   } | null
-  payer?: { email?: string; nickname?: string | null } | null
+  payer?: { id?: number | string; email?: string; nickname?: string | null } | null
+  collector_id?: number | string | null
 }
 
 interface MPPaymentSearchResult {
   results?: MPPaymentRaw[]
   paging?: { total?: number; limit?: number; offset?: number }
+}
+
+/**
+ * Filtro defensivo: só payments onde o seller é o COLLECTOR (recebedor).
+ * O search do MP às vezes retorna payments onde o token aparece como
+ * payer (compras feitas pelo seller via PIX/transferência) — esses
+ * vazariam pra "Liberados/Vendas" se não fossem filtrados aqui.
+ *
+ * Operation types aceitos: regular_payment (venda comum). Outros como
+ * money_transfer, recurring_payment, pos_payment já são filtrados pela
+ * query, mas a validação local cobre o caso do filtro do server falhar.
+ */
+function isSellerReceiving(p: MPPaymentRaw, collectorId?: string): boolean {
+  // Se a query já filtrou regular_payment, isso é redundante mas seguro.
+  if (p.operation_type && p.operation_type !== "regular_payment") return false
+  // Sem collectorId, confiamos só no operation_type acima.
+  if (!collectorId) return true
+  // Quando o MP devolve collector_id, valida que bate com o seller.
+  if (p.collector_id != null) {
+    return String(p.collector_id) === String(collectorId)
+  }
+  // Fallback: se o payer tem id e bate com o seller, é uma compra dele — exclui.
+  if (p.payer?.id != null && String(p.payer.id) === String(collectorId)) {
+    return false
+  }
+  return true
 }
 
 export interface MPPendingPayment {
@@ -230,6 +259,8 @@ export interface MPPendingPayment {
  */
 export async function fetchMPPendingPayments(params: {
   accessToken: string
+  /** ID do seller — usado pra filtrar local payments onde ele é collector. */
+  collectorId?: string
 }): Promise<MPPendingPayment[]> {
   const now = Date.now()
   const out: MPPendingPayment[] = []
@@ -248,6 +279,8 @@ export async function fetchMPPendingPayments(params: {
       range: "money_release_date",
       begin_date: "NOW",
       end_date: "NOW+180DAYS",
+      // Só vendas reais — exclui PIX que o seller enviou (compras dele).
+      operation_type: "regular_payment",
       limit: String(LIMIT),
       offset: String(offset),
     })
@@ -268,6 +301,7 @@ export async function fetchMPPendingPayments(params: {
 
     for (const p of batch) {
       if (!p.money_release_date) continue
+      if (!isSellerReceiving(p, params.collectorId)) continue
       // Proteção adicional: se vier algum já liberado (edge da janela), pula.
       const release = new Date(p.money_release_date).getTime()
       if (release <= now) continue
@@ -311,6 +345,7 @@ export async function fetchMPPendingPayments(params: {
  */
 export async function fetchMPReleasedPayments(params: {
   accessToken: string
+  collectorId?: string
 }): Promise<MPPendingPayment[]> {
   const now = Date.now()
   const out: MPPendingPayment[] = []
@@ -326,6 +361,7 @@ export async function fetchMPReleasedPayments(params: {
       range: "money_release_date",
       begin_date: "NOW-180DAYS",
       end_date: "NOW",
+      operation_type: "regular_payment",
       limit: String(LIMIT),
       offset: String(offset),
     })
@@ -346,6 +382,7 @@ export async function fetchMPReleasedPayments(params: {
 
     for (const p of batch) {
       if (!p.money_release_date) continue
+      if (!isSellerReceiving(p, params.collectorId)) continue
       const release = new Date(p.money_release_date).getTime()
       if (release > now) continue // só os passados
 
@@ -419,6 +456,7 @@ export interface MPDisputedPayment {
  */
 export async function fetchMPDisputedPayments(params: {
   accessToken: string
+  collectorId?: string
 }): Promise<MPDisputedPayment[]> {
   const out: MPDisputedPayment[] = []
   const LIMIT = 50
@@ -430,6 +468,7 @@ export async function fetchMPDisputedPayments(params: {
       status: "in_mediation",
       sort: "date_created",
       criteria: "desc",
+      operation_type: "regular_payment",
       limit: String(LIMIT),
       offset: String(offset),
     })
@@ -451,6 +490,7 @@ export async function fetchMPDisputedPayments(params: {
     const batch = data.results || []
 
     for (const p of batch) {
+      if (!isSellerReceiving(p, params.collectorId)) continue
       const net = p.transaction_details?.net_received_amount
       const gross = Number(p.transaction_amount) || 0
       const fees = (p.fee_details || []).reduce(
@@ -506,10 +546,11 @@ export async function syncAndCacheMP(tenantId: string): Promise<{
   const fresh = await getMPIntegrationForTenant(tenantId)
   const accessToken = fresh?.accessToken || integration.accessToken
 
+  const collectorId = integration.mpUserId
   const [pending, released, disputed] = await Promise.all([
-    fetchMPPendingPayments({ accessToken }),
-    fetchMPReleasedPayments({ accessToken }),
-    fetchMPDisputedPayments({ accessToken }),
+    fetchMPPendingPayments({ accessToken, collectorId }),
+    fetchMPReleasedPayments({ accessToken, collectorId }),
+    fetchMPDisputedPayments({ accessToken, collectorId }),
   ])
 
   // Agrupa payments por dia (America/Sao_Paulo) — reutilizável pra pending/released.
