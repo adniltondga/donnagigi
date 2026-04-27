@@ -41,7 +41,7 @@ const STATUS_TONE: Record<TicketRow["status"], string> = {
   OPEN: "bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300",
   IN_PROGRESS: "bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300",
   WAITING_CLIENT: "bg-rose-100 text-rose-800 dark:bg-rose-900/40 dark:text-rose-300",
-  CLOSED: "bg-muted text-muted-foreground",
+  CLOSED: "bg-zinc-200 text-zinc-800 dark:bg-zinc-700 dark:text-zinc-200",
 }
 
 const CATEGORY_LABEL: Record<TicketRow["category"], string> = {

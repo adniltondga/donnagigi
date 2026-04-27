@@ -32,7 +32,7 @@ const STATUS_TONE: Record<TicketRow["status"], string> = {
   OPEN: "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/40 dark:text-blue-300 dark:border-blue-800",
   IN_PROGRESS: "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-900/40 dark:text-amber-300 dark:border-amber-800",
   WAITING_CLIENT: "bg-muted text-muted-foreground border-border",
-  CLOSED: "bg-card text-muted-foreground border-border",
+  CLOSED: "bg-zinc-200 text-zinc-800 dark:bg-zinc-700 dark:text-zinc-200 border-zinc-300 dark:border-zinc-600",
 }
 
 const PRIORITY_TONE: Record<TicketRow["priority"], string> = {
