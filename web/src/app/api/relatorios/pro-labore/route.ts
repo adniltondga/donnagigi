@@ -132,26 +132,42 @@ export async function GET(req: NextRequest) {
       : []
     const aporteMercadoriaNoMes = aportesMercadoriaBills.reduce((s, b) => s + b.amount, 0)
 
-    // CMV proporcional ao que o MP liberou. cmvCadastrado é o custo das
-    // bills marcadas paid no mês; mpReleasedNoMes pode diferir (cron usa
-    // heurística de 30d, MP libera no dia exato). Aplicamos o ratio
-    // CMV/billsPaid pra estimar o CMV correspondente ao MP liberado.
-    //
-    // Ex: bills paid no mês somam 2.400 com 800 de productCost (ratio 33%).
-    // MP liberou 2.400 → CMV proporcional = 2.400 × 0.33 = 800.
-    // Se MP liberou 1.800 → CMV proporcional = 1.800 × 0.33 = 594.
+    // Reposição de estoque paga no mês — usada como proxy de CMV quando
+    // o usuário ainda não cadastrou custos dos anúncios (cmvCadastrado=0).
+    const reposicaoPagaBills = await prisma.bill.findMany({
+      where: {
+        tenantId,
+        type: "payable",
+        status: "paid",
+        category: "reposicao_estoque",
+        paidDate: { gte: start, lt: end },
+      },
+      select: { amount: true },
+    })
+    const reposicaoPagaNoMes = reposicaoPagaBills.reduce((s, b) => s + b.amount, 0)
+
+    // CMV do mês — duas estratégias:
+    //  1) productCost cadastrado: CMV proporcional = MP liberado × ratio
+    //     (cmvCadastrado/billsPaidNoMes). Mais preciso.
+    //  2) Sem productCost: usa reposição paga como proxy. O dinheiro que
+    //     saiu pra repor estoque é uma boa aproximação do que custou as
+    //     vendas (esp. se o seller repõe imediatamente o que vende).
+    //  3) Nenhum dos dois: zero, com aviso.
     const cmvRatio = billsPaidNoMes > 0 ? cmvCadastrado / billsPaidNoMes : 0
-    const cmvDoMes = mpReady ? receitaBruta * cmvRatio : cmvCadastrado
-    const cmvSource: "productCost" | "aporte" | "none" =
-      cmvCadastrado > 0 ? "productCost" : "none"
+    const cmvProporcional = mpReady ? receitaBruta * cmvRatio : cmvCadastrado
+    const usingReposicaoProxy = cmvCadastrado === 0 && reposicaoPagaNoMes > 0
+    const cmvDoMes = usingReposicaoProxy ? reposicaoPagaNoMes : cmvProporcional
+    const cmvSource: "productCost" | "reposicao" | "none" =
+      cmvCadastrado > 0 ? "productCost" : reposicaoPagaNoMes > 0 ? "reposicao" : "none"
     const cmvFaltando = cmvCadastrado === 0 && aporteMercadoriaNoMes > 0
 
     // "Lucro real recebido" = receita − CMV. Aporte NÃO entra aqui.
     const receitaRecebida = receitaBruta - cmvDoMes
 
     // Despesas operacionais pagas no mês (status=paid, exclui aporte
-    // e reposição de estoque — esta vai pro Caixa de Reposição,
-    // ver lib/cash-pools.ts).
+    // e reposição de estoque — esta já entrou como CMV proxy quando
+    // não há productCost; senão vai pro Caixa de Reposição.
+    // Ver lib/cash-pools.ts).
     const despesasPagas = await prisma.bill.findMany({
       where: {
         tenantId,
@@ -382,6 +398,7 @@ export async function GET(req: NextRequest) {
       billsPaidNoMes: Math.round(billsPaidNoMes * 100) / 100,
       mpSyncedAt: mpIntegration?.cachedSyncedAt ? mpIntegration.cachedSyncedAt.toISOString() : null,
       cmvDoMes: Math.round(cmvDoMes * 100) / 100,
+      reposicaoPagaNoMes: Math.round(reposicaoPagaNoMes * 100) / 100,
       receitaRecebida: Math.round(receitaRecebida * 100) / 100,
       despesasPagas: Math.round(despesasPagasTotal * 100) / 100,
       aportesNoMes: Math.round(aportesNoMesTotal * 100) / 100,
