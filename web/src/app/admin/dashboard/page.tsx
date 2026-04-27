@@ -400,7 +400,15 @@ export default function Dashboard() {
         </Card>
 
         <Card className="p-5">
-          <h2 className="font-bold text-foreground mb-4">↩️ Devoluções (mês)</h2>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="font-bold text-foreground">↩️ Devoluções (mês)</h2>
+            <Link
+              href="/admin/financeiro/devolucoes"
+              className="text-xs text-primary-600 hover:text-primary-700 font-medium flex items-center gap-1"
+            >
+              Ver detalhes <ArrowRight className="w-3 h-3" />
+            </Link>
+          </div>
           {v2?.cancelamentos ? (
             <div className="space-y-3">
               <div>
