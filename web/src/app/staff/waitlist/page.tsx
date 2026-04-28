@@ -169,10 +169,11 @@ export default function StaffWaitlistPage() {
               </div>
             </div>
             <div className="text-xs text-muted-foreground bg-muted rounded p-3">
-              💡 Antes de disparar, garante que o cadastro está aberto:
-              <code className="block mt-1 font-mono text-foreground">
-                NEXT_PUBLIC_REGISTRATION_OPEN=true
+              💡 Antes de disparar, garante que o cadastro está aberto em
+              <code className="mx-1 font-mono text-foreground">
+                src/lib/registration.ts
               </code>
+              (<code className="font-mono">return true</code>).
             </div>
             <div className="flex gap-2 justify-end pt-2 border-t border-border">
               <button

@@ -15,9 +15,8 @@ import { formatCurrency } from "@/lib/calculations";
 import { isRegistrationOpen } from "@/lib/registration";
 import { WaitlistForm } from "@/components/WaitlistForm";
 
-// Lê REGISTRATION_OPEN / NEXT_PUBLIC_REGISTRATION_OPEN em todo request
-// — sem isso, Next renderiza estático em build-time e mudar env var na
-// Vercel não tem efeito sem novo build com cache limpo.
+// Lê isRegistrationOpen() em todo request — evita prerender estático
+// que congelaria o estado de cadastro aberto/fechado em build-time.
 export const dynamic = "force-dynamic";
 
 const SITE_URL = "https://aglivre.dgadigital.com.br";
