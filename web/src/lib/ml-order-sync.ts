@@ -145,8 +145,25 @@ export async function syncMLOrder(params: {
       saleFeeEstimated = true
     }
 
+    // Pack-anchor: quando o cliente compra N anúncios no mesmo carrinho, o ML
+    // emite um shipment único mas cria N pedidos. Se já existe Bill desse pack
+    // no tenant, ela é a âncora — só ela carrega o frete; pedidos seguintes
+    // ficam com shippingFee=0 pra não contar o mesmo envio múltiplas vezes.
+    let isShippingAnchor = true
+    if (order.pack_id) {
+      const existingInPack = await prisma.bill.count({
+        where: {
+          tenantId,
+          type: "receivable",
+          category: "venda",
+          mlPackId: String(order.pack_id),
+        },
+      })
+      if (existingInPack > 0) isShippingAnchor = false
+    }
+
     let shippingFee = 0
-    if (order.shipping?.id) {
+    if (isShippingAnchor && order.shipping?.id) {
       try {
         const shippingRes = await loggedFetch(
           `https://api.mercadolibre.com/shipments/${order.shipping.id}`,

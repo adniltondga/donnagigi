@@ -1,9 +1,9 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { Fragment, useEffect, useMemo, useState } from 'react';
 import { formatCurrency } from '@/lib/calculations';
 import { feedback } from '@/lib/feedback';
-import { Info, ShoppingCart, DollarSign, TrendingUp, ShoppingBag, Receipt, Download, Loader2 } from 'lucide-react';
+import { Info, ShoppingCart, DollarSign, TrendingUp, ShoppingBag, Receipt, Download, Loader2, Package, ChevronDown, ChevronRight } from 'lucide-react';
 import { Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from '@/components/ui/table';
 import { PageHeader } from '@/components/ui/page-header';
 import { Card } from '@/components/ui/card';
@@ -12,7 +12,43 @@ import { ProductLabel } from '@/components/ProductLabel';
 import { parseSaleDescription } from '@/lib/ml-format';
 import { PeriodFilter, resolvePreset, type PeriodPreset } from '@/components/admin/PeriodFilter';
 import { SummaryCard } from '@/components/ui/summary-card';
-import { computeSaleNumbers } from '@/lib/sale-notes';
+import { computeSaleNumbers, type SaleBillLike, type SaleComputed } from '@/lib/sale-notes';
+
+/**
+ * Rateia o frete entre as bills do mesmo pack pro-rata por bruto, só pra
+ * exibição. O dado canônico continua com a anchor levando o frete inteiro
+ * (ver backfill-pack-shipping) — agregadores que somam por bill não duplicam.
+ * Aqui dividimos pra que cada item do pack mostre uma "Taxa de envio" justa
+ * e um lucro proporcional ao seu bruto.
+ */
+function computeBillInPack(bill: SaleBillLike, packBills: SaleBillLike[]): SaleComputed {
+  const billRaw = computeSaleNumbers(bill);
+  const sums = packBills.reduce(
+    (acc, x) => {
+      const sx = computeSaleNumbers(x);
+      acc.bruto += sx.bruto;
+      acc.envio += sx.envio;
+      return acc;
+    },
+    { bruto: 0, envio: 0 },
+  );
+  const ratio = sums.bruto > 0 ? billRaw.bruto / sums.bruto : 1 / packBills.length;
+  const envio = sums.envio * ratio;
+  const totalVenda = billRaw.bruto - billRaw.taxaVenda - envio;
+  const totalTaxas = billRaw.taxaVenda + envio + billRaw.custo;
+  const liquido = billRaw.bruto - totalTaxas;
+  return {
+    bruto: billRaw.bruto,
+    taxaVenda: billRaw.taxaVenda,
+    envio,
+    custo: billRaw.custo,
+    totalVenda,
+    totalTaxas,
+    liquido,
+    lucro: liquido,
+    saleFeeEstimated: billRaw.saleFeeEstimated,
+  };
+}
 
 interface Bill {
   id: string;
@@ -87,13 +123,18 @@ export default function VendasMLPage() {
   const [from, setFrom] = useState<string>(initialPeriod.from);
   const [to, setTo] = useState<string>(initialPeriod.to);
   const [preset, setPreset] = useState<PeriodPreset>('mes');
-  const [notesModal, setNotesModal] = useState<{ isOpen: boolean; bill: Bill | null }>({
+  const [notesModal, setNotesModal] = useState<{
+    isOpen: boolean;
+    bill: Bill | null;
+    packBills?: Bill[];
+  }>({
     isOpen: false,
     bill: null,
   });
   const [totals, setTotals] = useState<PeriodTotals | null>(null);
   const [totalsLoading, setTotalsLoading] = useState(false);
   const [exporting, setExporting] = useState(false);
+  const [expandedPacks, setExpandedPacks] = useState<Set<string>>(new Set());
   // Mapa mlListingId → thumbnail vindo de /api/ml/all-listings.
   // Cobre só anúncios ainda ativos no ML; vendas de anúncios encerrados
   // mostram placeholder Package.
@@ -185,6 +226,123 @@ export default function VendasMLPage() {
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [notesModal.isOpen]);
+
+  // Agrupa bills consecutivas com mesmo mlPackId em "linha-pack" expansível.
+  // Vendas com cliente comprando vários anúncios no mesmo carrinho (pack ML)
+  // chegam como N bills separadas. Agrupar visualmente evita repetir frete e
+  // mostra o lucro real do pacote ao usuário.
+  type Group =
+    | { kind: 'single'; bill: Bill }
+    | { kind: 'pack'; packId: string; bills: Bill[] };
+
+  const groups = useMemo<Group[]>(() => {
+    const out: Group[] = [];
+    let i = 0;
+    while (i < bills.length) {
+      const b = bills[i];
+      if (!b.mlPackId) {
+        out.push({ kind: 'single', bill: b });
+        i++;
+        continue;
+      }
+      let j = i + 1;
+      while (j < bills.length && bills[j].mlPackId === b.mlPackId) j++;
+      if (j - i === 1) {
+        out.push({ kind: 'single', bill: b });
+        i++;
+      } else {
+        out.push({ kind: 'pack', packId: b.mlPackId, bills: bills.slice(i, j) });
+        i = j;
+      }
+    }
+    return out;
+  }, [bills]);
+
+  const togglePack = (packId: string) => {
+    setExpandedPacks((prev) => {
+      const next = new Set(prev);
+      if (next.has(packId)) next.delete(packId);
+      else next.add(packId);
+      return next;
+    });
+  };
+
+  const renderBillRow = (b: Bill, packBills?: Bill[]) => {
+    const isPackChild = !!packBills && packBills.length > 1;
+    const s = isPackChild ? computeBillInPack(b, packBills!) : computeSaleNumbers(b);
+    const mlb = parseSaleDescription(b.description).mlListingId;
+    const thumb = mlb ? thumbsByMlb[mlb] : null;
+    return (
+      <TableRow
+        key={b.id}
+        onClick={() => setNotesModal({ isOpen: true, bill: b, packBills })}
+        className={`cursor-pointer hover:bg-accent transition ${isPackChild ? 'bg-muted/30' : ''}`}
+      >
+        <TableCell className="text-sm whitespace-nowrap">
+          {b.paidDate ? (
+            <div className={isPackChild ? 'pl-4' : ''}>
+              <div>{formatDate(b.paidDate)}</div>
+              <div className="text-xs text-muted-foreground">{formatTime(b.paidDate)}</div>
+            </div>
+          ) : '—'}
+        </TableCell>
+        <TableCell className="text-sm whitespace-nowrap text-muted-foreground">
+          {formatDate(b.dueDate)}
+        </TableCell>
+        <TableCell className="text-sm">
+          <div className={`flex items-start gap-3 min-w-0 ${isPackChild ? 'pl-6' : ''}`}>
+            {thumb ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={thumb}
+                alt=""
+                loading="lazy"
+                className="w-12 h-12 rounded-lg object-cover border border-border bg-muted shrink-0"
+              />
+            ) : (
+              <div className="w-12 h-12 rounded-lg border border-border bg-muted flex items-center justify-center shrink-0">
+                <ShoppingCart className="w-5 h-5 text-muted-foreground/60" />
+              </div>
+            )}
+            <div className="min-w-0 flex-1">
+              <ProductLabel description={b.description} quantity={b.quantity} />
+              {b.mlPackId && !isPackChild && (
+                <div className="text-xs text-muted-foreground font-mono mt-0.5">Pack #{b.mlPackId}</div>
+              )}
+            </div>
+          </div>
+        </TableCell>
+        <TableCell className="text-sm font-semibold text-right whitespace-nowrap">
+          <div className="flex items-center gap-2 justify-end">
+            <span>{formatCurrency(s.bruto)}</span>
+            <Info size={14} className="text-muted-foreground shrink-0" />
+          </div>
+        </TableCell>
+        <TableCell
+          className={`text-sm font-semibold text-right whitespace-nowrap ${
+            s.lucro > 0 ? 'text-emerald-600' : s.lucro < 0 ? 'text-red-600' : 'text-muted-foreground'
+          }`}
+        >
+          {formatCurrency(s.lucro)}
+        </TableCell>
+        <TableCell>
+          <span
+            className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold ${
+              b.status === 'paid'
+                ? 'bg-green-100 text-green-800'
+                : b.status === 'cancelled'
+                ? 'bg-red-100 text-red-700 line-through'
+                : b.status === 'overdue'
+                ? 'bg-orange-100 text-orange-800'
+                : 'bg-blue-100 text-blue-800'
+            }`}
+          >
+            {statusLabel[b.status] || b.status}
+          </span>
+        </TableCell>
+      </TableRow>
+    );
+  };
 
   const onSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -436,83 +594,78 @@ export default function VendasMLPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {bills.map((b) => {
-                const s = computeSaleNumbers(b);
+              {groups.map((g) => {
+                if (g.kind === 'single') {
+                  return renderBillRow(g.bill);
+                }
+                const expanded = expandedPacks.has(g.packId);
+                const packBruto = g.bills.reduce((acc, x) => acc + computeSaleNumbers(x).bruto, 0);
+                const packLucro = g.bills.reduce((acc, x) => acc + computeSaleNumbers(x).lucro, 0);
+                const first = g.bills[0];
+                const meta = parseNotes(first.notes);
+                const allCancelled = g.bills.every((x) => x.status === 'cancelled');
                 return (
-                  <TableRow
-                    key={b.id}
-                    onClick={() => setNotesModal({ isOpen: true, bill: b })}
-                    className="cursor-pointer hover:bg-accent transition"
-                  >
-                    <TableCell className="text-sm whitespace-nowrap">
-                      {b.paidDate ? (
-                        <div>
-                          <div>{formatDate(b.paidDate)}</div>
-                          <div className="text-xs text-muted-foreground">{formatTime(b.paidDate)}</div>
-                        </div>
-                      ) : '—'}
-                    </TableCell>
-                    <TableCell className="text-sm whitespace-nowrap text-muted-foreground">
-                      {formatDate(b.dueDate)}
-                    </TableCell>
-                    <TableCell className="text-sm">
-                      {(() => {
-                        const mlb = parseSaleDescription(b.description).mlListingId;
-                        const thumb = mlb ? thumbsByMlb[mlb] : null;
-                        return (
-                          <div className="flex items-start gap-3 min-w-0">
-                            {thumb ? (
-                              // eslint-disable-next-line @next/next/no-img-element
-                              <img
-                                src={thumb}
-                                alt=""
-                                loading="lazy"
-                                className="w-12 h-12 rounded-lg object-cover border border-border bg-muted shrink-0"
-                              />
-                            ) : (
-                              <div className="w-12 h-12 rounded-lg border border-border bg-muted flex items-center justify-center shrink-0">
-                                <ShoppingCart className="w-5 h-5 text-muted-foreground/60" />
-                              </div>
-                            )}
-                            <div className="min-w-0 flex-1">
-                              <ProductLabel description={b.description} quantity={b.quantity} />
-                              {b.mlPackId && (
-                                <div className="text-xs text-muted-foreground font-mono mt-0.5">Pack #{b.mlPackId}</div>
-                              )}
-                            </div>
-                          </div>
-                        );
-                      })()}
-                    </TableCell>
-                    <TableCell className="text-sm font-semibold text-right whitespace-nowrap">
-                      <div className="flex items-center gap-2 justify-end">
-                        <span>{formatCurrency(s.bruto)}</span>
-                        <Info size={14} className="text-muted-foreground shrink-0" />
-                      </div>
-                    </TableCell>
-                    <TableCell
-                      className={`text-sm font-semibold text-right whitespace-nowrap ${
-                        s.lucro > 0 ? 'text-emerald-600' : s.lucro < 0 ? 'text-red-600' : 'text-muted-foreground'
-                      }`}
+                  <Fragment key={`pack-${g.packId}`}>
+                    <TableRow
+                      onClick={() => togglePack(g.packId)}
+                      className="cursor-pointer hover:bg-accent transition bg-amber-50/60 dark:bg-amber-950/20"
                     >
-                      {formatCurrency(s.lucro)}
-                    </TableCell>
-                    <TableCell>
-                      <span
-                        className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold ${
-                          b.status === 'paid'
-                            ? 'bg-green-100 text-green-800'
-                            : b.status === 'cancelled'
-                            ? 'bg-red-100 text-red-700 line-through'
-                            : b.status === 'overdue'
-                            ? 'bg-orange-100 text-orange-800'
-                            : 'bg-blue-100 text-blue-800'
+                      <TableCell className="text-sm whitespace-nowrap">
+                        {first.paidDate ? (
+                          <div>
+                            <div>{formatDate(first.paidDate)}</div>
+                            <div className="text-xs text-muted-foreground">{formatTime(first.paidDate)}</div>
+                          </div>
+                        ) : '—'}
+                      </TableCell>
+                      <TableCell className="text-sm whitespace-nowrap text-muted-foreground">
+                        {formatDate(first.dueDate)}
+                      </TableCell>
+                      <TableCell className="text-sm">
+                        <div className="flex items-start gap-3 min-w-0">
+                          <div className="w-12 h-12 rounded-lg border border-amber-300 bg-amber-100 dark:bg-amber-900/40 flex items-center justify-center shrink-0">
+                            {expanded ? (
+                              <ChevronDown className="w-5 h-5 text-amber-700 dark:text-amber-200" />
+                            ) : (
+                              <ChevronRight className="w-5 h-5 text-amber-700 dark:text-amber-200" />
+                            )}
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <div className="font-semibold text-foreground flex items-center gap-2 flex-wrap">
+                              <Package className="w-4 h-4 text-amber-700 dark:text-amber-300 shrink-0" />
+                              <span>Pack com {g.bills.length} produtos</span>
+                              <span className="text-xs font-mono text-muted-foreground">#{g.packId}</span>
+                            </div>
+                            {meta.comprador && (
+                              <div className="text-xs text-muted-foreground mt-0.5">{meta.comprador}</div>
+                            )}
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-sm font-semibold text-right whitespace-nowrap">
+                        {formatCurrency(packBruto)}
+                      </TableCell>
+                      <TableCell
+                        className={`text-sm font-semibold text-right whitespace-nowrap ${
+                          packLucro > 0 ? 'text-emerald-600' : packLucro < 0 ? 'text-red-600' : 'text-muted-foreground'
                         }`}
                       >
-                        {statusLabel[b.status] || b.status}
-                      </span>
-                    </TableCell>
-                  </TableRow>
+                        {formatCurrency(packLucro)}
+                      </TableCell>
+                      <TableCell>
+                        <span
+                          className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold ${
+                            allCancelled
+                              ? 'bg-red-100 text-red-700 line-through'
+                              : 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-200'
+                          }`}
+                        >
+                          {allCancelled ? 'Cancelado' : `${g.bills.length} itens`}
+                        </span>
+                      </TableCell>
+                    </TableRow>
+                    {expanded && g.bills.map((b) => renderBillRow(b, g.bills))}
+                  </Fragment>
                 );
               })}
             </TableBody>
@@ -568,8 +721,10 @@ export default function VendasMLPage() {
 
             {(() => {
               const b = notesModal.bill!;
+              const packBills = notesModal.packBills;
+              const isInPack = !!packBills && packBills.length > 1;
               const meta = parseNotes(b.notes);
-              const s = computeSaleNumbers(b);
+              const s = isInPack ? computeBillInPack(b, packBills!) : computeSaleNumbers(b);
               const orderId = meta.pedido || b.mlOrderId?.replace(/^order_/, '');
               const mlbId = meta.produtoMlb;
               return (
@@ -639,9 +794,14 @@ export default function VendasMLPage() {
                       <span>{formatCurrency(s.taxaVenda)}</span>
                     </div>
                     <div className="flex justify-between text-amber-700">
-                      <span>  • Taxa de envio:</span>
+                      <span>  • Taxa de envio{isInPack ? ' (rateada)' : ''}:</span>
                       <span>{formatCurrency(s.envio)}</span>
                     </div>
+                    {isInPack && (
+                      <div className="text-xs text-muted-foreground -mt-1 pl-4">
+                        Frete único do pack rateado entre {packBills!.length} produtos por bruto
+                      </div>
+                    )}
                     {s.custo > 0 && (
                       <div className="flex justify-between text-rose-600">
                         <span>  • 💰 Custo mercadoria:</span>
