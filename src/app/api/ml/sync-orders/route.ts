@@ -212,10 +212,26 @@ export async function GET(req: NextRequest) {
         saleFeeEstimated = true;
       }
 
+      // Pack-anchor: vide ml-order-sync.ts. Sync manual em massa pode importar
+      // pedidos do mesmo pack na mesma execução; o `count` por mlPackId garante
+      // que só a primeira Bill criada do pack carrega o frete.
+      let isShippingAnchor = true;
+      if (order.pack_id) {
+        const existingInPack = await prisma.bill.count({
+          where: {
+            tenantId,
+            type: 'receivable',
+            category: 'venda',
+            mlPackId: String(order.pack_id),
+          },
+        });
+        if (existingInPack > 0) isShippingAnchor = false;
+      }
+
       // Extrair taxa de envio
       // Fórmula: list_cost - cost = taxa final que o vendedor paga
       let shippingFee = 0;
-      if (order.shipping?.id) {
+      if (isShippingAnchor && order.shipping?.id) {
         try {
           const shippingResponse = await fetch(
             `https://api.mercadolibre.com/shipments/${order.shipping.id}`,
