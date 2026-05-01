@@ -21,19 +21,40 @@ interface DreApiResponse {
   current?: { lucroLiquido?: number }
 }
 
-function buildDreUrl(): string {
-  const now = new Date()
-  return `/api/relatorios/dre?year=${now.getFullYear()}&month=${now.getMonth() + 1}&basis=caixa`
+function buildDreUrl(startStr?: string): string {
+  let y: number
+  let m: number
+  if (startStr) {
+    const [yy, mm] = startStr.split("-").map(Number)
+    y = yy
+    m = mm
+  } else {
+    const now = new Date()
+    y = now.getFullYear()
+    m = now.getMonth() + 1
+  }
+  return `/api/relatorios/dre?year=${y}&month=${m}&basis=caixa`
 }
 
 /**
  * Card com as 3 caixas virtuais: Operacional, Reposição, Reserva.
  *
- * Se `lucroLiquido` for passado, usa direto. Senão, busca via
- * /api/relatorios/dre do mês corrente — assim o componente é
- * auto-suficiente e pode ser usado em qualquer página.
+ * Props (todos opcionais):
+ *  - `start`/`end` (YYYY-MM-DD): limita período. Default: mês corrente.
+ *  - `lucroLiquido`: se passado, usa direto e não busca DRE.
+ *
+ * Quando o período cobre múltiplos meses, o Lucro Operacional usa o
+ * mês de início do período (DRE é sempre por mês).
  */
-export function CashPoolsCard({ lucroLiquido }: { lucroLiquido?: number }) {
+export function CashPoolsCard({
+  lucroLiquido,
+  start,
+  end,
+}: {
+  lucroLiquido?: number
+  start?: string
+  end?: string
+}) {
   const [data, setData] = useState<CashPools | null>(null)
   const [lucroFetched, setLucroFetched] = useState<number | undefined>(lucroLiquido)
   const [loading, setLoading] = useState(true)
@@ -41,8 +62,11 @@ export function CashPoolsCard({ lucroLiquido }: { lucroLiquido?: number }) {
   const load = async () => {
     setLoading(true)
     try {
+      const cashUrl = new URL("/api/financeiro/cash-pools", window.location.origin)
+      if (start) cashUrl.searchParams.set("start", start)
+      if (end) cashUrl.searchParams.set("end", end)
       const tasks: Promise<unknown>[] = [
-        fetch("/api/financeiro/cash-pools")
+        fetch(cashUrl.toString())
           .then((r) => (r.ok ? r.json() : null))
           .then((d: CashPools | null) => {
             if (d) setData(d)
@@ -50,7 +74,7 @@ export function CashPoolsCard({ lucroLiquido }: { lucroLiquido?: number }) {
       ]
       if (lucroLiquido === undefined) {
         tasks.push(
-          fetch(buildDreUrl())
+          fetch(buildDreUrl(start))
             .then((r) => (r.ok ? r.json() : null))
             .then((d: DreApiResponse | null) => {
               if (d?.current?.lucroLiquido !== undefined) {
@@ -68,7 +92,7 @@ export function CashPoolsCard({ lucroLiquido }: { lucroLiquido?: number }) {
   useEffect(() => {
     load()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [start, end])
 
   if (loading || !data) {
     return (
