@@ -176,9 +176,9 @@ export async function syncMLOrder(params: {
         )
         if (shippingRes.ok) {
           const detail = await shippingRes.json()
-          const listCost = detail.shipping_option?.list_cost || 0
-          const subsidizedCost = detail.shipping_option?.cost || 0
-          shippingFee = listCost - subsidizedCost
+          // shipping_option.cost = o que o vendedor paga apos subsidio/bonus do ML.
+          // Quando ha Bonus por envio: cost=0 e o frete nao e cobrado do vendedor.
+          shippingFee = detail.shipping_option?.cost ?? 0
         }
       } catch (err) {
         console.error(`[ml-order-sync] shipping fetch falhou para ${order.id}:`, err)

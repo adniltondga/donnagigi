@@ -243,10 +243,9 @@ export async function GET(req: NextRequest) {
           );
           if (shippingResponse.ok) {
             const shippingDetail = await shippingResponse.json();
-            const listCost = shippingDetail.shipping_option?.list_cost || 0;
-            const subsidizedCost = shippingDetail.shipping_option?.cost || 0;
-            // Taxa real = valor base - subsídio do ML
-            shippingFee = listCost - subsidizedCost;
+            // shipping_option.cost = o que o vendedor paga apos subsidio/bonus do ML.
+            // Quando ha Bonus por envio: cost=0 e o frete nao e cobrado do vendedor.
+            shippingFee = shippingDetail.shipping_option?.cost ?? 0;
           }
         } catch (error) {
           console.error(`Erro ao buscar taxa de envio para pedido ${order.id}:`, error);
