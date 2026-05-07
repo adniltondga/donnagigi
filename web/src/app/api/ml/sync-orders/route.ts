@@ -228,8 +228,7 @@ export async function GET(req: NextRequest) {
         if (existingInPack > 0) isShippingAnchor = false;
       }
 
-      // Extrair taxa de envio
-      // Fórmula: list_cost - cost = taxa final que o vendedor paga
+      // Extrair taxa de envio do vendedor
       let shippingFee = 0;
       if (isShippingAnchor && order.shipping?.id) {
         try {
@@ -243,9 +242,13 @@ export async function GET(req: NextRequest) {
           );
           if (shippingResponse.ok) {
             const shippingDetail = await shippingResponse.json();
-            // shipping_option.cost = o que o vendedor paga apos subsidio/bonus do ML.
-            // Quando ha Bonus por envio: cost=0 e o frete nao e cobrado do vendedor.
-            shippingFee = shippingDetail.shipping_option?.cost ?? 0;
+            // base_cost = custo líquido que o ML debita do vendedor (campo raiz do shipment).
+            // É o mais confiável: já reflete descontos do nível do vendedor e bônus por envio.
+            // Fallback: list_cost - buyer_cost - compensação ML (cobre casos sem base_cost).
+            const listCost: number = shippingDetail.shipping_option?.list_cost ?? 0;
+            const cost: number = shippingDetail.shipping_option?.cost ?? 0;
+            const compensation: number = shippingDetail.cost_components?.compensation ?? 0;
+            shippingFee = Math.max(0, listCost - cost - compensation);
           }
         } catch (error) {
           console.error(`Erro ao buscar taxa de envio para pedido ${order.id}:`, error);

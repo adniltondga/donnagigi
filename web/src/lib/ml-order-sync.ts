@@ -176,9 +176,14 @@ export async function syncMLOrder(params: {
         )
         if (shippingRes.ok) {
           const detail = await shippingRes.json()
-          // shipping_option.cost = o que o vendedor paga apos subsidio/bonus do ML.
-          // Quando ha Bonus por envio: cost=0 e o frete nao e cobrado do vendedor.
-          shippingFee = detail.shipping_option?.cost ?? 0
+          // seller_fee = list_cost - buyer_cost - ml_compensation
+          // "Bônus por Envio": cost=0 E compensation=list_cost → seller_fee=0
+          // Comprador paga frete: cost=list_cost, compensation=0 → seller_fee=0
+          // Vendedor absorve frete grátis: cost=0, compensation=0 → seller_fee=list_cost
+          const listCost: number = detail.shipping_option?.list_cost ?? 0
+          const cost: number = detail.shipping_option?.cost ?? 0
+          const compensation: number = detail.cost_components?.compensation ?? 0
+          shippingFee = Math.max(0, listCost - cost - compensation)
         }
       } catch (err) {
         console.error(`[ml-order-sync] shipping fetch falhou para ${order.id}:`, err)
