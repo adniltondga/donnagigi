@@ -33,7 +33,15 @@ export async function computeDre(
 ): Promise<DreResult> {
   const start = new Date(year, month0, 1, 0, 0, 0, 0)
   const end = new Date(year, month0 + 1, 1, 0, 0, 0, 0)
+  return computeDreForRange(tenantId, start, end, basis)
+}
 
+export async function computeDreForRange(
+  tenantId: string,
+  start: Date,
+  end: Date,
+  basis: DreBasis,
+): Promise<DreResult> {
   const vendas = await prisma.bill.findMany({
     where: {
       tenantId,

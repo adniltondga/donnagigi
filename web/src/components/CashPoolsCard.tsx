@@ -15,36 +15,12 @@ interface CashPools {
   gastoReposicao: number
   caixaReposicao: number
   caixaReserva: number
-}
-
-interface DreApiResponse {
-  current?: { lucroLiquido?: number }
-}
-
-function buildDreUrl(startStr?: string): string {
-  let y: number
-  let m: number
-  if (startStr) {
-    const [yy, mm] = startStr.split("-").map(Number)
-    y = yy
-    m = mm
-  } else {
-    const now = new Date()
-    y = now.getFullYear()
-    m = now.getMonth() + 1
-  }
-  return `/api/relatorios/dre?year=${y}&month=${m}&basis=caixa`
+  lucroOperacional: number
 }
 
 /**
  * Card com as 3 caixas virtuais: Operacional, Reposição, Reserva.
- *
- * Props (todos opcionais):
- *  - `start`/`end` (YYYY-MM-DD): limita período. Default: mês corrente.
- *  - `lucroLiquido`: se passado, usa direto e não busca DRE.
- *
- * Quando o período cobre múltiplos meses, o Lucro Operacional usa o
- * mês de início do período (DRE é sempre por mês).
+ * O lucro operacional é calculado pelo cash-pools API sobre o período completo.
  */
 export function CashPoolsCard({
   lucroLiquido,
@@ -56,7 +32,6 @@ export function CashPoolsCard({
   end?: string
 }) {
   const [data, setData] = useState<CashPools | null>(null)
-  const [lucroFetched, setLucroFetched] = useState<number | undefined>(lucroLiquido)
   const [loading, setLoading] = useState(true)
 
   const load = async () => {
@@ -65,25 +40,8 @@ export function CashPoolsCard({
       const cashUrl = new URL("/api/financeiro/cash-pools", window.location.origin)
       if (start) cashUrl.searchParams.set("start", start)
       if (end) cashUrl.searchParams.set("end", end)
-      const tasks: Promise<unknown>[] = [
-        fetch(cashUrl.toString())
-          .then((r) => (r.ok ? r.json() : null))
-          .then((d: CashPools | null) => {
-            if (d) setData(d)
-          }),
-      ]
-      if (lucroLiquido === undefined) {
-        tasks.push(
-          fetch(buildDreUrl(start))
-            .then((r) => (r.ok ? r.json() : null))
-            .then((d: DreApiResponse | null) => {
-              if (d?.current?.lucroLiquido !== undefined) {
-                setLucroFetched(d.current.lucroLiquido)
-              }
-            }),
-        )
-      }
-      await Promise.all(tasks)
+      const d = await fetch(cashUrl.toString()).then((r) => (r.ok ? r.json() : null)) as CashPools | null
+      if (d) setData(d)
     } finally {
       setLoading(false)
     }
@@ -102,7 +60,7 @@ export function CashPoolsCard({
     )
   }
 
-  const operacional = lucroLiquido ?? lucroFetched ?? 0
+  const operacional = lucroLiquido ?? data.lucroOperacional
   const temVendasSemCusto = data.vendasSemCusto > 0
 
   return (
@@ -112,7 +70,7 @@ export function CashPoolsCard({
           icon={<Wallet />}
           label="Caixa Operacional"
           value={operacional}
-          desc="lucro líquido do mês — disponível pro dia-a-dia"
+          desc="lucro líquido do período — disponível pro dia-a-dia"
           color="emerald"
         />
         <PoolCard

@@ -25,6 +25,7 @@
 
 import prisma from "./prisma"
 import { getPartialRefundsForBills, refundOf } from "./refunds"
+import { computeDreForRange } from "./dre"
 
 export const REPOSICAO_CATEGORY = "reposicao_estoque"
 
@@ -47,6 +48,8 @@ export interface CashPoolsResult {
   caixaReposicao: number
   /** Saldo declarado pelo user em FinancialSettings.saldoCaixaAtual */
   caixaReserva: number
+  /** Lucro líquido do período (receita − taxas − CMV − despesas) */
+  lucroOperacional: number
 }
 
 interface CalcParams {
@@ -64,7 +67,7 @@ export async function calcularCaixas(params: CalcParams): Promise<CashPoolsResul
     params.start ?? new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0)
   const end = params.end ?? now
 
-  const [settings, vendas, reposicoes] = await Promise.all([
+  const [settings, vendas, reposicoes, dre] = await Promise.all([
     prisma.financialSettings.findUnique({ where: { tenantId } }),
     // Bills de venda pagas no período (recebidas)
     prisma.bill.findMany({
@@ -88,6 +91,7 @@ export async function calcularCaixas(params: CalcParams): Promise<CashPoolsResul
       },
       select: { amount: true },
     }),
+    computeDreForRange(tenantId, start, end, "caixa"),
   ])
 
   // Refunds parciais subtraem do amount líquido e do CMV proporcionalmente.
@@ -122,5 +126,6 @@ export async function calcularCaixas(params: CalcParams): Promise<CashPoolsResul
     gastoReposicao,
     caixaReposicao,
     caixaReserva,
+    lucroOperacional: dre.lucroLiquido,
   }
 }
