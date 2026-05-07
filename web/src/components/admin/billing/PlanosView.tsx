@@ -4,7 +4,7 @@ import { useEffect, useState } from "react"
 import { ArrowRight, Check, Loader2, X, Sparkles } from "lucide-react"
 import { formatCurrency } from "@/lib/calculations"
 import { feedback } from "@/lib/feedback"
-import { maskCpfCnpj, unmaskCpfCnpj } from "@/lib/mask"
+import { maskCpfCnpj, unmaskCpfCnpj, validateCpfCnpj } from "@/lib/mask"
 import { LoadingState } from "@/components/ui/loading-state"
 
 type PlanId = "FREE" | "PRO" | "BUSINESS" | "ENTERPRISE"
@@ -76,7 +76,7 @@ export function PlanosView({ onSuccess }: PlanosViewProps) {
     e.preventDefault()
     setError("")
     const raw = unmaskCpfCnpj(cpfCnpj)
-    if (raw.length !== 11 && raw.length !== 14) {
+    if (!validateCpfCnpj(raw)) {
       setError("CPF/CNPJ inválido")
       return
     }
