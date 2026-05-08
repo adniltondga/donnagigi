@@ -19,8 +19,59 @@
 import { NextRequest, NextResponse } from "next/server"
 import prisma from "@/lib/prisma"
 import { syncAndCacheMP } from "@/lib/mp"
+import { createNotification } from "@/lib/notifications"
+import { formatCurrency } from "@/lib/calculations"
 
 export const dynamic = "force-dynamic"
+
+/**
+ * Roda o sync do MP e dispara notificação in-app (sininho) se
+ * houve liberação ou disputa nova desde a última sincronização.
+ *
+ * Threshold de R$ 0,01 evita ruído de arredondamento. Notificação
+ * é criada per-evento (cada webhook que detectou movimento).
+ */
+async function syncAndNotify(tenantId: string) {
+  try {
+    const before = await prisma.mPIntegration.findUnique({
+      where: { tenantId },
+      select: { cachedReleasedTotal: true, cachedDisputedTotal: true },
+    })
+    const r = await syncAndCacheMP(tenantId)
+    console.log("[mp-webhook] sync ok:", tenantId, r.cachedSyncedAt)
+    const after = await prisma.mPIntegration.findUnique({
+      where: { tenantId },
+      select: { cachedReleasedTotal: true, cachedDisputedTotal: true },
+    })
+    if (!before || !after) return
+
+    const releasedDelta =
+      (after.cachedReleasedTotal ?? 0) - (before.cachedReleasedTotal ?? 0)
+    if (releasedDelta > 0.01) {
+      await createNotification({
+        tenantId,
+        type: "mp_release",
+        title: `Mercado Pago liberou ${formatCurrency(releasedDelta)}`,
+        body: `Saldo total liberado: ${formatCurrency(after.cachedReleasedTotal ?? 0)}.`,
+        link: "/admin/financeiro/painel",
+      })
+    }
+
+    const disputedDelta =
+      (after.cachedDisputedTotal ?? 0) - (before.cachedDisputedTotal ?? 0)
+    if (disputedDelta > 0.01) {
+      await createNotification({
+        tenantId,
+        type: "mp_release",
+        title: `Disputa nova no Mercado Pago: ${formatCurrency(disputedDelta)} retido`,
+        body: "Verifique o card MP no Painel — pode precisar responder ao comprador.",
+        link: "/admin/financeiro/painel",
+      })
+    }
+  } catch (e) {
+    console.error("[mp-webhook] sync/notify falhou:", tenantId, e)
+  }
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -64,10 +115,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ status: "unknown_seller" }, { status: 200 })
     }
 
-    // Roda o sync sem bloquear. Response 200 volta rápido pro MP.
-    syncAndCacheMP(integration.tenantId)
-      .then((r) => console.log("[mp-webhook] sync ok:", integration.tenantId, r.cachedSyncedAt))
-      .catch((e) => console.error("[mp-webhook] sync falhou:", integration.tenantId, e))
+    // Roda o sync + notificação sem bloquear. Response 200 volta rápido pro MP.
+    void syncAndNotify(integration.tenantId)
 
     return NextResponse.json({ status: "received", tenantId: integration.tenantId }, { status: 200 })
   } catch (err) {
