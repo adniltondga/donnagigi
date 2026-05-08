@@ -935,12 +935,14 @@ function Field({
   onChange,
   placeholder,
   mono,
+  hint,
 }: {
   label: string
   value: string
   onChange: (v: string) => void
   placeholder?: string
   mono?: boolean
+  hint?: string
 }) {
   return (
     <div>
@@ -952,6 +954,7 @@ function Field({
         placeholder={placeholder}
         className={`w-full px-3 py-2 border border-border rounded-lg text-sm focus:ring-2 focus:ring-primary-600 outline-none ${mono ? "font-mono" : ""}`}
       />
+      {hint && <p className="text-xs text-muted-foreground mt-1">{hint}</p>}
     </div>
   )
 }

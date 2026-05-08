@@ -75,7 +75,10 @@
       "Bash(git -C /Users/2480dtidigital/site/donnagigi log --oneline -5 -- .env)",
       "Bash(git *)",
       "Bash(grep -E \"\\\\.ts$|\\\\.tsx$\")",
-      "Bash(grep -rn \"formatCurrency\\\\|formatBRL\\\\|toBRL\\\\|R\\\\\\\\$\" /Users/2480dtidigital/site/donnagigi/src/lib/utils.ts /Users/2480dtidigital/site/donnagigi/src/lib/calculations.ts)"
+      "Bash(grep -rn \"formatCurrency\\\\|formatBRL\\\\|toBRL\\\\|R\\\\\\\\$\" /Users/2480dtidigital/site/donnagigi/src/lib/utils.ts /Users/2480dtidigital/site/donnagigi/src/lib/calculations.ts)",
+      "Bash(dig +short aglivre.dgadigital.com.br A)",
+      "Bash(dig +short www.aglivre.dgadigital.com.br A)",
+      "Bash(dig +short dgadigital.com.br A)"
     ]
   }
 }

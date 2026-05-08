@@ -52,15 +52,40 @@ export function getMPRedirectUri(
   req: NextRequest | null,
   creds: MPCreds | null
 ): string {
-  if (creds?.redirectUri) return creds.redirectUri
-  if (process.env.MP_REDIRECT_URI) return process.env.MP_REDIRECT_URI
+  // 1. URL canônica do SaaS (env var) — fonte da verdade pra prod multi-tenant.
+  //    Setar no Vercel: NEXT_PUBLIC_APP_URL=https://aglivre.dgadigital.com.br
+  const appUrl = (process.env.NEXT_PUBLIC_APP_URL || process.env.APP_URL || "").trim()
+  if (appUrl) {
+    return ensureMPCallbackPath(appUrl)
+  }
+
+  // 2. Override per-tenant (legado).
+  if (creds?.redirectUri) return ensureMPCallbackPath(creds.redirectUri)
+  if (process.env.MP_REDIRECT_URI) return ensureMPCallbackPath(process.env.MP_REDIRECT_URI)
+
+  // 3. Fallback: derivado do request (dev local sem env).
   if (req) {
     const proto = req.headers.get("x-forwarded-proto") || "http"
     const host = req.headers.get("x-forwarded-host") || req.headers.get("host") || "localhost:3000"
     return `${proto}://${host}/api/mp/oauth/callback`
   }
-  const base = (process.env.APP_URL || process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000").replace(/\/$/, "")
-  return `${base}/api/mp/oauth/callback`
+  return "http://localhost:3000/api/mp/oauth/callback"
+}
+
+/**
+ * Aceita uma URL canônica que pode ser só o host (ex: https://app.com)
+ * OU a URL completa do callback. Retorna sempre a URL completa do callback MP.
+ */
+function ensureMPCallbackPath(uri: string): string {
+  try {
+    const u = new URL(uri)
+    if (!u.pathname || u.pathname === "/" || u.pathname === "") {
+      return `${u.protocol}//${u.host}/api/mp/oauth/callback`
+    }
+    return uri
+  } catch {
+    return uri
+  }
 }
 
 /**
