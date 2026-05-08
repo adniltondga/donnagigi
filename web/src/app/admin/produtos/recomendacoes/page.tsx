@@ -1,7 +1,7 @@
 "use client"
 
 import { Fragment, useEffect, useMemo, useState } from "react"
-import { Loader2, Package, ChevronDown, ChevronRight, AlertTriangle, Flame, ShoppingCart, CheckCircle2, MoonStar } from "lucide-react"
+import { Loader2, Package, ChevronDown, ChevronRight } from "lucide-react"
 import { PageHeader } from "@/components/ui/page-header"
 import { formatCurrency } from "@/lib/calculations"
 
@@ -45,23 +45,22 @@ const STATUS_LABEL: Record<Status, string> = {
   PARADO: "Parado",
 }
 
+// Cores semânticas (3 tons só): vermelho pra urgente, âmbar pra atenção,
+// cinza pra resto. Reduz "arco-íris de confusão" da versão anterior.
 const STATUS_TONE: Record<Status, string> = {
   ESGOTADO: "bg-red-100 text-red-800 border-red-200 dark:bg-red-900/40 dark:text-red-300 dark:border-red-800",
-  CRITICO: "bg-rose-100 text-rose-800 border-rose-200 dark:bg-rose-900/40 dark:text-rose-300 dark:border-rose-800",
+  CRITICO: "bg-red-100 text-red-800 border-red-200 dark:bg-red-900/40 dark:text-red-300 dark:border-red-800",
   ATENCAO: "bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-900/40 dark:text-amber-300 dark:border-amber-800",
-  OK: "bg-emerald-100 text-emerald-800 border-emerald-200 dark:bg-emerald-900/40 dark:text-emerald-300 dark:border-emerald-800",
+  OK: "bg-muted text-muted-foreground border-border",
   PARADO: "bg-muted text-muted-foreground border-border",
 }
 
-type Filter = "ALL" | "URGENT" | Status
+type Filter = "URGENT" | "ATENCAO" | "OK" | "PARADO"
 
 const FILTER_OPTIONS: Array<{ key: Filter; label: string }> = [
-  { key: "ALL", label: "Todos" },
-  { key: "URGENT", label: "🔥 Urgentes (esgotado + crítico)" },
-  { key: "ESGOTADO", label: "Esgotados" },
-  { key: "CRITICO", label: "Críticos (≤ 7 dias)" },
-  { key: "ATENCAO", label: "Atenção (≤ 14 dias)" },
-  { key: "OK", label: "OK" },
+  { key: "URGENT", label: "Urgentes" },
+  { key: "ATENCAO", label: "Atenção" },
+  { key: "OK", label: "Tudo OK" },
   { key: "PARADO", label: "Parados" },
 ]
 
@@ -110,11 +109,23 @@ export default function RecomendacoesPage() {
       return next
     })
 
+  // KPIs em 3 grupos semânticos (em vez de 5 contadores soltos).
+  const kpisAgrupados = useMemo(() => {
+    if (!data) return { urgentes: 0, atencao: 0, ok: 0 }
+    return {
+      urgentes: data.kpis.ESGOTADO + data.kpis.CRITICO,
+      atencao: data.kpis.ATENCAO,
+      ok: data.kpis.OK + data.kpis.PARADO,
+    }
+  }, [data])
+
   const filtered = useMemo(() => {
     if (!data) return []
-    if (filter === "ALL") return data.items
     if (filter === "URGENT") {
       return data.items.filter((i) => i.worstStatus === "ESGOTADO" || i.worstStatus === "CRITICO")
+    }
+    if (filter === "OK") {
+      return data.items.filter((i) => i.worstStatus === "OK")
     }
     return data.items.filter((i) => i.worstStatus === filter)
   }, [data, filter])
@@ -122,44 +133,63 @@ export default function RecomendacoesPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="🔄 Recomendações de compra"
-        description={`Cruza estoque atual no ML com vendas dos últimos ${windowDays} dias e sugere o que comprar pra durar ${data?.coverageDays ?? 30} dias.`}
+        title="Recomendações de reposição"
+        description="Identifique produtos que precisam ser recomprados antes de esgotar."
         actions={
-          <select
-            value={windowDays}
-            onChange={(e) => setWindowDays(Number(e.target.value))}
-            className="bg-card border border-border rounded-md px-3 py-2 text-sm"
-          >
+          <div className="inline-flex rounded-lg border border-border bg-card p-1 text-sm">
             {WINDOW_OPTIONS.map((d) => (
-              <option key={d} value={d}>
-                Janela: últimos {d} dias
-              </option>
+              <button
+                key={d}
+                type="button"
+                onClick={() => setWindowDays(d)}
+                className={`px-2.5 py-1 rounded-md transition ${
+                  windowDays === d
+                    ? "bg-primary-600 text-white"
+                    : "text-muted-foreground hover:bg-accent"
+                }`}
+              >
+                {d}d
+              </button>
             ))}
-          </select>
+          </div>
         }
       />
 
-      {/* KPIs */}
+      {/* KPIs em 3 grupos */}
       {data && (
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-          <KPI label="Esgotados" value={data.kpis.ESGOTADO} icon={Flame} accent="rose-strong" />
-          <KPI label="Críticos" value={data.kpis.CRITICO} icon={AlertTriangle} accent="rose" />
-          <KPI label="Atenção" value={data.kpis.ATENCAO} icon={ShoppingCart} accent="amber" />
-          <KPI label="OK" value={data.kpis.OK} icon={CheckCircle2} accent="emerald" />
-          <KPI label="Parados" value={data.kpis.PARADO} icon={MoonStar} accent="muted" />
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <KPIGroup
+            label="Urgentes"
+            help="Esgotados ou com estoque pra ≤ 7 dias — comprar hoje"
+            value={kpisAgrupados.urgentes}
+            tone="urgent"
+          />
+          <KPIGroup
+            label="Atenção"
+            help="Estoque pra ≤ 14 dias — planejar nos próximos dias"
+            value={kpisAgrupados.atencao}
+            tone="warn"
+          />
+          <KPIGroup
+            label="Tudo OK"
+            help="Estoque suficiente ou produto sem vendas"
+            value={kpisAgrupados.ok}
+            tone="ok"
+          />
         </div>
       )}
 
-      {/* Filtro de status */}
-      <div className="flex flex-wrap gap-2">
+      {/* Filtros */}
+      <div className="inline-flex flex-wrap rounded-lg border border-border bg-card p-1 text-sm">
         {FILTER_OPTIONS.map((f) => (
           <button
             key={f.key}
+            type="button"
             onClick={() => setFilter(f.key)}
-            className={`px-3 py-1.5 rounded-md text-sm font-medium transition border ${
+            className={`px-3 py-1.5 rounded-md transition ${
               filter === f.key
-                ? "bg-primary-600 text-white border-primary-600"
-                : "bg-card text-foreground border-border hover:bg-accent"
+                ? "bg-primary-600 text-white"
+                : "text-muted-foreground hover:bg-accent"
             }`}
           >
             {f.label}
@@ -172,9 +202,13 @@ export default function RecomendacoesPage() {
           <Loader2 className="w-5 h-5 animate-spin mr-2" />
           Calculando recomendações…
         </div>
-      ) : !data || filtered.length === 0 ? (
+      ) : !data ? (
         <div className="bg-card border border-border rounded-lg p-12 text-center text-muted-foreground">
-          {data ? "Nada nesse filtro 🎉" : "Erro ao carregar — tente recarregar a página"}
+          Erro ao carregar — tente recarregar a página.
+        </div>
+      ) : filtered.length === 0 ? (
+        <div className="bg-card border border-border rounded-lg p-12 text-center text-muted-foreground">
+          Nada nesse filtro.
         </div>
       ) : (
         <div className="bg-card border border-border rounded-lg overflow-hidden">
@@ -182,27 +216,33 @@ export default function RecomendacoesPage() {
             <thead className="bg-muted text-xs uppercase tracking-wide text-muted-foreground">
               <tr>
                 <th className="text-left px-2 py-3 w-8" />
-                <th className="text-left px-4 py-3">Anúncio</th>
-                <th className="text-right px-4 py-3">Estoque</th>
-                <th className="text-right px-4 py-3">Vendas {windowDays}d</th>
-                <th className="text-right px-4 py-3">Velocidade</th>
-                <th className="text-right px-4 py-3">Dura</th>
-                <th className="text-right px-4 py-3">Sugestão</th>
-                <th className="text-left px-4 py-3">Status</th>
+                <th className="text-left px-4 py-3">Produto</th>
+                <th className="text-left px-4 py-3">Estoque & vendas</th>
+                <th className="text-left px-4 py-3">Sugestão</th>
+                <th className="text-left px-4 py-3 w-24">Status</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
               {filtered.map((it) => {
                 const isOpen = expanded.has(it.mlListingId)
+                const velocity = it.totalVendas / windowDays
+                const daysLeft = velocity > 0 ? Math.floor(it.totalStock / velocity) : null
+                const sumSuggested = it.variations.reduce((s, v) => s + v.suggestedQty, 0)
+                const sumInvestment = it.variations.reduce(
+                  (s, v) => s + (v.productCost != null ? v.productCost * v.suggestedQty : 0),
+                  0,
+                )
+                const hasCostInfo = it.variations.some((v) => v.productCost != null && v.suggestedQty > 0)
                 return (
                   <Fragment key={it.mlListingId}>
                     <tr className="hover:bg-accent transition">
-                      <td className="px-2 py-3 text-center">
+                      <td className="px-2 py-3 text-center align-top">
                         {it.hasVariations && (
                           <button
                             type="button"
                             onClick={() => toggle(it.mlListingId)}
-                            className="p-1 hover:bg-muted rounded"
+                            className="p-1 hover:bg-muted rounded mt-1"
+                            aria-label={isOpen ? "Recolher variações" : "Expandir variações"}
                           >
                             {isOpen ? (
                               <ChevronDown className="w-4 h-4 text-muted-foreground" />
@@ -212,7 +252,7 @@ export default function RecomendacoesPage() {
                           </button>
                         )}
                       </td>
-                      <td className="px-4 py-3">
+                      <td className="px-4 py-3 align-top">
                         <div className="flex items-start gap-3 min-w-0">
                           {it.thumbnail ? (
                             // eslint-disable-next-line @next/next/no-img-element
@@ -229,61 +269,85 @@ export default function RecomendacoesPage() {
                           )}
                           <div className="min-w-0 flex-1">
                             <div className="text-foreground font-medium truncate">{it.title || "—"}</div>
-                            <a
-                              href={`https://produto.mercadolivre.com.br/${it.mlListingId.replace("MLB", "MLB-")}`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-[11px] font-mono text-primary-600 hover:underline"
-                            >
-                              {it.mlListingId}
-                            </a>
-                            {it.hasVariations && (
-                              <span className="ml-2 bg-primary-100 text-primary-700 dark:bg-primary-900/40 dark:text-primary-300 text-[10px] font-semibold px-1.5 py-0.5 rounded">
-                                {it.variations.length} var.
-                              </span>
-                            )}
+                            <div className="flex items-center gap-2 mt-0.5">
+                              <a
+                                href={`https://produto.mercadolivre.com.br/${it.mlListingId.replace("MLB", "MLB-")}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-[11px] font-mono text-primary-600 hover:underline"
+                              >
+                                {it.mlListingId}
+                              </a>
+                              {it.hasVariations && (
+                                <span className="bg-primary-100 text-primary-700 dark:bg-primary-900/40 dark:text-primary-300 text-[10px] font-semibold px-1.5 py-0.5 rounded">
+                                  {it.variations.length} var.
+                                </span>
+                              )}
+                            </div>
                           </div>
                         </div>
                       </td>
-                      <td className="px-4 py-3 text-right tabular-nums text-foreground">
-                        <span className={it.totalStock === 0 ? "text-rose-600 font-semibold" : ""}>
-                          {it.totalStock}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 text-right tabular-nums text-foreground">{it.totalVendas}</td>
-                      <td className="px-4 py-3 text-right tabular-nums text-muted-foreground text-xs">
-                        {(it.totalVendas / windowDays).toFixed(2)}/dia
-                      </td>
-                      <td className="px-4 py-3 text-right tabular-nums">
-                        {(() => {
-                          const v = it.totalVendas / windowDays
-                          if (v <= 0) return <span className="text-muted-foreground">—</span>
-                          const days = Math.floor(it.totalStock / v)
-                          return (
+                      <td className="px-4 py-3 align-top text-sm">
+                        <div className="space-y-0.5">
+                          <p>
+                            <span className="text-muted-foreground">Estoque: </span>
                             <span
-                              className={
-                                days === 0
-                                  ? "text-rose-600 font-bold"
-                                  : days <= 7
-                                  ? "text-rose-600 font-semibold"
-                                  : days <= 14
-                                  ? "text-amber-600 font-semibold"
-                                  : "text-foreground"
-                              }
+                              className={`font-semibold ${it.totalStock === 0 ? "text-red-600" : "text-foreground"}`}
                             >
-                              {days}d
+                              {it.totalStock} un.
                             </span>
-                          )
-                        })()}
+                          </p>
+                          <p>
+                            <span className="text-muted-foreground">Vende: </span>
+                            <span className="text-foreground">
+                              {velocity > 0 ? `${velocity.toFixed(2)}/dia` : "—"}
+                            </span>
+                          </p>
+                          {daysLeft != null && (
+                            <p>
+                              <span className="text-muted-foreground">Acaba em: </span>
+                              <span
+                                className={`font-semibold ${
+                                  daysLeft === 0
+                                    ? "text-red-600"
+                                    : daysLeft <= 7
+                                      ? "text-red-600"
+                                      : daysLeft <= 14
+                                        ? "text-amber-700"
+                                        : "text-foreground"
+                                }`}
+                              >
+                                {daysLeft}d
+                              </span>
+                            </p>
+                          )}
+                        </div>
                       </td>
-                      <td className="px-4 py-3 text-right tabular-nums">
-                        {(() => {
-                          const sum = it.variations.reduce((s, v) => s + v.suggestedQty, 0)
-                          if (sum <= 0) return <span className="text-muted-foreground">—</span>
-                          return <span className="text-foreground font-semibold">{sum} un.</span>
-                        })()}
+                      <td className="px-4 py-3 align-top text-sm">
+                        {sumSuggested > 0 ? (
+                          <div className="space-y-0.5">
+                            <p>
+                              <span className="text-muted-foreground">Comprar: </span>
+                              <span className="text-foreground font-semibold">{sumSuggested} un.</span>
+                            </p>
+                            {hasCostInfo && sumInvestment > 0 ? (
+                              <p>
+                                <span className="text-muted-foreground">Investimento: </span>
+                                <span className="text-foreground font-semibold">
+                                  {formatCurrency(sumInvestment)}
+                                </span>
+                              </p>
+                            ) : (
+                              <p className="text-xs text-muted-foreground">
+                                Sem custo cadastrado
+                              </p>
+                            )}
+                          </div>
+                        ) : (
+                          <span className="text-muted-foreground">Sem ação</span>
+                        )}
                       </td>
-                      <td className="px-4 py-3">
+                      <td className="px-4 py-3 align-top">
                         <span
                           className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide border ${STATUS_TONE[it.worstStatus]}`}
                         >
@@ -292,29 +356,24 @@ export default function RecomendacoesPage() {
                       </td>
                     </tr>
 
-                    {/* Variações expandidas */}
+                    {/* Variações expandidas — mesmo layout simplificado */}
                     {isOpen && it.hasVariations && (
                       <tr>
-                        <td colSpan={8} className="bg-muted/30 px-0 py-0">
-                          <div className="px-12 py-2">
+                        <td colSpan={5} className="bg-muted/30 px-0 py-0">
+                          <div className="px-12 py-3">
                             <table className="w-full text-xs">
                               <thead className="text-muted-foreground">
                                 <tr>
                                   <th className="text-left px-3 py-2">Variação</th>
-                                  <th className="text-right px-3 py-2">Estoque</th>
-                                  <th className="text-right px-3 py-2">Vendas</th>
-                                  <th className="text-right px-3 py-2">Velocidade</th>
-                                  <th className="text-right px-3 py-2">Dura</th>
-                                  <th className="text-right px-3 py-2">Sugestão</th>
-                                  <th className="text-right px-3 py-2">Custo total</th>
-                                  <th className="text-left px-3 py-2">Status</th>
+                                  <th className="text-left px-3 py-2">Estoque & vendas</th>
+                                  <th className="text-left px-3 py-2">Sugestão</th>
+                                  <th className="text-left px-3 py-2 w-24">Status</th>
                                 </tr>
                               </thead>
                               <tbody>
                                 {it.variations
                                   .slice()
                                   .sort((a, b) => {
-                                    // mesma ordenação por urgência dentro do anúncio
                                     const rank: Record<Status, number> = {
                                       ESGOTADO: 0,
                                       CRITICO: 1,
@@ -331,48 +390,72 @@ export default function RecomendacoesPage() {
                                         : null
                                     return (
                                       <tr key={v.variationId ?? "_no_var"} className="border-t border-border">
-                                        <td className="px-3 py-2 text-foreground">
+                                        <td className="px-3 py-2 text-foreground align-top">
                                           {v.variationName || (v.variationId ? `Var. ${v.variationId}` : "—")}
                                         </td>
-                                        <td className="px-3 py-2 text-right tabular-nums">
-                                          <span className={v.stock === 0 ? "text-rose-600 font-semibold" : "text-foreground"}>
-                                            {v.stock}
-                                          </span>
+                                        <td className="px-3 py-2 align-top">
+                                          <div className="space-y-0.5">
+                                            <p>
+                                              <span className="text-muted-foreground">Estoque: </span>
+                                              <span
+                                                className={`font-semibold ${v.stock === 0 ? "text-red-600" : "text-foreground"}`}
+                                              >
+                                                {v.stock} un.
+                                              </span>
+                                            </p>
+                                            <p>
+                                              <span className="text-muted-foreground">Vende: </span>
+                                              <span className="text-foreground">
+                                                {v.velocityPerDay > 0 ? `${v.velocityPerDay.toFixed(2)}/dia` : "—"}
+                                              </span>
+                                            </p>
+                                            {v.daysOfStock != null && (
+                                              <p>
+                                                <span className="text-muted-foreground">Acaba em: </span>
+                                                <span
+                                                  className={`font-semibold ${
+                                                    v.daysOfStock === 0
+                                                      ? "text-red-600"
+                                                      : v.daysOfStock <= 7
+                                                        ? "text-red-600"
+                                                        : v.daysOfStock <= 14
+                                                          ? "text-amber-700"
+                                                          : "text-foreground"
+                                                  }`}
+                                                >
+                                                  {Math.floor(v.daysOfStock)}d
+                                                </span>
+                                              </p>
+                                            )}
+                                          </div>
                                         </td>
-                                        <td className="px-3 py-2 text-right tabular-nums text-foreground">{v.vendas}</td>
-                                        <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">
-                                          {v.velocityPerDay.toFixed(2)}/dia
-                                        </td>
-                                        <td className="px-3 py-2 text-right tabular-nums">
-                                          {v.daysOfStock == null ? (
-                                            <span className="text-muted-foreground">—</span>
-                                          ) : (
-                                            <span
-                                              className={
-                                                v.daysOfStock === 0
-                                                  ? "text-rose-600 font-bold"
-                                                  : v.daysOfStock <= 7
-                                                  ? "text-rose-600"
-                                                  : v.daysOfStock <= 14
-                                                  ? "text-amber-600"
-                                                  : "text-foreground"
-                                              }
-                                            >
-                                              {Math.floor(v.daysOfStock)}d
-                                            </span>
-                                          )}
-                                        </td>
-                                        <td className="px-3 py-2 text-right tabular-nums">
+                                        <td className="px-3 py-2 align-top">
                                           {v.suggestedQty > 0 ? (
-                                            <span className="text-foreground font-semibold">{v.suggestedQty} un.</span>
+                                            <div className="space-y-0.5">
+                                              <p>
+                                                <span className="text-muted-foreground">Comprar: </span>
+                                                <span className="text-foreground font-semibold">
+                                                  {v.suggestedQty} un.
+                                                </span>
+                                              </p>
+                                              {totalCost != null ? (
+                                                <p>
+                                                  <span className="text-muted-foreground">Inv.: </span>
+                                                  <span className="text-foreground font-semibold">
+                                                    {formatCurrency(totalCost)}
+                                                  </span>
+                                                </p>
+                                              ) : (
+                                                <p className="text-muted-foreground">
+                                                  Sem custo cadastrado
+                                                </p>
+                                              )}
+                                            </div>
                                           ) : (
-                                            <span className="text-muted-foreground">—</span>
+                                            <span className="text-muted-foreground">Sem ação</span>
                                           )}
                                         </td>
-                                        <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">
-                                          {totalCost != null ? formatCurrency(totalCost) : "—"}
-                                        </td>
-                                        <td className="px-3 py-2">
+                                        <td className="px-3 py-2 align-top">
                                           <span
                                             className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide border ${STATUS_TONE[v.status]}`}
                                           >
@@ -399,35 +482,33 @@ export default function RecomendacoesPage() {
   )
 }
 
-interface KPIIconProps {
-  className?: string
-}
-function KPI({
+function KPIGroup({
   label,
+  help,
   value,
-  icon: Icon,
-  accent,
+  tone,
 }: {
   label: string
+  help: string
   value: number
-  icon: React.ComponentType<KPIIconProps>
-  accent: "rose-strong" | "rose" | "amber" | "emerald" | "muted"
+  tone: "urgent" | "warn" | "ok"
 }) {
-  const tone = {
-    "rose-strong": "bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-300 border-red-200 dark:border-red-800",
-    rose: "bg-rose-50 dark:bg-rose-900/30 text-rose-700 dark:text-rose-300 border-rose-200 dark:border-rose-800",
-    amber: "bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800",
-    emerald:
-      "bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800",
-    muted: "bg-muted text-muted-foreground border-border",
-  }[accent]
+  const toneClass = {
+    urgent: "border-red-200 dark:border-red-800",
+    warn: "border-amber-200 dark:border-amber-800",
+    ok: "border-border",
+  }[tone]
+  const valueClass = {
+    urgent: "text-red-700 dark:text-red-300",
+    warn: "text-amber-700 dark:text-amber-300",
+    ok: "text-foreground",
+  }[tone]
   return (
-    <div className={`rounded-lg border p-4 ${tone}`}>
-      <div className="flex items-center gap-2">
-        <Icon className="w-4 h-4" />
-        <p className="text-[10px] uppercase tracking-wide font-semibold">{label}</p>
-      </div>
-      <p className="text-2xl font-bold mt-1">{value}</p>
+    <div className={`rounded-lg border bg-card p-4 ${toneClass}`}>
+      <p className="text-xs uppercase tracking-wide text-muted-foreground font-semibold">{label}</p>
+      <p className={`text-3xl font-bold mt-1 ${valueClass}`}>{value}</p>
+      <p className="text-xs text-muted-foreground mt-1">{help}</p>
     </div>
   )
 }
+
