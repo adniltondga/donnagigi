@@ -46,7 +46,7 @@ export async function GET(req: NextRequest) {
     // Settings (ou defaults)
     const settings =
       (await prisma.financialSettings.findUnique({ where: { tenantId } })) ||
-      ({ reservaMeses: 3, reinvestPct: 20, saldoCaixaAtual: null, saldoAtualizadoEm: null } as const)
+      ({ reservaMeses: 3, reinvestPct: 20, proLaborePct: 100, saldoCaixaAtual: null, saldoAtualizadoEm: null } as const)
 
     // IDs das categorias "Aporte sócio" (raiz + filhas), "Pró-labore" e
     // sub "Amortização" (que é um filho especial de Aporte sócio).
@@ -365,6 +365,10 @@ export async function GET(req: NextRequest) {
             type: "payable",
             status: "paid",
             billCategoryId: amortizacaoSubId,
+            // Amortizações consolidadas pelo migrador ficam com prefix [migrated]
+            // em notes — não devem mais abater do saldo (já foram absorvidas
+            // pelos aportes pagos correspondentes).
+            NOT: { notes: { startsWith: "[migrated]" } },
           },
           select: { amount: true },
         })
@@ -411,13 +415,86 @@ export async function GET(req: NextRequest) {
     //   liberado MP − max(CMV, reposição paga) − despesas pagas
     const caixaDoMes = receitaBruta - descontoPraEstoque - despesasPagasTotal
 
-    // PRÓ-LABORE FINAL — caixa do mês menos compromissos sugeridos:
-    //   − amortização do aporte (empréstimo do sócio)
-    //   − reinvestimento (% pra crescer)
-    //   − reserva pendente (colchão)
-    const sobra = caixaDoMes - aporteAmortizacaoSugerida - reinvestSugerido - faltaParaReserva
-    const proLaboreSeguro = Math.max(0, Math.round(sobra * 100) / 100)
-    const proLaboreDireto = Math.max(0, Math.round(caixaDoMes * 100) / 100)
+    // SAÍDAS REAIS PRA SÓCIO NO MÊS — o que SAIU de caixa pra devolver
+    // capital ao sócio neste mês. Inclui:
+    //  - Aportes que foram marcados paid no mês (modelo novo: aporte vira paid)
+    //  - Amortizações pagas no mês (modelo legado, ainda válido)
+    // Ignora amortizações [migrated] (consolidadas, já viraram aporte paid).
+    const aportesPagosNoMes = aporteOriginalIds.length > 0
+      ? await prisma.bill.findMany({
+          where: {
+            tenantId,
+            type: "payable",
+            status: "paid",
+            billCategoryId: { in: aporteOriginalIds },
+            paidDate: { gte: start, lt: end },
+          },
+          select: { amount: true },
+        })
+      : []
+    const aportesPagosMes = aportesPagosNoMes.reduce((s, b) => s + b.amount, 0)
+    const amortizacoesPagasNoMes = amortizacaoSubId
+      ? await prisma.bill.findMany({
+          where: {
+            tenantId,
+            type: "payable",
+            status: "paid",
+            billCategoryId: amortizacaoSubId,
+            paidDate: { gte: start, lt: end },
+            NOT: { notes: { startsWith: "[migrated]" } },
+          },
+          select: { amount: true },
+        })
+      : []
+    const amortizacoesPagasMes = amortizacoesPagasNoMes.reduce((s, b) => s + b.amount, 0)
+    const saidasParaSocioMes = aportesPagosMes + amortizacoesPagasMes
+
+    // Saídas pra sócio YTD — usado pelo modo Geral do Painel pra descontar
+    // do lucro acumulado do DRE (que não inclui essas movimentações de balanço).
+    const aportesPagosYTDQuery = aporteOriginalIds.length > 0
+      ? await prisma.bill.findMany({
+          where: {
+            tenantId,
+            type: "payable",
+            status: "paid",
+            billCategoryId: { in: aporteOriginalIds },
+            paidDate: { gte: inicioAno, lt: end },
+          },
+          select: { amount: true },
+        })
+      : []
+    const aportesPagosYTD = aportesPagosYTDQuery.reduce((s, b) => s + b.amount, 0)
+    const amortizacoesPagasYTDQuery = amortizacaoSubId
+      ? await prisma.bill.findMany({
+          where: {
+            tenantId,
+            type: "payable",
+            status: "paid",
+            billCategoryId: amortizacaoSubId,
+            paidDate: { gte: inicioAno, lt: end },
+            NOT: { notes: { startsWith: "[migrated]" } },
+          },
+          select: { amount: true },
+        })
+      : []
+    const amortizacoesPagasYTD = amortizacoesPagasYTDQuery.reduce((s, b) => s + b.amount, 0)
+    const saidasParaSocioYTD = aportesPagosYTD + amortizacoesPagasYTD
+
+    // PRÓ-LABORE FINAL — modelo simplificado a pedido do usuário:
+    //  caixa do mês − saídas reais pra sócio (no mês) → aplica proLaborePct
+    // Removidos do desconto:
+    //  - aporteAmortizacaoSugerida (1/24 do saldo): era estimativa automática
+    //  - faltaParaReserva: criava confusão (descontava sem reservar fisicamente)
+    //  - reinvestSugerido: removido em iteração anterior
+    // Esses valores continuam sendo calculados e devolvidos na resposta pra
+    // compat (telas/relatórios externos podem ainda usar).
+    const baseCaixa = caixaDoMes - saidasParaSocioMes
+    const proLaborePct = settings.proLaborePct ?? 100
+    const proLaboreSeguro = Math.max(
+      0,
+      Math.round((baseCaixa * proLaborePct / 100) * 100) / 100,
+    )
+    const proLaboreDireto = Math.max(0, Math.round(baseCaixa * 100) / 100)
 
     // Histórico últimos 6 meses de pró-labore lançado
     let historico: Array<{ month: string; total: number }> = []
@@ -505,6 +582,13 @@ export async function GET(req: NextRequest) {
       },
       proLaboreDireto,
       proLaboreSeguro,
+      proLaborePct: proLaborePct,
+      saidasParaSocioMes: Math.round(saidasParaSocioMes * 100) / 100,
+      aportesPagosMes: Math.round(aportesPagosMes * 100) / 100,
+      amortizacoesPagasMes: Math.round(amortizacoesPagasMes * 100) / 100,
+      saidasParaSocioYTD: Math.round(saidasParaSocioYTD * 100) / 100,
+      aportesPagosYTD: Math.round(aportesPagosYTD * 100) / 100,
+      amortizacoesPagasYTD: Math.round(amortizacoesPagasYTD * 100) / 100,
       proLaboreSubcategoryId: proLaboreSub?.id ?? null,
       historicoPorMes: historico,
       saldoCaixa: {

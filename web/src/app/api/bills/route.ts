@@ -13,6 +13,7 @@ export async function GET(req: NextRequest) {
 
     const category = searchParams.get('category');
     const excludeCategory = searchParams.get('excludeCategory');
+    const excludeAportes = searchParams.get('excludeAportes') === 'true';
     const type = searchParams.get('type');
     const status = searchParams.get('status');
     const dueFrom = searchParams.get('dueFrom'); // YYYY-MM-DD (inclusive)
@@ -45,6 +46,20 @@ export async function GET(req: NextRequest) {
         { mlOrderId: { contains: q, mode: 'insensitive' } },
         { mlPackId: { contains: q, mode: 'insensitive' } },
       ];
+    }
+
+    // Esconde bills da hierarquia "Aporte sócio" (raiz + filhas, incluindo
+    // Amortização). Aportes têm tela própria em /admin/financeiro/aportes —
+    // não devem poluir a listagem geral de Contas.
+    if (excludeAportes) {
+      const aporteRoot = await prisma.billCategory.findFirst({
+        where: { tenantId, parentId: null, name: 'Aporte sócio', type: 'payable' },
+        select: { id: true, children: { select: { id: true } } },
+      });
+      if (aporteRoot) {
+        const ids = [aporteRoot.id, ...aporteRoot.children.map((c) => c.id)];
+        where.billCategoryId = { notIn: ids };
+      }
     }
 
     const [orderField, orderDir] = orderBy.split('_');

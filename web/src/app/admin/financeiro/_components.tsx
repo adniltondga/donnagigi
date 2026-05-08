@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { feedback } from '@/lib/feedback';
 import { confirmDialog } from '@/components/ui/confirm-dialog';
 import {
@@ -199,6 +199,7 @@ export function BillsTab({ initialFilter }: { initialFilter?: BillType } = {}) {
     try {
       const params = new URLSearchParams({
         excludeCategory: 'venda',
+        excludeAportes: 'true',
         page: String(page),
         limit: '20',
         orderBy: 'dueDate_asc',
@@ -889,29 +890,35 @@ function BillForm({
    Categorias (gerenciar)
    ============================================================ */
 
-export function CategoriasTab() {
+export function CategoriasTab({
+  excludeParentName,
+}: { excludeParentName?: string } = {}) {
   const { canWrite } = useUserRole();
   const [payable, setPayable] = useState<CategoryNode[]>([]);
   const [receivable, setReceivable] = useState<CategoryNode[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const reload = async () => {
+  const reload = useCallback(async () => {
     setLoading(true);
     try {
       const [p, r] = await Promise.all([
         fetch('/api/bill-categories?type=payable').then((res) => res.json()),
         fetch('/api/bill-categories?type=receivable').then((res) => res.json()),
       ]);
-      setPayable(p.categories || []);
-      setReceivable(r.categories || []);
+      const filterRoot = (nodes: CategoryNode[]) =>
+        excludeParentName
+          ? nodes.filter((n) => !(n.parentId === null && n.name === excludeParentName))
+          : nodes;
+      setPayable(filterRoot(p.categories || []));
+      setReceivable(filterRoot(r.categories || []));
     } finally {
       setLoading(false);
     }
-  };
+  }, [excludeParentName]);
 
   useEffect(() => {
-    reload();
-  }, []);
+    void reload();
+  }, [reload]);
 
   const flash = (type: 'success' | 'error', text: string) => {
     if (type === 'success') feedback.success(text);

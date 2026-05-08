@@ -73,7 +73,9 @@
       "Bash(grep -n \"fetch\\(\\\\`https://\\\\|fetch\\(\\\\\"https://\" /Users/2480dtidigital/site/donnagigi/src/lib/mp.ts)",
       "Bash(grep -rn 'new Date\\(`\\\\${[a-zA-Z]*\\\\}T' /Users/2480dtidigital/site/donnagigi/src/app/api --include=\"*.ts\")",
       "Bash(git -C /Users/2480dtidigital/site/donnagigi log --oneline -5 -- .env)",
-      "Bash(git *)"
+      "Bash(git *)",
+      "Bash(grep -E \"\\\\.ts$|\\\\.tsx$\")",
+      "Bash(grep -rn \"formatCurrency\\\\|formatBRL\\\\|toBRL\\\\|R\\\\\\\\$\" /Users/2480dtidigital/site/donnagigi/src/lib/utils.ts /Users/2480dtidigital/site/donnagigi/src/lib/calculations.ts)"
     ]
   }
 }

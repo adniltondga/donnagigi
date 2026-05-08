@@ -30,11 +30,8 @@ const MENU: MenuItem[] = [
     icon: DollarSign,
     isActive: (p) => p.startsWith("/admin/financeiro"),
     children: [
-      { label: "Caixas", href: "/admin/financeiro/caixas" },
-      { label: "Pró-labore", href: "/admin/financeiro/relatorios/pro-labore" },
+      { label: "Painel", href: "/admin/financeiro/painel" },
       { label: "Contas", href: "/admin/financeiro/contas" },
-      { label: "Mercado Pago", href: "/admin/financeiro/mercado-pago" },
-      { label: "Devoluções", href: "/admin/financeiro/devolucoes" },
       { label: "Relatórios", href: "/admin/financeiro/relatorios" },
     ],
   },

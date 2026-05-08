@@ -48,7 +48,7 @@ export default function ContasPage() {
           <DialogHeader>
             <DialogTitle>📂 Categorias</DialogTitle>
           </DialogHeader>
-          <CategoriasTab />
+          <CategoriasTab excludeParentName="Aporte sócio" />
         </DialogContent>
       </Dialog>
     </div>

@@ -1,5 +1,5 @@
 import Link from "next/link"
-import { ArrowRight, TrendingUp, TrendingDown, FileText, FileBarChart, Scale, Landmark, BookOpen, PieChart, CalendarDays, type LucideIcon } from "lucide-react"
+import { ArrowRight, TrendingUp, TrendingDown, FileText, FileBarChart, Scale, Landmark, BookOpen, PieChart, CalendarDays, Undo2, type LucideIcon } from "lucide-react"
 import { PageHeader } from "@/components/ui/page-header"
 import { Card, CardContent } from "@/components/ui/card"
 
@@ -74,6 +74,13 @@ const CARDS: Item[] = [
     title: "Vendas por dia",
     description: "Faturamento bruto, taxas ML, custo e lucro agregados por dia do mês selecionado.",
     accent: "bg-sky-50 text-sky-700",
+  },
+  {
+    href: "/admin/financeiro/devolucoes",
+    icon: Undo2,
+    title: "Devoluções & disputas",
+    description: "Devoluções sincronizadas do Mercado Livre + pagamentos retidos por reclamação no Mercado Pago. Lucro perdido e ações pendentes.",
+    accent: "bg-amber-50 text-amber-700",
   },
 ]
 
