@@ -148,7 +148,11 @@ export async function GET() {
       if (hasChildren) {
         for (const child of children) {
           if (child.status !== 'active' || child.available_quantity <= 0) continue
-          const cost = listingCostMap.get(child.id) ?? null
+          // Cascata: cost cadastrado no próprio child > cost cadastrado no pai > null.
+          // Antes só consultava child.id e considerava qualquer pai cadastrado como
+          // "sem custo" — gerava falsos positivos no contador `semCusto`.
+          const cost =
+            listingCostMap.get(child.id) ?? listingCostMap.get(item.id) ?? null
           lines.push({
             mlListingId: child.id,
             variationId: null,

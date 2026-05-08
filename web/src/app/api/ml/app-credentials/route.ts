@@ -30,6 +30,7 @@ export async function GET(request: NextRequest) {
   if (creds) {
     return NextResponse.json({
       configured: true,
+      source: "tenant",
       clientId: creds.clientId,
       clientSecretMasked: creds.clientSecret.length > 8
         ? `${creds.clientSecret.slice(0, 4)}…${creds.clientSecret.slice(-4)}`
@@ -41,8 +42,12 @@ export async function GET(request: NextRequest) {
     })
   }
 
+  // Fallback: app padrão do agLivre (env). configured=true se há env válido.
+  const envId = process.env.ML_CLIENT_ID
+  const envHasSecret = !!process.env.ML_CLIENT_SECRET
   return NextResponse.json({
-    configured: false,
+    configured: !!(envId && envHasSecret),
+    source: envId && envHasSecret ? "env" : null,
     clientId: null,
     clientSecretMasked: null,
     redirectUri,

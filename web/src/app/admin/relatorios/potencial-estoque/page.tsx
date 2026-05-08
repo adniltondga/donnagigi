@@ -89,11 +89,27 @@ export default function PotencialEstoquePage() {
       {summary && (
         <>
           {summary.semCusto > 0 && (
-            <div className="flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-lg p-3 text-sm text-amber-800">
-              <AlertTriangle className="w-4 h-4 flex-shrink-0" />
-              <span>
-                <strong>{summary.semCusto} anúncio{summary.semCusto > 1 ? 's' : ''} sem custo cadastrado</strong> — lucro e margem parcialmente calculados.
-              </span>
+            <div className="flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-lg p-3 text-sm text-amber-800">
+              <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+              <div className="flex-1 space-y-1">
+                <p>
+                  <strong>{summary.semCusto} anúncio{summary.semCusto > 1 ? 's' : ''} sem custo cadastrado</strong> — lucro e margem parcialmente calculados.
+                </p>
+                <ul className="list-disc list-inside space-y-0.5 text-xs">
+                  {lines
+                    .filter((l) => l.productCost == null)
+                    .slice(0, 10)
+                    .map((l) => (
+                      <li key={`${l.mlListingId}-${l.variationId ?? 'root'}`}>
+                        <span className="font-mono">{l.mlListingId}</span>
+                        {l.variationId && <span className="font-mono"> · var {l.variationId}</span>}
+                        {' — '}
+                        {l.title}
+                        {l.variationName && <span className="text-amber-700"> ({l.variationName})</span>}
+                      </li>
+                    ))}
+                </ul>
+              </div>
             </div>
           )}
 
