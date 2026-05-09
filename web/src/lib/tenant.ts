@@ -12,15 +12,23 @@ export interface SessionPayload {
   email: string;
   tenantId: string;
   role: UserRole;
+  /** ID da row em Session (jti do JWT). Sempre presente em sessões
+   *  vindas do cookie web (getSession). Ausente em tokens da extensão
+   *  (Bearer) que não usam Session. */
+  sessionId?: string;
 }
 
 /**
  * Lê o JWT do cookie `token` e retorna o payload.
- * Retorna null se não logado ou token inválido.
+ * Retorna null se não logado, token inválido, ou a Session foi revogada/expirou.
  *
  * Tokens antigos (pré-roles) não têm `role` — nesse caso consultamos
  * o banco pra hidratar. Na próxima troca de token (login/refresh) o
  * payload já virá completo.
+ *
+ * Tokens pré-Session (sem jti) são tratados como inválidos — usuário
+ * precisa relogar. JWT antigo continua válido só até a próxima checagem
+ * de getSession, que rejeita por falta de jti.
  */
 export async function getSession(): Promise<SessionPayload | null> {
   const token = cookies().get('token')?.value;
@@ -29,6 +37,18 @@ export async function getSession(): Promise<SessionPayload | null> {
   try {
     const { payload } = await jwtVerify(token, JWT_SECRET);
     if (!payload.id || !payload.tenantId) return null;
+
+    const sessionId = typeof payload.jti === 'string' ? payload.jti : null;
+    if (!sessionId) return null;
+
+    const session = await prisma.session.findUnique({
+      where: { id: sessionId },
+      select: { revokedAt: true, expiresAt: true, userId: true },
+    });
+    if (!session) return null;
+    if (session.revokedAt) return null;
+    if (session.expiresAt < new Date()) return null;
+    if (session.userId !== String(payload.id)) return null;
 
     let role = payload.role as UserRole | undefined;
     if (!role) {
@@ -45,6 +65,7 @@ export async function getSession(): Promise<SessionPayload | null> {
       email: String(payload.email || ''),
       tenantId: String(payload.tenantId),
       role,
+      sessionId,
     };
   } catch {
     return null;

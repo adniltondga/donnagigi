@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import bcrypt from "bcryptjs"
 import prisma from "@/lib/prisma"
 import { checkRateLimit, rateLimitResponse, RATE_LIMITS } from "@/lib/rate-limit"
+import { revokeAllUserSessions } from "@/lib/auth-session"
 
 export async function POST(request: NextRequest) {
   try {
@@ -63,6 +64,10 @@ export async function POST(request: NextRequest) {
         emailVerified: true,
       },
     })
+
+    // Reset por OTP é forte sinal de comprometimento — derruba TODAS as
+    // sessões ativas. Usuário precisa relogar com a nova senha.
+    await revokeAllUserSessions(user.id)
 
     return NextResponse.json({ ok: true })
   } catch (error) {

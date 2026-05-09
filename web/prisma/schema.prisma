@@ -222,11 +222,33 @@ model User {
   ticketsAssigned Ticket[]         @relation("TicketAssignee")
   ticketMessages  TicketMessage[]
 
+  sessions Session[]
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([tenantId])
   @@index([isStaff])
+}
+
+// Sessões revogáveis. JWT carrega `jti = Session.id` — getSession() valida
+// que a row existe, não está revogada e não expirou. Permite logout
+// individual ("deslogar de outro dispositivo") e logout-em-massa ao trocar
+// senha. Middleware (Edge) continua stateless e só valida o JWT — toda
+// rota autenticada passa por getSession() que faz a checagem real.
+model Session {
+  id         String    @id @default(cuid())
+  userId     String
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  ua         String    @db.Text
+  ip         String
+  createdAt  DateTime  @default(now())
+  lastSeenAt DateTime  @default(now())
+  expiresAt  DateTime
+  revokedAt  DateTime?
+
+  @@index([userId])
+  @@index([expiresAt])
 }
 
 // Convite pendente pra entrar num tenant. Criado pelo OWNER/ADMIN.

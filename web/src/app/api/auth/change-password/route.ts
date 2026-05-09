@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import bcrypt from "bcryptjs"
 import prisma from "@/lib/prisma"
 import { getSession } from "@/lib/tenant"
+import { revokeAllUserSessions } from "@/lib/auth-session"
 
 export const dynamic = "force-dynamic"
 
@@ -63,7 +64,11 @@ export async function POST(request: NextRequest) {
       data: { password: hashed },
     })
 
-    return NextResponse.json({ ok: true })
+    // Revoga todas sessões em outros dispositivos. A atual fica viva pra
+    // não derrubar quem está trocando a senha.
+    const revoked = await revokeAllUserSessions(user.id, session.sessionId)
+
+    return NextResponse.json({ ok: true, revokedSessions: revoked })
   } catch (error) {
     console.error("change-password error:", error)
     return NextResponse.json({ error: "Erro ao trocar senha" }, { status: 500 })
