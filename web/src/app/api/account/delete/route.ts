@@ -4,6 +4,7 @@ import prisma from "@/lib/prisma"
 import { getSession } from "@/lib/tenant"
 import { softDeleteAccount } from "@/lib/account-delete"
 import { captureError } from "@/lib/sentry"
+import { clearAuthCookie } from "@/lib/auth-session"
 
 export const dynamic = "force-dynamic"
 
@@ -83,7 +84,7 @@ export async function POST(request: NextRequest) {
 
     // Limpa cookie de sessão (logout forçado)
     const response = NextResponse.json({ ok: true })
-    response.cookies.set("token", "", { maxAge: 0, path: "/" })
+    clearAuthCookie(response)
     return response
   } catch (error) {
     captureError(error, { operation: "account-delete" })

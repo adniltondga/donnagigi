@@ -81,19 +81,6 @@ function VerifyEmailInner() {
     return () => clearInterval(t)
   }, [cooldown])
 
-  const setTokenAndGo = async (token: string) => {
-    const r = await fetch("/api/auth/set-token", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ token }),
-    })
-    if (!r.ok) {
-      setError("Erro ao salvar autenticação")
-      return
-    }
-    setTimeout(() => router.push("/admin/dashboard"), 100)
-  }
-
   const onVerify = async (e: React.FormEvent) => {
     e.preventDefault()
     if (code.length !== 6) return
@@ -111,11 +98,10 @@ function VerifyEmailInner() {
         setCode("")
         return
       }
-      if (data.token) {
-        const { trackEvent } = await import("@/lib/analytics")
-        trackEvent("signup_completed")
-        await setTokenAndGo(data.token)
-      }
+      // Cookie httpOnly já foi setado pelo response. Só navegar.
+      const { trackEvent } = await import("@/lib/analytics")
+      trackEvent("signup_completed")
+      router.push("/admin/dashboard")
     } catch {
       setError("Erro ao conectar")
     } finally {

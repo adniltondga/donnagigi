@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server"
 import bcrypt from "bcryptjs"
-import { SignJWT } from "jose"
 import prisma from "@/lib/prisma"
 import { checkRateLimit, rateLimitResponse, RATE_LIMITS } from "@/lib/rate-limit"
+import { issueSession, setAuthCookie } from "@/lib/auth-session"
 
 export async function POST(request: NextRequest) {
   try {
@@ -72,23 +72,19 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const secret = new TextEncoder().encode(
-      process.env.JWT_SECRET || "seu_jwt_secret_super_seguro"
-    )
-
-    const token = await new SignJWT({
-      id: user.id,
-      email: user.email,
-      tenantId: user.tenantId,
-      role: user.role,
-      isStaff: user.isStaff,
+    const { token } = await issueSession({
+      user: {
+        id: user.id,
+        email: user.email,
+        tenantId: user.tenantId,
+        role: user.role,
+        isStaff: user.isStaff,
+      },
+      request,
+      alertOnNewDevice: true,
     })
-      .setProtectedHeader({ alg: "HS256" })
-      .setExpirationTime("7d")
-      .sign(secret)
 
-    return NextResponse.json({
-      token,
+    const response = NextResponse.json({
       user: {
         id: user.id,
         email: user.email,
@@ -99,6 +95,8 @@ export async function POST(request: NextRequest) {
       },
       tenant: user.tenant,
     })
+    setAuthCookie(response, token)
+    return response
   } catch (error) {
     console.error("Login error:", error)
     return NextResponse.json(

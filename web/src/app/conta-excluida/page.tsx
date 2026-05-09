@@ -29,15 +29,8 @@ export default function ContaExcluidaPage() {
         return
       }
       setSuccess(true)
-      // Salva o token e redireciona
-      if (data.token) {
-        await fetch("/api/auth/set-token", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ token: data.token }),
-        })
-        setTimeout(() => router.push("/admin/dashboard"), 1500)
-      }
+      // Cookie httpOnly já foi setado pelo response. Só navegar.
+      setTimeout(() => router.push("/admin/dashboard"), 1500)
     } catch {
       setError("Erro de conexão")
     } finally {

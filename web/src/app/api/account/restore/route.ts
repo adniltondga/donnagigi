@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from "next/server"
 import bcrypt from "bcryptjs"
-import { SignJWT } from "jose"
 import prisma from "@/lib/prisma"
 import { restoreAccount } from "@/lib/account-delete"
 import { captureError } from "@/lib/sentry"
+import { issueSession, setAuthCookie } from "@/lib/auth-session"
 
 export const dynamic = "force-dynamic"
 
@@ -36,6 +36,7 @@ export async function POST(request: NextRequest) {
         password: true,
         role: true,
         tenantId: true,
+        isStaff: true,
         tenant: {
           select: { id: true, name: true, deletedAt: true, slug: true },
         },
@@ -67,25 +68,26 @@ export async function POST(request: NextRequest) {
 
     await restoreAccount({ tenantId: user.tenantId })
 
-    // Re-emite token (login automático)
-    const secret = new TextEncoder().encode(
-      process.env.JWT_SECRET || "seu_jwt_secret_super_seguro",
-    )
-    const token = await new SignJWT({
-      id: user.id,
-      email: user.email,
-      tenantId: user.tenantId,
-      role: user.role,
+    // Re-emite sessão (login automático). Sem alerta — o restore já é
+    // uma prova de posse das credenciais.
+    const { token } = await issueSession({
+      user: {
+        id: user.id,
+        email: user.email,
+        tenantId: user.tenantId,
+        role: user.role,
+        isStaff: user.isStaff,
+      },
+      request,
+      alertOnNewDevice: false,
     })
-      .setProtectedHeader({ alg: "HS256" })
-      .setExpirationTime("7d")
-      .sign(secret)
 
-    return NextResponse.json({
+    const response = NextResponse.json({
       ok: true,
-      token,
       tenant: { id: user.tenant.id, name: user.tenant.name, slug: user.tenant.slug },
     })
+    setAuthCookie(response, token)
+    return response
   } catch (error) {
     captureError(error, { operation: "account-restore" })
     return NextResponse.json(

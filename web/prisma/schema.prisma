@@ -213,6 +213,11 @@ model User {
   // e responde tickets. Toggle manual no banco — sem UI de gestão por enquanto.
   isStaff Boolean @default(false)
 
+  // Dispositivos conhecidos pra alerta de novo login. Array
+  // [{ ua, ip, addedAt }] cap em 5. Quando bate um login com UA fora da
+  // lista (e a lista não está vazia), dispara email de alerta.
+  knownDevices Json?
+
   ticketsOpened   Ticket[]         @relation("TicketOpenedBy")
   ticketsAssigned Ticket[]         @relation("TicketAssignee")
   ticketMessages  TicketMessage[]

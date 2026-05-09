@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
-import { SignJWT } from "jose"
 import prisma from "@/lib/prisma"
 import { checkRateLimit, rateLimitResponse, RATE_LIMITS } from "@/lib/rate-limit"
+import { issueSession, setAuthCookie } from "@/lib/auth-session"
 
 /**
  * Valida OTP de ativação de email. Se bate, marca emailVerified=true e
@@ -31,8 +31,10 @@ export async function POST(request: NextRequest) {
         email: true,
         name: true,
         username: true,
+        role: true,
         tenantId: true,
         emailVerified: true,
+        isStaff: true,
         verifyCode: true,
         verifyCodeExpires: true,
         tenant: { select: { id: true, name: true, slug: true } },
@@ -78,21 +80,22 @@ export async function POST(request: NextRequest) {
       },
     })
 
-    // Emite JWT pra loga automática
-    const secret = new TextEncoder().encode(
-      process.env.JWT_SECRET || "seu_jwt_secret_super_seguro"
-    )
-    const token = await new SignJWT({
-      id: user.id,
-      email: user.email,
-      tenantId: user.tenantId,
+    // Emite sessão (cookie httpOnly setado direto no response).
+    // alertOnNewDevice=false: o usuário acabou de provar posse do email,
+    // primeiro login não precisa de alerta.
+    const { token } = await issueSession({
+      user: {
+        id: user.id,
+        email: user.email,
+        tenantId: user.tenantId,
+        role: user.role,
+        isStaff: user.isStaff,
+      },
+      request,
+      alertOnNewDevice: false,
     })
-      .setProtectedHeader({ alg: "HS256" })
-      .setExpirationTime("7d")
-      .sign(secret)
 
-    return NextResponse.json({
-      token,
+    const response = NextResponse.json({
       user: {
         id: user.id,
         email: user.email,
@@ -101,6 +104,8 @@ export async function POST(request: NextRequest) {
       },
       tenant: user.tenant,
     })
+    setAuthCookie(response, token)
+    return response
   } catch (error) {
     console.error("verify-email error:", error)
     return NextResponse.json({ error: "Erro ao verificar" }, { status: 500 })

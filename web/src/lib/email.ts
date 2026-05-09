@@ -185,6 +185,47 @@ export function teamInviteTemplate(params: {
   }
 }
 
+export function loginAlertTemplate(params: {
+  name: string
+  ua: string
+  ip: string
+  when: Date
+}) {
+  const appUrl =
+    process.env.NEXT_PUBLIC_APP_URL ||
+    process.env.NEXT_PUBLIC_BASE_URL ||
+    'https://aglivre.dgadigital.com.br'
+  const changePwdUrl = `${appUrl}/admin/configuracoes`
+  const forgotUrl = `${appUrl}/forgot-password`
+  const whenStr = params.when.toLocaleString('pt-BR', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    timeZone: 'America/Sao_Paulo',
+  })
+  const body = `
+    <p>Oi ${params.name.split(' ')[0]}, detectamos um <strong>novo login</strong> na sua conta agLivre:</p>
+    <table style="width:100%;border-collapse:collapse;margin:16px 0;background:#f9fafb;border-radius:8px">
+      <tr><td style="padding:10px 14px;color:#6b7280;font-size:13px;width:90px">Quando</td><td style="padding:10px 14px;font-size:13px"><strong>${whenStr}</strong></td></tr>
+      <tr><td style="padding:10px 14px;color:#6b7280;font-size:13px">IP</td><td style="padding:10px 14px;font-size:13px;font-family:monospace">${params.ip}</td></tr>
+      <tr><td style="padding:10px 14px;color:#6b7280;font-size:13px;vertical-align:top">Dispositivo</td><td style="padding:10px 14px;font-size:12px;font-family:monospace;word-break:break-all">${params.ua || '—'}</td></tr>
+    </table>
+    <p style="color:#6b7280;font-size:14px">Se foi você, pode ignorar este email.</p>
+    <p style="color:#111827;font-size:14px"><strong>Se não foi você</strong>, troque sua senha agora:</p>
+    ${ctaButton(changePwdUrl, 'Trocar senha')}
+    <p style="color:#6b7280;font-size:13px">
+      Sem acesso à conta? Use <a href="${forgotUrl}" style="color:${BRAND}">Esqueci a senha</a>.
+    </p>
+  `
+  return {
+    subject: 'Novo login detectado — agLivre',
+    html: layout('Novo login na sua conta', body),
+    text: `Novo login detectado em ${whenStr}\nIP: ${params.ip}\nDispositivo: ${params.ua}\n\nSe não foi você, troque sua senha em ${changePwdUrl}`,
+  }
+}
+
 export function resetPasswordTemplate(code: string) {
   const body = `
     <p>Recebemos um pedido pra redefinir sua senha. Use o código abaixo:</p>

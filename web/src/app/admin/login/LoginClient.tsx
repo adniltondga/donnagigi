@@ -70,21 +70,6 @@ function LoginInner({ registrationOpen }: LoginClientProps) {
     setShowPassword(false)
   }
 
-  const setTokenAndGo = async (token: string, isStaff = false) => {
-    const r = await fetch("/api/auth/set-token", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ token }),
-    })
-    if (!r.ok) {
-      setError("Erro ao salvar autenticação")
-      return
-    }
-    // Staff vai direto pro painel interno; cliente normal vai pro dashboard.
-    const dest = isStaff ? "/staff" : "/admin/dashboard"
-    setTimeout(() => router.push(dest), 100)
-  }
-
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
     setError("")
@@ -113,7 +98,9 @@ function LoginInner({ registrationOpen }: LoginClientProps) {
       } else {
         localStorage.removeItem(SAVED_EMAIL_KEY)
       }
-      if (data.token) await setTokenAndGo(data.token, !!data.user?.isStaff)
+      // Cookie httpOnly já foi setado pelo response do /login. Só navegar.
+      const dest = data.user?.isStaff ? "/staff" : "/admin/dashboard"
+      router.push(dest)
     } catch {
       setError("Erro ao conectar ao servidor")
     } finally {
