@@ -970,15 +970,23 @@ export default function PainelPage() {
                   />
                   <CardFooter
                     primary={
-                      <button
-                        type="button"
-                        onClick={refreshMP}
-                        disabled={refreshing}
-                        className="inline-flex items-center gap-1 text-xs text-primary-600 font-semibold hover:underline disabled:opacity-50"
-                      >
-                        <RefreshCw className={`w-3 h-3 ${refreshing ? "animate-spin" : ""}`} />
-                        {refreshing ? "Atualizando..." : "Atualizar"}
-                      </button>
+                      <div className="flex items-center gap-3">
+                        <button
+                          type="button"
+                          onClick={refreshMP}
+                          disabled={refreshing}
+                          className="inline-flex items-center gap-1 text-xs text-primary-600 font-semibold hover:underline disabled:opacity-50"
+                        >
+                          <RefreshCw className={`w-3 h-3 ${refreshing ? "animate-spin" : ""}`} />
+                          {refreshing ? "Atualizando..." : "Atualizar"}
+                        </button>
+                        <Link
+                          href="/admin/financeiro/mercado-pago"
+                          className="inline-flex items-center gap-1 text-xs text-primary-600 font-semibold hover:underline"
+                        >
+                          Ver detalhes <ArrowRight className="w-3 h-3" />
+                        </Link>
+                      </div>
                     }
                     secondary={`Há ${relativeTime(mp?.cachedSyncedAt).replace("há ", "")}`}
                   />
