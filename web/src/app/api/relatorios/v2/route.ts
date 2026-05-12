@@ -2,6 +2,7 @@ import prisma from '@/lib/prisma';
 import { getTenantIdOrDefault } from '@/lib/tenant';
 import { normalizeVariationKey, parseSaleDescription } from '@/lib/ml-format';
 import { computeSaleNumbers } from '@/lib/sale-notes';
+import { getPartialRefundsForBills, refundOf } from '@/lib/refunds';
 import { NextRequest, NextResponse } from 'next/server';
 
 export const dynamic = 'force-dynamic';
@@ -58,6 +59,7 @@ type BillRow = {
   productId: string | null;
   quantity: number;
   product: { id: string; name: string; mlListingId: string | null } | null;
+  refundedAmount?: number;
 };
 
 const emptyKPIs = (): KPIs => ({
@@ -182,8 +184,22 @@ export async function GET(req: NextRequest) {
       }),
     ]);
 
-    const kpisAtual = aggregateKPIs(currentBills);
-    const kpisAnterior = aggregateKPIs(prevBills);
+    const [currentRefunds, prevRefunds] = await Promise.all([
+      getPartialRefundsForBills(tenantId, currentBills.map((b) => b.id)),
+      getPartialRefundsForBills(tenantId, prevBills.map((b) => b.id)),
+    ]);
+
+    const enrichedCurrent = currentBills.map((b) => ({
+      ...b,
+      refundedAmount: refundOf(currentRefunds, b.id).amount,
+    }));
+    const enrichedPrev = prevBills.map((b) => ({
+      ...b,
+      refundedAmount: refundOf(prevRefunds, b.id).amount,
+    }));
+
+    const kpisAtual = aggregateKPIs(enrichedCurrent);
+    const kpisAnterior = aggregateKPIs(enrichedPrev);
     const kpisCancelados = aggregateKPIs(cancelledBills);
 
     // Timeline diária real
@@ -200,7 +216,7 @@ export async function GET(req: NextRequest) {
       });
     }
 
-    for (const b of currentBills) {
+    for (const b of enrichedCurrent) {
       if (!b.paidDate) continue;
       const key = dateKey(b.paidDate);
       const point = timelineMap.get(key);
@@ -218,7 +234,7 @@ export async function GET(req: NextRequest) {
 
     // Fallback de nome: bills sem productId mas com MLB nas notes — buscar produto no banco
     const mlbsSemNome = new Set<string>();
-    for (const b of currentBills) {
+    for (const b of enrichedCurrent) {
       if (!b.product) {
         const mlb = extractMlbFromNotes(b.notes);
         if (mlb) mlbsSemNome.add(mlb);
@@ -239,7 +255,7 @@ export async function GET(req: NextRequest) {
     // Assim "Azul · iPhone 15PM" e "iPhone 15PM · Azul" caem no mesmo grupo, e variações
     // diferentes do mesmo MLB aparecem como linhas distintas (igual /admin/top-produtos).
     const produtosMap = new Map<string, ProdutoAgg>();
-    for (const b of currentBills) {
+    for (const b of enrichedCurrent) {
       const parsed = parseSaleDescription(b.description);
       const mlbFromNotes = extractMlbFromNotes(b.notes);
       const mlbCanonico = parsed.mlListingId ?? b.product?.mlListingId ?? mlbFromNotes;

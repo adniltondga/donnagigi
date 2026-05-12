@@ -16,6 +16,7 @@ export interface SaleNotesParsed {
   bruto: number;
   taxaVenda: number;
   envio: number;
+  shippingBonus: number;
   saleFeeEstimated: boolean;
 }
 
@@ -24,6 +25,7 @@ export function parseSaleNotes(notes: string | null | undefined): SaleNotesParse
     bruto: matchAmount(notes, /Bruto:\s*R\$\s*([\d,.]+)/),
     taxaVenda: matchAmount(notes, /Taxa de venda:\s*R\$\s*([\d,.]+)/),
     envio: matchAmount(notes, /Taxa de envio:\s*R\$\s*([\d,.]+)/),
+    shippingBonus: matchAmount(notes, /Bônus envio:\s*R\$\s*([\d,.]+)/),
     saleFeeEstimated: !!notes && /Taxa de venda:.*\(est\.\)/.test(notes),
   };
 }
@@ -32,6 +34,8 @@ export interface SaleComputed {
   bruto: number;
   taxaVenda: number;
   envio: number;
+  /** Subsídio ML no frete (list_cost − custo real debitado). Exibição apenas; totalTaxas usa `envio`. */
+  shippingBonus: number;
   custo: number;
   totalTaxas: number; // taxaVenda + envio + custo
   /** Bruto líquido de taxas (sem custo de mercadoria). */
@@ -47,6 +51,8 @@ export interface SaleBillLike {
   amount: number;
   notes: string | null;
   productCost?: number | null;
+  /** Soma dos BillRefund parciais (ml_partial_refund). Reduz o líquido. */
+  refundedAmount?: number;
 }
 
 /**
@@ -62,13 +68,15 @@ export function computeSaleNumbers(bill: SaleBillLike): SaleComputed {
   const bruto =
     parsed.bruto > 0 ? parsed.bruto : bill.amount + parsed.taxaVenda + parsed.envio;
   const custo = bill.productCost ?? 0;
+  const refunded = bill.refundedAmount ?? 0;
   const totalVenda = bruto - parsed.taxaVenda - parsed.envio;
   const totalTaxas = parsed.taxaVenda + parsed.envio + custo;
-  const liquido = bruto - totalTaxas;
+  const liquido = bruto - totalTaxas - refunded;
   return {
     bruto,
     taxaVenda: parsed.taxaVenda,
     envio: parsed.envio,
+    shippingBonus: parsed.shippingBonus,
     custo,
     totalTaxas,
     totalVenda,

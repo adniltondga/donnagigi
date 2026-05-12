@@ -96,7 +96,10 @@ async function handleItemUpdate(itemId: string, accessToken: string, tenantId: s
 
 async function handleOrderUpdate(orderId: string, tenantId: string) {
   // Precisamos do token via helper pra garantir refresh automático caso expire.
-  const integration = await getMLIntegrationForTenant(tenantId)
+  const [integration, mpIntegration] = await Promise.all([
+    getMLIntegrationForTenant(tenantId),
+    prisma.mPIntegration.findUnique({ where: { tenantId }, select: { accessToken: true } }),
+  ])
   if (!integration) {
     console.error(`[ml-webhook] order ${orderId} sem integração válida`)
     return
@@ -105,6 +108,7 @@ async function handleOrderUpdate(orderId: string, tenantId: string) {
     tenantId,
     accessToken: integration.accessToken,
     orderId,
+    mpAccessToken: mpIntegration?.accessToken,
   })
   if (!result.ok) {
     console.error(`[ml-webhook] syncMLOrder falhou:`, result.error)

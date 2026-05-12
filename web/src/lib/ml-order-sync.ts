@@ -32,6 +32,7 @@ interface MLOrder {
   shipping: { id?: string; cost: number }
   buyer: { id: number; nickname: string }
   order_items: MLOrderItem[]
+  payments?: Array<{ id: number | string }>
 }
 
 export type SyncOrderAction =
@@ -58,10 +59,25 @@ const SALE_FEE_PCT = 0.18
  * em caso de cancelamento. Caso contrário, cria nova com líquido, taxas
  * em notes, productCost resolvido via cost-resolver.
  */
+async function fetchMPNet(paymentId: number | string, mpToken: string): Promise<number | null> {
+  try {
+    const res = await fetch(`https://api.mercadopago.com/v1/payments/${paymentId}`, {
+      headers: { Authorization: `Bearer ${mpToken}`, Accept: 'application/json' },
+    })
+    if (!res.ok) return null
+    const data = await res.json()
+    const net: unknown = data?.transaction_details?.net_received_amount
+    return typeof net === 'number' && net > 0 ? net : null
+  } catch {
+    return null
+  }
+}
+
 export async function syncMLOrder(params: {
   tenantId: string
   accessToken: string
   orderId: string | number
+  mpAccessToken?: string
 }): Promise<SyncOrderResult> {
   const { tenantId, accessToken, orderId } = params
 
@@ -190,18 +206,33 @@ export async function syncMLOrder(params: {
       }
     }
 
-    const totalTaxes = saleFee + shippingFee
-    const netAmount = order.total_amount - totalTaxes
+    // Tenta obter o net real do MP (mais preciso que o calculado pelos
+    // componentes do ML, que às vezes omitem bônus/descontos de frete).
+    let finalShippingFee = shippingFee
+    let finalNetAmount = order.total_amount - saleFee - shippingFee
+    let shippingBonus = 0
+    if (params.mpAccessToken && order.payments?.[0]?.id) {
+      const mpNet = await fetchMPNet(order.payments[0].id, params.mpAccessToken)
+      if (mpNet !== null && Math.abs(mpNet - finalNetAmount) > 0.01) {
+        const correctedShipping = Math.max(0, order.total_amount - saleFee - mpNet)
+        shippingBonus = Math.max(0, finalShippingFee - correctedShipping)
+        finalShippingFee = correctedShipping
+        finalNetAmount = mpNet
+      }
+    }
+
+    const totalTaxes = saleFee + finalShippingFee
     const saleFeeSuffix = saleFeeEstimated ? " (est.)" : ""
     const taxBreakdown = [
       saleFee > 0 ? `Taxa de venda: R$ ${saleFee.toFixed(2)}${saleFeeSuffix}` : "",
-      shippingFee > 0 ? `Taxa de envio: R$ ${shippingFee.toFixed(2)}` : "",
+      finalShippingFee > 0 ? `Taxa de envio: R$ ${finalShippingFee.toFixed(2)}` : "",
     ]
       .filter(Boolean)
       .join(" + ")
 
     const packLine = order.pack_id ? `\nPack\n#${order.pack_id}\n` : ""
     const variationLine = variationLabel ? `\nVariação\n${variationLabel}\n` : ""
+    const bonusLine = shippingBonus > 0.01 ? `\nBônus envio: R$ ${shippingBonus.toFixed(2)}` : ""
     const notesContent = `PEDIDO
 #${order.id}
 ${packLine}
@@ -212,7 +243,7 @@ Produto
 ${itemId}
 ${variationLine}
 VENDAS
-Bruto: R$ ${order.total_amount.toFixed(2)} | Taxas: ${taxBreakdown} (Total: R$ ${totalTaxes.toFixed(2)}) | Líquido: R$ ${netAmount.toFixed(2)}`
+Bruto: R$ ${order.total_amount.toFixed(2)} | Taxas: ${taxBreakdown} (Total: R$ ${totalTaxes.toFixed(2)}) | Líquido: R$ ${finalNetAmount.toFixed(2)}${bonusLine}`
 
     const quantity =
       (order.order_items || []).reduce((sum, oi) => sum + (Number(oi.quantity) || 1), 0) || 1
@@ -245,7 +276,7 @@ Bruto: R$ ${order.total_amount.toFixed(2)} | Taxas: ${taxBreakdown} (Total: R$ $
         type: "receivable",
         category: "venda",
         description: `Venda ML - ${displayTitle} [Produto ML: ${itemId || "sem-id"}]`,
-        amount: netAmount,
+        amount: finalNetAmount,
         dueDate: estimatedReleaseDate,
         paidDate: closedDate,
         status: isCancelled ? "cancelled" : "pending",
@@ -267,7 +298,7 @@ Bruto: R$ ${order.total_amount.toFixed(2)} | Taxas: ${taxBreakdown} (Total: R$ $
         data: {
           billId: saleBill.id,
           tenantId,
-          amount: netAmount,
+          amount: finalNetAmount,
           costRefunded: productCost,
           source: "ml_order_cancelled",
           mlOrderId,

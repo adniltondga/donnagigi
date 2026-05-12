@@ -1,6 +1,7 @@
 import prisma from '@/lib/prisma';
 import { getTenantIdOrDefault } from '@/lib/tenant';
 import { getMLIntegrationForTenant } from '@/lib/ml';
+import { getMPIntegrationForTenant } from '@/lib/mp';
 import { formatVariationLabel } from '@/lib/ml-format';
 import { resolveCostsBatch, costKey } from '@/lib/cost-resolver';
 import { NextRequest, NextResponse } from 'next/server';
@@ -41,6 +42,7 @@ interface MLOrder {
     amount: number;
   }>;
   payments?: Array<{
+    id?: number | string;
     marketplace_fee?: number;
   }>;
 }
@@ -57,7 +59,10 @@ interface MLOrdersResponse {
 export async function GET(req: NextRequest) {
   try {
     const tenantId = await getTenantIdOrDefault();
-    const integration = await getMLIntegrationForTenant(tenantId);
+    const [integration, mpIntegration] = await Promise.all([
+      getMLIntegrationForTenant(tenantId),
+      getMPIntegrationForTenant(tenantId),
+    ]);
     if (!integration) {
       return NextResponse.json(
         { error: 'Mercado Livre not configured for this tenant' },
@@ -67,6 +72,7 @@ export async function GET(req: NextRequest) {
 
     const sellerId = integration.sellerID;
     const accessToken = integration.accessToken;
+    const mpAccessToken = mpIntegration?.accessToken;
 
     // Janela de datas: padrão = último mês. Override com ?months=N
     const monthsParam = req.nextUrl.searchParams.get('months');
@@ -255,21 +261,42 @@ export async function GET(req: NextRequest) {
         }
       }
 
-      // Calcular valor líquido (o que realmente vai receber)
-      const totalTaxes = saleFee + shippingFee;
-      const netAmount = order.total_amount - totalTaxes;
+      // Reconcilia com o net real do MP quando disponível
+      let finalShippingFee = shippingFee;
+      let netAmount = order.total_amount - saleFee - shippingFee;
+      let shippingBonus = 0;
+      if (mpAccessToken && order.payments?.[0]?.id) {
+        try {
+          const mpRes = await fetch(
+            `https://api.mercadopago.com/v1/payments/${order.payments[0].id}`,
+            { headers: { Authorization: `Bearer ${mpAccessToken}`, Accept: 'application/json' } }
+          );
+          if (mpRes.ok) {
+            const mpData = await mpRes.json();
+            const mpNet: unknown = mpData?.transaction_details?.net_received_amount;
+            if (typeof mpNet === 'number' && mpNet > 0 && Math.abs(mpNet - netAmount) > 0.01) {
+              const correctedShipping = Math.max(0, order.total_amount - saleFee - mpNet);
+              shippingBonus = Math.max(0, finalShippingFee - correctedShipping);
+              finalShippingFee = correctedShipping;
+              netAmount = mpNet;
+            }
+          }
+        } catch { /* fallback para cálculo estimado */ }
+      }
+      const totalTaxes = saleFee + finalShippingFee;
 
       // Criar única conta a receber com valor líquido
       const saleFeeSuffix = saleFeeEstimated ? ' (est.)' : '';
       const taxBreakdown = [
         saleFee > 0 ? `Taxa de venda: R$ ${saleFee.toFixed(2)}${saleFeeSuffix}` : '',
-        shippingFee > 0 ? `Taxa de envio: R$ ${shippingFee.toFixed(2)}` : '',
+        finalShippingFee > 0 ? `Taxa de envio: R$ ${finalShippingFee.toFixed(2)}` : '',
       ]
         .filter(Boolean)
         .join(' + ');
 
       const packLine = order.pack_id ? `\nPack\n#${order.pack_id}\n` : '';
       const variationLine = variationLabel ? `\nVariação\n${variationLabel}\n` : '';
+      const bonusLine = shippingBonus > 0.01 ? `\nBônus envio: R$ ${shippingBonus.toFixed(2)}` : '';
 
       const notesContent = `PEDIDO
 #${order.id}
@@ -281,7 +308,7 @@ Produto
 ${itemId}
 ${variationLine}
 VENDAS
-Bruto: R$ ${order.total_amount.toFixed(2)} | Taxas: ${taxBreakdown} (Total: R$ ${totalTaxes.toFixed(2)}) | Líquido: R$ ${netAmount.toFixed(2)}`;
+Bruto: R$ ${order.total_amount.toFixed(2)} | Taxas: ${taxBreakdown} (Total: R$ ${totalTaxes.toFixed(2)}) | Líquido: R$ ${netAmount.toFixed(2)}${bonusLine}`;
 
       // Quantidade total de unidades vendidas no pedido (soma de todos os itens)
       const quantity = (order.order_items || []).reduce(

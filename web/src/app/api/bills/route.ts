@@ -65,11 +65,12 @@ export async function GET(req: NextRequest) {
     const [orderField, orderDir] = orderBy.split('_');
     const orderClause = { [orderField || 'dueDate']: (orderDir as 'asc' | 'desc') || 'desc' };
 
-    const [bills, total] = await Promise.all([
+    const [rawBills, total] = await Promise.all([
       prisma.bill.findMany({
         where,
         include: {
           billCategory: { include: { parent: true } },
+          refunds: { where: { source: 'ml_partial_refund' }, select: { amount: true } },
         },
         orderBy: orderClause,
         skip,
@@ -77,6 +78,11 @@ export async function GET(req: NextRequest) {
       }),
       prisma.bill.count({ where }),
     ]);
+
+    const bills = rawBills.map(({ refunds, ...b }) => ({
+      ...b,
+      refundedAmount: refunds.reduce((s, r) => s + r.amount, 0),
+    }));
 
     return NextResponse.json({
       data: bills,

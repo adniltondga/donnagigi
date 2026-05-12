@@ -28,19 +28,22 @@ function computeBillInPack(bill: SaleBillLike, packBills: SaleBillLike[]): SaleC
       const sx = computeSaleNumbers(x);
       acc.bruto += sx.bruto;
       acc.envio += sx.envio;
+      acc.shippingBonus += sx.shippingBonus;
       return acc;
     },
-    { bruto: 0, envio: 0 },
+    { bruto: 0, envio: 0, shippingBonus: 0 },
   );
   const ratio = sums.bruto > 0 ? billRaw.bruto / sums.bruto : 1 / packBills.length;
   const envio = sums.envio * ratio;
+  const shippingBonus = sums.shippingBonus * ratio;
   const totalVenda = billRaw.bruto - billRaw.taxaVenda - envio;
   const totalTaxas = billRaw.taxaVenda + envio + billRaw.custo;
-  const liquido = billRaw.bruto - totalTaxas;
+  const liquido = billRaw.bruto - totalTaxas - (bill.refundedAmount ?? 0);
   return {
     bruto: billRaw.bruto,
     taxaVenda: billRaw.taxaVenda,
     envio,
+    shippingBonus,
     custo: billRaw.custo,
     totalVenda,
     totalTaxas,
@@ -64,6 +67,7 @@ interface Bill {
   mlOrderId: string | null;
   mlPackId: string | null;
   quantity: number;
+  refundedAmount: number;
 }
 
 const statusLabel: Record<string, string> = {
@@ -795,8 +799,14 @@ export default function VendasMLPage() {
                     </div>
                     <div className="flex justify-between text-amber-700">
                       <span>  • Taxa de envio{isInPack ? ' (rateada)' : ''}:</span>
-                      <span>{formatCurrency(s.envio)}</span>
+                      <span>{formatCurrency(s.envio + s.shippingBonus)}</span>
                     </div>
+                    {s.shippingBonus > 0 && (
+                      <div className="flex justify-between text-emerald-600 text-xs pl-6">
+                        <span>↳ Bônus envio ML:</span>
+                        <span>-{formatCurrency(s.shippingBonus)}</span>
+                      </div>
+                    )}
                     {isInPack && (
                       <div className="text-xs text-muted-foreground -mt-1 pl-4">
                         Frete único do pack rateado entre {packBills!.length} produtos por bruto
@@ -812,6 +822,12 @@ export default function VendasMLPage() {
                       <span className="font-medium">Total taxas + custo:</span>
                       <span className="font-semibold text-red-600">{formatCurrency(s.totalTaxas)}</span>
                     </div>
+                    {b.refundedAmount > 0 && (
+                      <div className="flex justify-between text-orange-600">
+                        <span>  • Estorno ML:</span>
+                        <span>-{formatCurrency(b.refundedAmount)}</span>
+                      </div>
+                    )}
                     <div className="bg-blue-50 rounded p-2 flex justify-between border border-blue-200">
                       <span className="font-bold text-blue-900">📈 Líquido real:</span>
                       <span className={`font-bold text-lg ${s.liquido > 0 ? 'text-emerald-600' : 'text-red-600'}`}>
