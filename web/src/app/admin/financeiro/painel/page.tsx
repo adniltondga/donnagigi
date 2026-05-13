@@ -1022,13 +1022,12 @@ export default function PainelPage() {
                   </Button>
                 }
                 secondary={
-                  <button
-                    type="button"
-                    onClick={openReposicao}
+                  <Link
+                    href="/admin/financeiro/reposicao"
                     className="text-primary-600 hover:underline inline-flex items-center gap-1"
                   >
-                    Ver detalhes <ArrowRight className="w-3 h-3" />
-                  </button>
+                    Gerenciar lançamentos <ArrowRight className="w-3 h-3" />
+                  </Link>
                 }
               />
             </MetricCard>
