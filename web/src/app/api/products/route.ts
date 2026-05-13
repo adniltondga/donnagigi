@@ -17,6 +17,9 @@ export async function GET(req: NextRequest) {
       whereClause.OR = [
         { mlListingId: search },
         { name: { contains: search, mode: 'insensitive' as const } },
+        // Match exato por cod de variante (SKU / código de barras) — usado
+        // pelo scanner do app mobile pra encontrar produto pelo barcode.
+        { variants: { some: { cod: search } } },
       ]
     }
 
