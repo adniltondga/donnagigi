@@ -261,10 +261,11 @@ export async function GET(req: NextRequest) {
         }
       }
 
-      // Reconcilia com o net real do MP quando disponível
-      let finalShippingFee = shippingFee;
+      // Vide ml-order-sync.ts: NÃO inferimos bônus de envio a partir do
+      // diff (mp.net − expected). A API ML consolida o estorno do bônus
+      // dentro do sale_fee depois que o pagamento liquida, então inferir
+      // produz números fantasmas. mp.net é usado só pra precisão do amount.
       let netAmount = order.total_amount - saleFee - shippingFee;
-      let shippingBonus = 0;
       if (mpAccessToken && order.payments?.[0]?.id) {
         try {
           const mpRes = await fetch(
@@ -274,29 +275,23 @@ export async function GET(req: NextRequest) {
           if (mpRes.ok) {
             const mpData = await mpRes.json();
             const mpNet: unknown = mpData?.transaction_details?.net_received_amount;
-            if (typeof mpNet === 'number' && mpNet > 0 && Math.abs(mpNet - netAmount) > 0.01) {
-              const correctedShipping = Math.max(0, order.total_amount - saleFee - mpNet);
-              shippingBonus = Math.max(0, finalShippingFee - correctedShipping);
-              finalShippingFee = correctedShipping;
-              netAmount = mpNet;
-            }
+            if (typeof mpNet === 'number' && mpNet > 0) netAmount = mpNet;
           }
         } catch { /* fallback para cálculo estimado */ }
       }
-      const totalTaxes = saleFee + finalShippingFee;
+      const totalTaxes = saleFee + shippingFee;
 
       // Criar única conta a receber com valor líquido
       const saleFeeSuffix = saleFeeEstimated ? ' (est.)' : '';
       const taxBreakdown = [
         saleFee > 0 ? `Taxa de venda: R$ ${saleFee.toFixed(2)}${saleFeeSuffix}` : '',
-        finalShippingFee > 0 ? `Taxa de envio: R$ ${finalShippingFee.toFixed(2)}` : '',
+        shippingFee > 0 ? `Taxa de envio: R$ ${shippingFee.toFixed(2)}` : '',
       ]
         .filter(Boolean)
         .join(' + ');
 
       const packLine = order.pack_id ? `\nPack\n#${order.pack_id}\n` : '';
       const variationLine = variationLabel ? `\nVariação\n${variationLabel}\n` : '';
-      const bonusLine = shippingBonus > 0.01 ? `\nBônus envio: R$ ${shippingBonus.toFixed(2)}` : '';
 
       const notesContent = `PEDIDO
 #${order.id}
@@ -308,7 +303,7 @@ Produto
 ${itemId}
 ${variationLine}
 VENDAS
-Bruto: R$ ${order.total_amount.toFixed(2)} | Taxas: ${taxBreakdown} (Total: R$ ${totalTaxes.toFixed(2)}) | Líquido: R$ ${netAmount.toFixed(2)}${bonusLine}`;
+Bruto: R$ ${order.total_amount.toFixed(2)} | Taxas: ${taxBreakdown} (Total: R$ ${totalTaxes.toFixed(2)}) | Líquido: R$ ${netAmount.toFixed(2)}`;
 
       // Quantidade total de unidades vendidas no pedido (soma de todos os itens)
       const quantity = (order.order_items || []).reduce(

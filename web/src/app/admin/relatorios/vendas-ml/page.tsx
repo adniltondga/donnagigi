@@ -797,6 +797,12 @@ export default function VendasMLPage() {
                       <span>  • Taxa de venda:</span>
                       <span>{formatCurrency(s.taxaVenda)}</span>
                     </div>
+                    <div
+                      className="text-[10px] text-muted-foreground italic pl-4 -mt-1"
+                      title="A API do ML consolida o estorno do bônus de envio dentro da taxa de venda após a liquidação. Se houve bônus, ele já foi descontado deste valor."
+                    >
+                      ℹ️ bônus de envio (quando houver) já está incluso
+                    </div>
                     <div className="flex justify-between text-amber-700">
                       <span>  • Taxa de envio{isInPack ? ' (rateada)' : ''}:</span>
                       <span>{formatCurrency(s.envio + s.shippingBonus)}</span>

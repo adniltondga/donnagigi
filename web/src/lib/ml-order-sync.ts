@@ -206,33 +206,34 @@ export async function syncMLOrder(params: {
       }
     }
 
-    // Tenta obter o net real do MP (mais preciso que o calculado pelos
-    // componentes do ML, que às vezes omitem bônus/descontos de frete).
-    let finalShippingFee = shippingFee
+    // Reconcilia com o net real do MP (mais preciso pro bill.amount).
+    //
+    // IMPORTANTE: NÃO inferimos "Bônus de envio" a partir da diferença
+    // (mp.net − bruto + saleFee + shippingFee). Depois que o pagamento
+    // liquida, a API do ML CONSOLIDA o estorno do bônus dentro do próprio
+    // order_items[].sale_fee (ex: nominal 10,26 vira 7,97). O MP UI mostra
+    // "Estorno R$ 2,29" como apresentação, mas isso não existe como campo
+    // separado na API depois da consolidação. Tentar inferir leva a:
+    //   • números errados quando a API ainda não consolidou (transiente);
+    //   • bônus "fantasmas" quando a API já consolidou.
+    // O bonus, se houver, já está embutido na Taxa de venda exibida.
     let finalNetAmount = order.total_amount - saleFee - shippingFee
-    let shippingBonus = 0
     if (params.mpAccessToken && order.payments?.[0]?.id) {
       const mpNet = await fetchMPNet(order.payments[0].id, params.mpAccessToken)
-      if (mpNet !== null && Math.abs(mpNet - finalNetAmount) > 0.01) {
-        const correctedShipping = Math.max(0, order.total_amount - saleFee - mpNet)
-        shippingBonus = Math.max(0, finalShippingFee - correctedShipping)
-        finalShippingFee = correctedShipping
-        finalNetAmount = mpNet
-      }
+      if (mpNet !== null) finalNetAmount = mpNet
     }
 
-    const totalTaxes = saleFee + finalShippingFee
+    const totalTaxes = saleFee + shippingFee
     const saleFeeSuffix = saleFeeEstimated ? " (est.)" : ""
     const taxBreakdown = [
       saleFee > 0 ? `Taxa de venda: R$ ${saleFee.toFixed(2)}${saleFeeSuffix}` : "",
-      finalShippingFee > 0 ? `Taxa de envio: R$ ${finalShippingFee.toFixed(2)}` : "",
+      shippingFee > 0 ? `Taxa de envio: R$ ${shippingFee.toFixed(2)}` : "",
     ]
       .filter(Boolean)
       .join(" + ")
 
     const packLine = order.pack_id ? `\nPack\n#${order.pack_id}\n` : ""
     const variationLine = variationLabel ? `\nVariação\n${variationLabel}\n` : ""
-    const bonusLine = shippingBonus > 0.01 ? `\nBônus envio: R$ ${shippingBonus.toFixed(2)}` : ""
     const notesContent = `PEDIDO
 #${order.id}
 ${packLine}
@@ -243,7 +244,7 @@ Produto
 ${itemId}
 ${variationLine}
 VENDAS
-Bruto: R$ ${order.total_amount.toFixed(2)} | Taxas: ${taxBreakdown} (Total: R$ ${totalTaxes.toFixed(2)}) | Líquido: R$ ${finalNetAmount.toFixed(2)}${bonusLine}`
+Bruto: R$ ${order.total_amount.toFixed(2)} | Taxas: ${taxBreakdown} (Total: R$ ${totalTaxes.toFixed(2)}) | Líquido: R$ ${finalNetAmount.toFixed(2)}`
 
     const quantity =
       (order.order_items || []).reduce((sum, oi) => sum + (Number(oi.quantity) || 1), 0) || 1
