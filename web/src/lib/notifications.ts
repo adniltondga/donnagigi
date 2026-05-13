@@ -1,4 +1,5 @@
 import prisma from "@/lib/prisma"
+import { sendExpoPushToTenant } from "@/lib/expo-push"
 
 export type NotificationType = "sale" | "refund" | "mp_release" | "system"
 
@@ -13,6 +14,10 @@ export interface CreateNotificationInput {
 /**
  * Cria uma notificação in-app. Non-blocking por design: callers devem
  * ignorar o erro pra não quebrar o fluxo principal (ex: webhook).
+ *
+ * Após salvar, dispara push pro app mobile (Expo Push) em fire-and-forget.
+ * Web Push (VAPID) é disparado pelo caller original quando necessário —
+ * não fazemos aqui pra não quebrar callers existentes.
  */
 export async function createNotification(input: CreateNotificationInput): Promise<void> {
   try {
@@ -25,6 +30,12 @@ export async function createNotification(input: CreateNotificationInput): Promis
         link: input.link ?? null,
       },
     })
+
+    void sendExpoPushToTenant(input.tenantId, {
+      title: input.title,
+      body: input.body ?? undefined,
+      data: { type: input.type, link: input.link ?? undefined },
+    }).catch(() => {})
   } catch (err) {
     console.error("[notifications] create falhou:", err)
   }

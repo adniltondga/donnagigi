@@ -15,7 +15,7 @@ datasource db {
 // custos, fornecedores) são escopados por tenantId.
 model Tenant {
   id        String   @id @default(cuid())
-  name      String   // nome comercial exibido ao cliente
+  name      String // nome comercial exibido ao cliente
   slug      String   @unique // identificador URL-friendly (ex: "dona-gigi")
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -25,25 +25,26 @@ model Tenant {
   // cron account-purge. Usuário pode reativar antes do prazo.
   deletedAt DateTime?
 
-  users             User[]
-  products          Product[]
-  productVariants   ProductVariant[]
-  bills             Bill[]
-  suppliers         Supplier[]
-  mlIntegrations    MLIntegration[]
-  mlProductCosts    MLProductCost[]
+  users                 User[]
+  products              Product[]
+  productVariants       ProductVariant[]
+  bills                 Bill[]
+  suppliers             Supplier[]
+  mlIntegrations        MLIntegration[]
+  mlProductCosts        MLProductCost[]
   mlProductVariantCosts MLProductVariantCost[]
-  subscription      Subscription?
-  mlAppCredentials  MLAppCredentials?
-  mpAppCredentials  MPAppCredentials?
-  mpIntegration     MPIntegration?
-  invitations       Invitation[]
-  billCategories    BillCategory[]
-  notifications     Notification[]
-  pushSubscriptions PushSubscription[]
-  financialSettings FinancialSettings?
-  tickets           Ticket[]
-  billRefunds       BillRefund[]
+  subscription          Subscription?
+  mlAppCredentials      MLAppCredentials?
+  mpAppCredentials      MPAppCredentials?
+  mpIntegration         MPIntegration?
+  invitations           Invitation[]
+  billCategories        BillCategory[]
+  notifications         Notification[]
+  pushSubscriptions     PushSubscription[]
+  expoPushSubscriptions ExpoPushSubscription[]
+  financialSettings     FinancialSettings?
+  tickets               Ticket[]
+  billRefunds           BillRefund[]
 }
 
 // Credenciais do app do cliente no Mercado Livre DevCenter.
@@ -57,41 +58,41 @@ model MLAppCredentials {
   tenant       Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   clientId     String
   clientSecret String
-  redirectUri  String?  // URI cadastrada no DevCenter do cliente (opcional — fallback: .env ou derivado do request)
+  redirectUri  String? // URI cadastrada no DevCenter do cliente (opcional — fallback: .env ou derivado do request)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 }
 
 // Assinatura do tenant (1:1) — ASAAS cuida do billing real
 model Subscription {
-  id                  String              @id @default(cuid())
-  tenantId            String              @unique
-  tenant              Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  id       String @id @default(cuid())
+  tenantId String @unique
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
-  plan                SubscriptionPlan    @default(FREE)
-  status              SubscriptionStatus  @default(TRIAL)
-  billingType         BillingType?
-  value               Float?
+  plan        SubscriptionPlan   @default(FREE)
+  status      SubscriptionStatus @default(TRIAL)
+  billingType BillingType?
+  value       Float?
 
   // Referências ASAAS
   asaasCustomerId     String?
   asaasSubscriptionId String?
 
   // Ciclo de vida
-  trialEndsAt         DateTime?
-  currentPeriodStart  DateTime?
-  currentPeriodEnd    DateTime?
-  canceledAt          DateTime?
+  trialEndsAt        DateTime?
+  currentPeriodStart DateTime?
+  currentPeriodEnd   DateTime?
+  canceledAt         DateTime?
 
   // Idempotência de emails de dunning. Tipos: trial_t3, trial_t1,
   // trial_expired, payment_overdue, payment_confirmed, canceled.
-  lastDunningType     String?
-  lastDunningAt       DateTime?
+  lastDunningType String?
+  lastDunningAt   DateTime?
 
-  createdAt           DateTime            @default(now())
-  updatedAt           DateTime            @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  invoices            Invoice[]
+  invoices Invoice[]
 
   @@index([asaasCustomerId])
   @@index([asaasSubscriptionId])
@@ -99,22 +100,22 @@ model Subscription {
 
 // Fatura (payment) gerada pela ASAAS. Alimentada via webhook.
 model Invoice {
-  id              String       @id @default(cuid())
-  subscriptionId  String
-  subscription    Subscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+  id             String       @id @default(cuid())
+  subscriptionId String
+  subscription   Subscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
 
-  asaasPaymentId  String       @unique
-  value           Float
-  status          String // PENDING, CONFIRMED, RECEIVED, OVERDUE, REFUNDED, CANCELED
-  billingType     BillingType?
-  dueDate         DateTime
-  paymentDate     DateTime?
+  asaasPaymentId String       @unique
+  value          Float
+  status         String // PENDING, CONFIRMED, RECEIVED, OVERDUE, REFUNDED, CANCELED
+  billingType    BillingType?
+  dueDate        DateTime
+  paymentDate    DateTime?
 
-  invoiceUrl      String?      // checkout ASAAS (PIX/boleto)
-  bankSlipUrl     String?
+  invoiceUrl  String? // checkout ASAAS (PIX/boleto)
+  bankSlipUrl String?
 
-  createdAt       DateTime     @default(now())
-  updatedAt       DateTime     @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([subscriptionId])
 }
@@ -127,12 +128,12 @@ enum SubscriptionPlan {
 }
 
 enum SubscriptionStatus {
-  TRIAL       // 14 dias grátis
-  ACTIVE      // pagamento confirmado
-  PENDING     // aguardando primeiro pagamento
-  OVERDUE     // pagamento atrasado
-  CANCELED    // cancelado pelo user
-  EXPIRED     // trial acabou ou ASAAS cancelou
+  TRIAL // 14 dias grátis
+  ACTIVE // pagamento confirmado
+  PENDING // aguardando primeiro pagamento
+  OVERDUE // pagamento atrasado
+  CANCELED // cancelado pelo user
+  EXPIRED // trial acabou ou ASAAS cancelou
 }
 
 enum BillingType {
@@ -187,25 +188,25 @@ enum MessageAuthorRole {
 
 // Usuário admin do sistema
 model User {
-  id        String   @id @default(cuid())
-  email     String   @unique
-  username  String   @unique
-  password  String
-  name      String
-  role      UserRole @default(VIEWER)
-  tenantId  String
-  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  id       String   @id @default(cuid())
+  email    String   @unique
+  username String   @unique
+  password String
+  name     String
+  role     UserRole @default(VIEWER)
+  tenantId String
+  tenant   Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   // Verificação de email (OTP de 6 dígitos)
-  emailVerified       Boolean   @default(false)
-  verifyCode          String?
-  verifyCodeExpires   DateTime?
-  verifyLastSentAt    DateTime? // cooldown de reenvio
+  emailVerified     Boolean   @default(false)
+  verifyCode        String?
+  verifyCodeExpires DateTime?
+  verifyLastSentAt  DateTime? // cooldown de reenvio
 
   // Reset de senha (OTP de 6 dígitos)
-  resetCode           String?
-  resetCodeExpires    DateTime?
-  resetLastSentAt     DateTime?
+  resetCode        String?
+  resetCodeExpires DateTime?
+  resetLastSentAt  DateTime?
 
   invitesCreated Invitation[] @relation("InvitationCreatedBy")
 
@@ -218,8 +219,8 @@ model User {
   // lista (e a lista não está vazia), dispara email de alerta.
   knownDevices Json?
 
-  ticketsOpened   Ticket[]         @relation("TicketOpenedBy")
-  ticketsAssigned Ticket[]         @relation("TicketAssignee")
+  ticketsOpened   Ticket[]        @relation("TicketOpenedBy")
+  ticketsAssigned Ticket[]        @relation("TicketAssignee")
   ticketMessages  TicketMessage[]
 
   sessions Session[]
@@ -254,18 +255,18 @@ model Session {
 // Convite pendente pra entrar num tenant. Criado pelo OWNER/ADMIN.
 // Consumido em /convite/<token> — vira User ao ser aceito.
 model Invitation {
-  id           String    @id @default(cuid())
-  tenantId     String
-  tenant       Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  email        String
-  role         UserRole
-  token        String    @unique
-  expiresAt    DateTime
-  acceptedAt   DateTime?
-  createdById  String
-  createdBy    User      @relation("InvitationCreatedBy", fields: [createdById], references: [id], onDelete: Cascade)
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
+  id          String    @id @default(cuid())
+  tenantId    String
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  email       String
+  role        UserRole
+  token       String    @unique
+  expiresAt   DateTime
+  acceptedAt  DateTime?
+  createdById String
+  createdBy   User      @relation("InvitationCreatedBy", fields: [createdById], references: [id], onDelete: Cascade)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 
   @@index([tenantId])
   @@index([email])
@@ -273,38 +274,38 @@ model Invitation {
 
 // Produto base (título do produto)
 model Product {
-  id          String   @id @default(cuid())
-  name        String   // Título do produto
-  description String?  @db.Text
+  id          String  @id @default(cuid())
+  name        String // Título do produto
+  description String? @db.Text
 
   // Preço base e estoque
   baseSalePrice Float?
-  minStock      Int     @default(0)
+  minStock      Int    @default(0)
 
   // Custos de venda
-  productCost   Float?  // custo da mercadoria/produção
+  productCost Float? // custo da mercadoria/produção
 
   // Mercado Livre
-  mlListingId   String?
+  mlListingId String?
 
   // Status
-  active        Boolean @default(true)
+  active Boolean @default(true)
 
   // Tenant owner
-  tenantId      String
-  tenant        Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   // Relações
-  variants      ProductVariant[]
-  bills         Bill[]
-  images        ProductImage[]
+  variants ProductVariant[]
+  bills    Bill[]
+  images   ProductImage[]
 
+  @@unique([tenantId, mlListingId])
   @@index([tenantId])
   @@index([tenantId, active])
-  @@unique([tenantId, mlListingId])
 }
 
 // Imagens do produto
@@ -312,8 +313,8 @@ model ProductImage {
   id        String   @id @default(cuid())
   productId String
   product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
-  url       String   // URL final no Vercel Blob
-  mlUrl     String?  // URL original do ML (referência)
+  url       String // URL final no Vercel Blob
+  mlUrl     String? // URL original do ML (referência)
   order     Int      @default(0)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -326,8 +327,8 @@ model VariantImage {
   id        String         @id @default(cuid())
   variantId String
   variant   ProductVariant @relation(fields: [variantId], references: [id], onDelete: Cascade)
-  url       String         // URL final no Vercel Blob
-  mlUrl     String?        // URL original do ML (referência)
+  url       String // URL final no Vercel Blob
+  mlUrl     String? // URL original do ML (referência)
   order     Int            @default(0)
   createdAt DateTime       @default(now())
   updatedAt DateTime       @updatedAt
@@ -337,30 +338,30 @@ model VariantImage {
 
 // Variação do produto (cor, tamanho, etc)
 model ProductVariant {
-  id        String   @id @default(cuid())
+  id String @id @default(cuid())
 
   // Relação com produto
   productId String
-  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
 
   // Tenant (escopa o `cod`/SKU por cliente — denormalizado de Product
   // pra permitir @@unique([tenantId, cod]) sem JOIN).
-  tenantId  String
-  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   // Informações
-  title     String?  // Título específico da variante (ex: "Capinha iPhone 15 - Preto")
-  cod       String
+  title String? // Título específico da variante (ex: "Capinha iPhone 15 - Preto")
+  cod   String
 
   // Preço e estoque
   salePrice Float
-  stock     Int      @default(0)
+  stock     Int   @default(0)
 
   // Mercado Livre
   mlListingId String?
 
   // Status
-  active    Boolean  @default(true)
+  active Boolean @default(true)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -415,7 +416,7 @@ model MLProductVariantCost {
 model MLOAuthState {
   state        String   @id
   codeVerifier String
-  tenantId     String?  // tenantId do usuário que iniciou o OAuth (setado no callback)
+  tenantId     String? // tenantId do usuário que iniciou o OAuth (setado no callback)
   expiresAt    DateTime
   createdAt    DateTime @default(now())
 
@@ -444,7 +445,7 @@ model MPIntegration {
   id           String   @id @default(cuid())
   tenantId     String   @unique
   tenant       Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  mpUserId     String   // user_id do vendedor no MP
+  mpUserId     String // user_id do vendedor no MP
   accessToken  String
   refreshToken String?
   expiresAt    DateTime
@@ -457,13 +458,13 @@ model MPIntegration {
   cachedReleasedCount      Int?
   cachedDisputedTotal      Float?
   cachedDisputedCount      Int?
-  cachedPendingDays        Json?     // array de { date, total, count, payments[] } (futuro)
-  cachedReleasedDays       Json?     // mesma estrutura, release_date passado
-  cachedDisputedPayments   Json?     // array de payments em mediação
+  cachedPendingDays        Json? // array de { date, total, count, payments[] } (futuro)
+  cachedReleasedDays       Json? // mesma estrutura, release_date passado
+  cachedDisputedPayments   Json? // array de payments em mediação
   cachedSyncedAt           DateTime?
 
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 // State temporário do fluxo OAuth do Mercado Pago (TTL curto).
@@ -487,21 +488,21 @@ model MLIntegration {
   expiresAt    DateTime
 
   // Tenant owner (1 integração por tenant)
-  tenantId     String
-  tenant       Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   // Relações
-  products     MLProduct[]
+  products MLProduct[]
 
   @@index([tenantId])
 }
 
 // Rastreamento de produtos no Mercado Livre
 model MLProduct {
-  id        String   @id @default(cuid())
+  id String @id @default(cuid())
 
   // Relação com variante
   variantId String
@@ -512,11 +513,11 @@ model MLProduct {
   integration   MLIntegration @relation(fields: [integrationId], references: [id], onDelete: Cascade)
 
   // Dados do ML
-  mlListingId   String?
-  status        String   @default("active")
+  mlListingId String?
+  status      String  @default("active")
 
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([variantId])
   @@index([integrationId])
@@ -538,31 +539,31 @@ model Supplier {
 
 // Conta (contas a pagar/receber)
 model Bill {
-  id              String   @id @default(cuid())
-  type            String   // "payable" | "receivable"
-  description     String
-  amount          Float
-  dueDate         DateTime
-  paidDate        DateTime?
-  status          String   @default("pending") // pending | paid | overdue | cancelled
-  category        String   @default("outro") // discriminador de tipo: 'venda' | 'marketplace_fee' | 'aporte_amortizacao' | 'reposicao_estoque' | 'outro'. NÃO é categoria do usuário — pra isso usar billCategoryId.
-  billCategoryId  String?
-  billCategory    BillCategory? @relation(fields: [billCategoryId], references: [id], onDelete: SetNull)
-  supplierId      String?
-  supplier        Supplier? @relation(fields: [supplierId], references: [id], onDelete: SetNull)
-  productId       String?   // relaciona com o produto vendido
-  product         Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
-  notes           String?  @db.Text
-  productCost     Float?   // custo total da mercadoria (custo unitário × quantity)
-  quantity        Int      @default(1) // unidades vendidas no pedido (soma de order_items[].quantity)
-  mlOrderId       String?  @unique  // evita duplicatas de pedidos ML
-  mlPackId        String?  // pack_id do ML (ID que aparece no painel "vendas" do seller)
-  mlVariationId   String?  // variation_id do ML no item vendido (usado pelo cost-resolver)
-  tenantId        String
-  tenant          Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  refunds         BillRefund[]
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  id             String        @id @default(cuid())
+  type           String // "payable" | "receivable"
+  description    String
+  amount         Float
+  dueDate        DateTime
+  paidDate       DateTime?
+  status         String        @default("pending") // pending | paid | overdue | cancelled
+  category       String        @default("outro") // discriminador de tipo: 'venda' | 'marketplace_fee' | 'aporte_amortizacao' | 'reposicao_estoque' | 'outro'. NÃO é categoria do usuário — pra isso usar billCategoryId.
+  billCategoryId String?
+  billCategory   BillCategory? @relation(fields: [billCategoryId], references: [id], onDelete: SetNull)
+  supplierId     String?
+  supplier       Supplier?     @relation(fields: [supplierId], references: [id], onDelete: SetNull)
+  productId      String? // relaciona com o produto vendido
+  product        Product?      @relation(fields: [productId], references: [id], onDelete: SetNull)
+  notes          String?       @db.Text
+  productCost    Float? // custo total da mercadoria (custo unitário × quantity)
+  quantity       Int           @default(1) // unidades vendidas no pedido (soma de order_items[].quantity)
+  mlOrderId      String?       @unique // evita duplicatas de pedidos ML
+  mlPackId       String? // pack_id do ML (ID que aparece no painel "vendas" do seller)
+  mlVariationId  String? // variation_id do ML no item vendido (usado pelo cost-resolver)
+  tenantId       String
+  tenant         Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  refunds        BillRefund[]
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
 
   @@index([tenantId])
   @@index([billCategoryId])
@@ -581,13 +582,13 @@ model BillRefund {
   id           String   @id @default(cuid())
   billId       String
   bill         Bill     @relation(fields: [billId], references: [id], onDelete: Cascade)
-  amount       Float    // valor devolvido (líquido, mesmo critério de bill.amount)
-  costRefunded Float?   // CMV proporcional revertido (productCost × ratio)
+  amount       Float // valor devolvido (líquido, mesmo critério de bill.amount)
+  costRefunded Float? // CMV proporcional revertido (productCost × ratio)
   refundedAt   DateTime @default(now())
-  source       String   // ml_order_cancelled | ml_partial_refund | manual
-  reason       String?  // nota livre — motivo, contexto, etc.
-  mlOrderId    String?  // pra rastreabilidade quando vem do ML
-  mlPaymentId  String?  // payment_id do ML/MP — usado pra idempotência
+  source       String // ml_order_cancelled | ml_partial_refund | manual
+  reason       String? // nota livre — motivo, contexto, etc.
+  mlOrderId    String? // pra rastreabilidade quando vem do ML
+  mlPaymentId  String? // payment_id do ML/MP — usado pra idempotência
   tenantId     String
   tenant       Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   createdAt    DateTime @default(now())
@@ -602,34 +603,34 @@ model BillRefund {
 // Configurações financeiras do tenant — alimenta o relatório de
 // "pró-labore seguro" (Pay Yourself Last).
 model FinancialSettings {
-  id              String   @id @default(cuid())
-  tenantId        String   @unique
-  tenant          Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  reservaMeses    Int      @default(3)  // meses de despesa fixa a manter como colchão (legado, não usado pelo Painel)
-  reinvestPct     Float    @default(20) // % do lucro líquido pra reinvestir (legado, não usado pelo Painel)
-  reposicaoPct    Float    @default(50) // % da receita líquida reservada pro caixa de reposição de estoque (legado)
-  proLaborePct    Float    @default(100) // % do caixa do mês (após amortizações) que vira pró-labore retirável
-  saldoCaixaAtual Float?   // saldo em conta/caixa informado manualmente
+  id                String    @id @default(cuid())
+  tenantId          String    @unique
+  tenant            Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  reservaMeses      Int       @default(3) // meses de despesa fixa a manter como colchão (legado, não usado pelo Painel)
+  reinvestPct       Float     @default(20) // % do lucro líquido pra reinvestir (legado, não usado pelo Painel)
+  reposicaoPct      Float     @default(50) // % da receita líquida reservada pro caixa de reposição de estoque (legado)
+  proLaborePct      Float     @default(100) // % do caixa do mês (após amortizações) que vira pró-labore retirável
+  saldoCaixaAtual   Float? // saldo em conta/caixa informado manualmente
   saldoAtualizadoEm DateTime?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
 }
 
 // Categoria hierárquica de contas (2 níveis: raiz + subcategoria).
 // Escopo por tenant. type 'payable' | 'receivable' — define em qual
 // aba a categoria aparece.
 model BillCategory {
-  id        String   @id @default(cuid())
+  id        String         @id @default(cuid())
   name      String
-  type      String   // 'payable' | 'receivable'
+  type      String // 'payable' | 'receivable'
   tenantId  String
-  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant    Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   parentId  String?
   parent    BillCategory?  @relation("SubCategories", fields: [parentId], references: [id], onDelete: Cascade)
   children  BillCategory[] @relation("SubCategories")
   bills     Bill[]
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
 
   @@unique([tenantId, parentId, name])
   @@index([tenantId])
@@ -640,21 +641,21 @@ model BillCategory {
 // preserva histórico mesmo após o hard delete (cascade). Snapshots
 // dos dados essenciais ficam aqui.
 model AccountDeletionLog {
-  id              String    @id @default(cuid())
-  tenantId        String    // snapshot — pode não existir mais após purge
-  tenantSlug      String
-  tenantName      String
-  ownerEmail      String
-  ownerName       String
-  reason          String?   @db.Text  // pesquisa opcional
-  ipAddress       String?
-  userAgent       String?
+  id         String  @id @default(cuid())
+  tenantId   String // snapshot — pode não existir mais após purge
+  tenantSlug String
+  tenantName String
+  ownerEmail String
+  ownerName  String
+  reason     String? @db.Text // pesquisa opcional
+  ipAddress  String?
+  userAgent  String?
 
   // Soft-deletado em DD; hard-deletado em DD+30
-  softDeletedAt        DateTime  @default(now())
+  softDeletedAt         DateTime  @default(now())
   scheduledHardDeleteAt DateTime
-  hardDeletedAt        DateTime?  // preenchido pelo cron account-purge
-  restoredAt           DateTime?  // preenchido se user reativar
+  hardDeletedAt         DateTime? // preenchido pelo cron account-purge
+  restoredAt            DateTime? // preenchido se user reativar
 
   @@index([tenantId])
   @@index([scheduledHardDeleteAt])
@@ -677,19 +678,39 @@ model PushSubscription {
   @@index([tenantId])
 }
 
+// Token de push notification para o app mobile (Expo Push Service).
+// Cada device do user registra um ExponentPushToken; o back envia pelo
+// endpoint https://exp.host/--/api/v2/push/send. Separado de
+// PushSubscription porque o shape (token simples vs endpoint+keys) e o
+// canal de envio (Expo vs VAPID/web-push) são distintos.
+model ExpoPushSubscription {
+  id         String   @id @default(cuid())
+  tenantId   String
+  tenant     Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  userId     String?
+  token      String   @unique
+  deviceName String?
+  platform   String? // "ios" | "android"
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([tenantId])
+  @@index([userId])
+}
+
 // Notificações in-app exibidas no sino do header. Per-tenant (se alguém
 // lê, todo mundo do tenant vê como lida — simplifica o modelo pra loja
 // pequena). Criadas pelo webhook ML quando uma venda nova chega.
 model Notification {
-  id        String   @id @default(cuid())
-  tenantId  String
-  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  id       String @id @default(cuid())
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
-  type      String   // ex: "sale", "refund", "mp_release", "system"
-  title     String
-  body      String?  // texto secundário (ex: "Comprador X · R$ 250")
-  link      String?  // URL interna pra navegar ao clicar
-  read      Boolean  @default(false)
+  type  String // ex: "sale", "refund", "mp_release", "system"
+  title String
+  body  String? // texto secundário (ex: "Comprador X · R$ 250")
+  link  String? // URL interna pra navegar ao clicar
+  read  Boolean @default(false)
 
   createdAt DateTime @default(now())
 
@@ -701,31 +722,31 @@ model Notification {
 // em TicketMessage. Cliente acessa em /admin/suporte; staff (DGA) acessa
 // em /staff/tickets pra responder.
 model Ticket {
-  id        String          @id @default(cuid())
-  tenantId  String
-  tenant    Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  id       String @id @default(cuid())
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   openedById String
-  openedBy   User           @relation("TicketOpenedBy", fields: [openedById], references: [id])
+  openedBy   User   @relation("TicketOpenedBy", fields: [openedById], references: [id])
 
   // Staff atribuído pra cuidar do chamado. Null = ainda não atribuído.
   assigneeId String?
-  assignee   User?          @relation("TicketAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
+  assignee   User?   @relation("TicketAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
 
-  subject   String
-  status    TicketStatus    @default(OPEN)
-  priority  TicketPriority  @default(NORMAL)
-  category  TicketCategory  @default(OUTRO)
+  subject  String
+  status   TicketStatus   @default(OPEN)
+  priority TicketPriority @default(NORMAL)
+  category TicketCategory @default(OUTRO)
 
   // Timestamps de "última resposta de cada lado" — útil pra ordenar por
   // urgência ("respondidos pelo cliente sem retorno do staff").
   lastClientReplyAt DateTime?
   lastStaffReplyAt  DateTime?
 
-  messages  TicketMessage[]
+  messages TicketMessage[]
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
   closedAt  DateTime?
 
   @@index([tenantId, createdAt(sort: Desc)])
@@ -737,17 +758,17 @@ model Ticket {
 // authorRole distingue de quem é (mais robusto que olhar isStaff do
 // author na hora da renderização — evita bug se staff virar não-staff).
 model TicketMessage {
-  id         String            @id @default(cuid())
-  ticketId   String
-  ticket     Ticket            @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  id       String @id @default(cuid())
+  ticketId String
+  ticket   Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
 
   authorId   String
   author     User              @relation(fields: [authorId], references: [id])
   authorRole MessageAuthorRole
 
-  body       String  // markdown simples; render via biblioteca cliente
+  body String // markdown simples; render via biblioteca cliente
 
-  createdAt  DateTime @default(now())
+  createdAt DateTime @default(now())
 
   @@index([ticketId, createdAt])
 }
@@ -758,7 +779,7 @@ model TicketMessage {
 model WaitlistSignup {
   id        String   @id @default(cuid())
   email     String   @unique
-  source    String?  // ex: "home", "planos", "login"
+  source    String? // ex: "home", "planos", "login"
   notified  Boolean  @default(false) // marcamos true quando enviarmos o "tá no ar"
   createdAt DateTime @default(now())
 
@@ -770,15 +791,15 @@ model WaitlistSignup {
 // loggedFetch (lib/api-log.ts) pra não bloquear a request original.
 // Cron diário /api/cron/api-log-retention apaga registros >30d.
 model ApiCallLog {
-  id          String   @id @default(cuid())
-  tenantId    String?  // null = chamada global (cron, webhook sem tenant)
-  provider    String   // "ml" | "mp" | "asaas" | "resend"
-  endpoint    String   // path normalizado, ex: "/orders/{id}", "/items?multiget"
-  method      String
-  statusCode  Int
-  durationMs  Int
-  errorBody   String?  @db.Text  // só preenchido em status >= 400
-  createdAt   DateTime @default(now())
+  id         String   @id @default(cuid())
+  tenantId   String? // null = chamada global (cron, webhook sem tenant)
+  provider   String // "ml" | "mp" | "asaas" | "resend"
+  endpoint   String // path normalizado, ex: "/orders/{id}", "/items?multiget"
+  method     String
+  statusCode Int
+  durationMs Int
+  errorBody  String?  @db.Text // só preenchido em status >= 400
+  createdAt  DateTime @default(now())
 
   @@index([provider, createdAt(sort: Desc)])
   @@index([tenantId, createdAt(sort: Desc)])
