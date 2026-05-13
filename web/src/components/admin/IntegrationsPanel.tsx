@@ -16,6 +16,8 @@ import {
   Pencil,
   Trash2,
   HelpCircle,
+  BookOpen,
+  ExternalLink,
 } from "lucide-react"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { Card, CardContent } from "@/components/ui/card"
@@ -142,6 +144,114 @@ export function IntegrationsPanel({
         onFlash={(type, text) => setGlobalMsg({ type, text })}
       />
     </div>
+  )
+}
+
+function SetupGuide({
+  provider,
+  redirectUri,
+  webhookUrl,
+}: {
+  provider: "ml" | "mp"
+  redirectUri?: string
+  webhookUrl?: string
+}) {
+  const isML = provider === "ml"
+  const devCenterUrl = isML
+    ? "https://developers.mercadolivre.com.br/devcenter"
+    : "https://www.mercadopago.com.br/developers/panel/app"
+  const providerName = isML ? "Mercado Livre" : "Mercado Pago"
+
+  return (
+    <details className="group rounded-lg border border-border bg-muted/50">
+      <summary className="cursor-pointer list-none p-3 flex items-center gap-2 text-sm font-medium hover:bg-muted transition rounded-lg">
+        <BookOpen className="w-4 h-4 text-primary-600" />
+        <span className="flex-1">Como criar o app no {providerName} DevCenter</span>
+        <ArrowRight className="w-4 h-4 text-muted-foreground transition group-open:rotate-90" />
+      </summary>
+      <div className="px-3 pb-3 pt-1 text-xs text-muted-foreground space-y-3 leading-relaxed">
+        <ol className="list-decimal pl-4 space-y-2">
+          <li>
+            Abra o{" "}
+            <a
+              href={devCenterUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-0.5 text-primary-600 hover:underline font-medium"
+            >
+              DevCenter do {providerName} <ExternalLink className="w-3 h-3" />
+            </a>{" "}
+            e clique em <strong>Criar aplicação</strong>.
+          </li>
+          {isML ? (
+            <>
+              <li>
+                Tipo: <strong>aplicação privada</strong>. Marque os escopos{" "}
+                <code className="px-1 bg-background rounded">offline_access</code>,{" "}
+                <code className="px-1 bg-background rounded">read</code> e{" "}
+                <code className="px-1 bg-background rounded">write</code>.
+              </li>
+              <li>
+                No campo <strong>Redirect URI</strong> cole{" "}
+                {redirectUri ? (
+                  <code className="px-1 bg-background rounded break-all">{redirectUri}</code>
+                ) : (
+                  <em>(a URL aparece abaixo após salvar)</em>
+                )}
+                .
+              </li>
+              <li>
+                Em <strong>Notificações</strong>, cadastre o webhook{" "}
+                {webhookUrl ? (
+                  <code className="px-1 bg-background rounded break-all">{webhookUrl}</code>
+                ) : (
+                  <em>(URL abaixo)</em>
+                )}{" "}
+                e marque os tópicos{" "}
+                <code className="px-1 bg-background rounded">orders_v2</code> e{" "}
+                <code className="px-1 bg-background rounded">items</code>.
+              </li>
+              <li>
+                Salve a aplicação e copie o <strong>Client ID</strong> e o{" "}
+                <strong>Client Secret</strong> nos campos acima.
+              </li>
+            </>
+          ) : (
+            <>
+              <li>
+                Escolha o modelo <strong>Pagamentos online</strong> (ou outro que suporte OAuth).
+              </li>
+              <li>
+                No campo <strong>Redirect URIs</strong> cole{" "}
+                {redirectUri ? (
+                  <code className="px-1 bg-background rounded break-all">{redirectUri}</code>
+                ) : (
+                  <em>(URL abaixo)</em>
+                )}
+                .
+              </li>
+              <li>
+                Em <strong>Notificações → Webhooks</strong>, cadastre{" "}
+                {webhookUrl ? (
+                  <code className="px-1 bg-background rounded break-all">{webhookUrl}</code>
+                ) : (
+                  <em>(URL abaixo)</em>
+                )}{" "}
+                e marque o evento <code className="px-1 bg-background rounded">payment</code>.
+              </li>
+              <li>
+                Copie o <strong>APP ID</strong> e o <strong>Secret Key</strong> e cole nos campos
+                acima.
+              </li>
+            </>
+          )}
+        </ol>
+        <p className="text-[11px] italic">
+          Dica: depois de salvar as credenciais, volte aqui pra cadastrar Redirect URI e Webhook —
+          os botões <strong>Copiar</strong> aparecem abaixo.
+        </p>
+      </div>
+    </details>
   )
 }
 
@@ -497,6 +607,11 @@ function MLCredentialsSection({
               ? "Usando o app padrão do agLivre. Cadastre seu app pra ter cotas isoladas."
               : "Nenhum app cadastrado. Registre no ML DevCenter e cole as credenciais."}
           </div>
+          <SetupGuide
+            provider="ml"
+            redirectUri={data?.redirectUri}
+            webhookUrl={data?.webhookUrl}
+          />
           <Button size="sm" onClick={startEdit}>
             Cadastrar app próprio
           </Button>
@@ -819,6 +934,11 @@ function MPCredentialsSection({
           <div className="rounded-lg border border-border bg-muted p-3 text-xs text-muted-foreground">
             Nenhum app cadastrado. Cadastre APP ID + Secret Key do seu app MP.
           </div>
+          <SetupGuide
+            provider="mp"
+            redirectUri={data?.redirectUri}
+            webhookUrl={data?.webhookUrl}
+          />
           <Button size="sm" onClick={startEdit}>
             Cadastrar app
           </Button>
