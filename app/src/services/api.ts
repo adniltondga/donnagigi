@@ -25,29 +25,9 @@ const apiClient: AxiosInstance = axios.create({
   },
 });
 
-// Backend (aglivre/web) usa cookie httpOnly `token`. Em mobile não temos
-// cookie jar nativo do navegador, então persistimos o JWT em SecureStore
-// e enviamos manualmente como `Cookie: token=<jwt>` em cada request.
-async function extractTokenFromSetCookie(
-  setCookie: string | string[] | undefined,
-): Promise<void> {
-  if (!setCookie) return;
-  const cookies = Array.isArray(setCookie) ? setCookie : [setCookie];
-  for (const c of cookies) {
-    const match = /(?:^|;\s*)token=([^;]*)/.exec(c);
-    if (match) {
-      const value = match[1];
-      if (value && value.trim() !== '') {
-        await secureStorage.setItem(STORAGE_KEYS.AUTH_TOKEN, value);
-      } else {
-        // Cookie zerado pelo backend = logout/invalidation
-        await secureStorage.removeItem(STORAGE_KEYS.AUTH_TOKEN);
-      }
-      return;
-    }
-  }
-}
-
+// Backend (aglivre/web) aceita auth via cookie httpOnly `token` (web) ou
+// header `Authorization: Bearer <jwt>` (mobile). Usamos Bearer aqui pra
+// evitar a salada de cookie jar nativo do React Native.
 apiClient.interceptors.request.use(
   async (config: InternalAxiosRequestConfig) => {
     if (config.headers) {
@@ -56,7 +36,7 @@ apiClient.interceptors.request.use(
 
     const token = await secureStorage.getItem(STORAGE_KEYS.AUTH_TOKEN);
     if (token && token.trim() !== '' && config.headers) {
-      config.headers.Cookie = `token=${token}`;
+      config.headers.Authorization = `Bearer ${token}`;
     }
 
     return config;
@@ -65,12 +45,7 @@ apiClient.interceptors.request.use(
 );
 
 apiClient.interceptors.response.use(
-  async (response: AxiosResponse) => {
-    await extractTokenFromSetCookie(
-      response.headers['set-cookie'] as string | string[] | undefined,
-    );
-    return response;
-  },
+  (response: AxiosResponse) => response,
   async (error: AxiosError<ApiError>) => {
     const status = error.response?.status;
     const isAuthRoute = error.config?.url?.includes('/auth/');

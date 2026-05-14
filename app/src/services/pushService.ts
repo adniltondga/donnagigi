@@ -35,7 +35,7 @@ async function ensureAndroidChannel(): Promise<void> {
     name: 'AgLivre',
     importance: Notifications.AndroidImportance.DEFAULT,
     vibrationPattern: [0, 250, 250, 250],
-    lightColor: '#007AFF',
+    lightColor: '#6d28d9',
   });
 }
 

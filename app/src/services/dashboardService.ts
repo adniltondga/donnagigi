@@ -5,6 +5,7 @@ import type {
   CashPools,
   DashboardSummary,
   Paginated,
+  RelatorioV2Response,
 } from '@/types';
 
 function todayBR(): string {
@@ -32,16 +33,10 @@ export const dashboardService = {
     const hoje = todayBR();
     const em7dias = addDaysBR(7);
 
-    const [vendasRes, contasRes, caixaRes] = await Promise.all([
-      apiCall<Paginated<Bill>>(() =>
-        apiClient.get(API_CONFIG.ENDPOINTS.BILLS.LIST, {
-          params: {
-            type: 'receivable',
-            category: 'venda',
-            paidFrom: hoje,
-            paidTo: hoje,
-            limit: 100,
-          },
+    const [kpisRes, contasRes, caixaRes] = await Promise.all([
+      apiCall<RelatorioV2Response>(() =>
+        apiClient.get(API_CONFIG.ENDPOINTS.RELATORIOS.V2, {
+          params: { from: hoje, to: hoje },
         }),
       ),
       apiCall<Paginated<Bill>>(() =>
@@ -62,16 +57,14 @@ export const dashboardService = {
       ),
     ]);
 
-    if (!vendasRes.success) return { success: false, error: vendasRes.error };
+    if (!kpisRes.success) return { success: false, error: kpisRes.error };
     if (!contasRes.success) return { success: false, error: contasRes.error };
 
-    const vendasBills = vendasRes.data.data;
+    const k = kpisRes.data.kpisAtual;
     const vendasHoje = {
-      count: vendasBills.length,
-      total: vendasBills.reduce(
-        (sum, b) => sum + Math.max(0, b.amount - (b.refundedAmount ?? 0)),
-        0,
-      ),
+      pedidos: k.pedidos,
+      bruto: k.bruto,
+      lucro: k.lucro,
     };
 
     const contasBills = contasRes.data.data;

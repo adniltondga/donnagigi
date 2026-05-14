@@ -83,6 +83,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         isLoading: false,
       });
       void pushService.register().catch(() => {});
+
+      // Em background: refresh do user via /api/auth/me pra evitar staleness
+      // (storage pode estar com user sem `name` de versões antigas, ou o
+      // nome pode ter sido editado no web depois). 401 já é tratado pelo
+      // interceptor da api → força logout.
+      void authOperations.refreshUser().then((res) => {
+        if (res.success && res.data) {
+          setState((prev) =>
+            prev.isAuthenticated ? { ...prev, user: res.data! } : prev,
+          );
+        }
+      });
     } else {
       setState({
         user: null,

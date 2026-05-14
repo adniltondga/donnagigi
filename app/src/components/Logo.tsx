@@ -1,41 +1,65 @@
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { View, Text, Image, StyleSheet } from 'react-native';
 import { useTheme } from '@/contexts';
 import { SPACING } from '@/constants';
 
 interface LogoProps {
   size?: 'sm' | 'md' | 'lg';
+  /** Esconde o texto ao lado/abaixo e mostra só o ícone. */
+  iconOnly?: boolean;
+  /** Empilha o texto abaixo do ícone (default: lado a lado). */
+  orientation?: 'row' | 'column';
+  /** Texto exibido junto ao ícone. Default: "AgLivre". */
+  label?: string;
 }
 
-export function Logo({ size = 'md' }: LogoProps) {
+const iconPng = require('../../assets/icon.png');
+
+export function Logo({
+  size = 'md',
+  iconOnly = false,
+  orientation = 'row',
+  label = 'AgLivre',
+}: LogoProps) {
   const { colors } = useTheme();
-  const iconSize = size === 'lg' ? 48 : size === 'sm' ? 24 : 36;
+  const iconSize = size === 'lg' ? 80 : size === 'sm' ? 32 : 48;
   const fontSize = size === 'lg' ? 32 : size === 'sm' ? 18 : 24;
+  const radius = Math.round(iconSize * 0.22); // squircle-like, padrão iOS
 
   return (
-    <View style={styles.container}>
-      <View style={[styles.iconWrapper, { backgroundColor: colors.primary }]}>
-        <Ionicons name="leaf" size={iconSize} color={colors.white} />
-      </View>
-      <Text style={[styles.text, { color: colors.textPrimary, fontSize }]}>
-        AgLivre
-      </Text>
+    <View
+      style={[
+        styles.container,
+        orientation === 'column' ? styles.column : styles.row,
+      ]}
+    >
+      <Image
+        source={iconPng}
+        style={{ width: iconSize, height: iconSize, borderRadius: radius }}
+        resizeMode="cover"
+      />
+      {!iconOnly && (
+        <Text style={[styles.text, { color: colors.textPrimary, fontSize }]}>
+          {label}
+        </Text>
+      )}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    flexDirection: 'row',
     alignItems: 'center',
     gap: SPACING.sm,
   },
-  iconWrapper: {
-    padding: SPACING.sm,
-    borderRadius: 12,
+  row: {
+    flexDirection: 'row',
+  },
+  column: {
+    flexDirection: 'column',
   },
   text: {
     fontWeight: '700',
+    textAlign: 'center',
   },
 });

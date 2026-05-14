@@ -137,7 +137,7 @@ export default function HomeScreen() {
       >
         <FadeInView delay={50}>
           <Text style={[styles.greeting, dynamicStyles.title]}>
-            Olá, {user?.name?.split(' ')[0] || 'Usuário'}
+            Olá, {user?.name?.trim().split(' ')[0] || user?.username || 'Usuário'}
           </Text>
           <Text style={[styles.greetingSub, dynamicStyles.subtitle]}>
             Resumo de hoje
@@ -151,20 +151,62 @@ export default function HomeScreen() {
         ) : summary ? (
           <>
             <SlideUpView delay={100}>
-              <View style={[styles.kpiCard, dynamicStyles.card]}>
-                <View style={styles.kpiHeader}>
-                  <Ionicons name="cash-outline" size={24} color={colors.success} />
-                  <Text style={[styles.kpiLabel, dynamicStyles.subtitle]}>
+              <View style={styles.row}>
+                <TouchableOpacity
+                  style={[styles.kpiCardHalf, dynamicStyles.card]}
+                  onPress={() => router.push('/vendas' as never)}
+                  activeOpacity={0.7}
+                >
+                  <Ionicons
+                    name="cash-outline"
+                    size={22}
+                    color={colors.success}
+                  />
+                  <Text style={[styles.kpiLabelSm, dynamicStyles.subtitle]}>
                     Vendas hoje
                   </Text>
-                </View>
-                <Text style={[styles.kpiValue, dynamicStyles.title]}>
-                  {formatCurrency(summary.vendasHoje.total)}
-                </Text>
-                <Text style={[styles.kpiFoot, dynamicStyles.muted]}>
-                  {summary.vendasHoje.count}{' '}
-                  {summary.vendasHoje.count === 1 ? 'venda' : 'vendas'}
-                </Text>
+                  <Text style={[styles.kpiValueSm, dynamicStyles.title]}>
+                    {formatCurrency(summary.vendasHoje.bruto)}
+                  </Text>
+                  <Text style={[styles.kpiFootSm, dynamicStyles.muted]}>
+                    {summary.vendasHoje.pedidos}{' '}
+                    {summary.vendasHoje.pedidos === 1 ? 'pedido' : 'pedidos'}
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.kpiCardHalf, dynamicStyles.card]}
+                  onPress={() => router.push('/relatorios' as never)}
+                  activeOpacity={0.7}
+                >
+                  <Ionicons
+                    name="trending-up-outline"
+                    size={22}
+                    color={
+                      summary.vendasHoje.lucro >= 0
+                        ? colors.success
+                        : colors.error
+                    }
+                  />
+                  <Text style={[styles.kpiLabelSm, dynamicStyles.subtitle]}>
+                    Lucro hoje
+                  </Text>
+                  <Text
+                    style={[
+                      styles.kpiValueSm,
+                      {
+                        color:
+                          summary.vendasHoje.lucro >= 0
+                            ? colors.textPrimary
+                            : colors.error,
+                      },
+                    ]}
+                  >
+                    {formatCurrency(summary.vendasHoje.lucro)}
+                  </Text>
+                  <Text style={[styles.kpiFootSm, dynamicStyles.muted]}>
+                    sobre vendas
+                  </Text>
+                </TouchableOpacity>
               </View>
             </SlideUpView>
 
@@ -193,7 +235,7 @@ export default function HomeScreen() {
                   activeOpacity={0.7}
                 >
                   <Ionicons
-                    name="trending-up-outline"
+                    name="bar-chart-outline"
                     size={22}
                     color={colors.info}
                   />
@@ -368,6 +410,7 @@ const styles = StyleSheet.create({
   },
   kpiLabelSm: { fontSize: FONT_SIZE.xs, marginTop: SPACING.xs },
   kpiValueSm: { fontSize: FONT_SIZE.lg, fontWeight: '700', marginTop: 2 },
+  kpiFootSm: { fontSize: 10, marginTop: 2 },
   sectionCard: {
     borderRadius: BORDER_RADIUS.lg,
     padding: SPACING.lg,

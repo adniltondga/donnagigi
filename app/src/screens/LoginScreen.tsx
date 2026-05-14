@@ -224,7 +224,7 @@ export default function LoginScreen() {
           showsVerticalScrollIndicator={false}
         >
           <FadeInView delay={0} duration={600} style={styles.headerContainer}>
-            <Logo size="lg" />
+            <Logo size="lg" orientation="column" label="Gestão de Vendas" />
           </FadeInView>
 
           <FadeInView delay={150} duration={400}>
@@ -296,15 +296,12 @@ export default function LoginScreen() {
 
                 <TouchableOpacity
                   style={styles.registerLink}
-                  onPress={() => {
-                    setIsRegisterMode(true);
-                    resetForms();
-                  }}
+                  onPress={() => router.push('/waitlist' as never)}
                 >
                   <Text style={[styles.registerText, { color: colors.textSecondary }]}>
                     Não tem conta?{' '}
                     <Text style={{ color: colors.primary, fontWeight: '700' }}>
-                      Criar conta
+                      Entrar na lista de espera
                     </Text>
                   </Text>
                 </TouchableOpacity>

@@ -8,3 +8,5 @@ export { billsService } from './billsService';
 export { cashPoolService } from './cashPoolService';
 export { productsService } from './productsService';
 export { mlAdsService } from './mlAdsService';
+export { relatoriosService } from './relatoriosService';
+export { waitlistService } from './waitlistService';

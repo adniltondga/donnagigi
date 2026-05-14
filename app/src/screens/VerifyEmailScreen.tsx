@@ -77,8 +77,7 @@ export default function VerifyEmailScreen({ email }: Props) {
     try {
       const response = await authService.verifyEmail({ email, code });
 
-      // Token foi persistido em SecureStore pelo response interceptor de api.ts
-      // (extraído do header Set-Cookie). Aqui só salvamos o user.
+      await secureStorage.setItem(STORAGE_KEYS.AUTH_TOKEN, response.token);
       await secureStorage.setObject(STORAGE_KEYS.USER_DATA, {
         id: response.user.id,
         name: response.user.name,

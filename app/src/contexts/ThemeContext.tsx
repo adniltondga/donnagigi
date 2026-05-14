@@ -34,22 +34,24 @@ interface ThemeColors {
   shadow: string;
 }
 
+// Paleta espelha a da web (tailwind.config.ts + src/app/globals.css).
+// primary = violet-700, neutros = slate; dark ~ hsl(222 30% 7%).
 const darkColors: ThemeColors = {
-  primary: '#0A84FF',
-  primaryDark: '#0071E3',
-  primaryLight: '#409CFF',
-  background: '#000000',
-  backgroundLight: '#1C1C1E',
-  backgroundCard: '#2C2C2E',
-  textPrimary: '#FFFFFF',
-  textSecondary: '#8E8E93',
-  textMuted: '#636366',
-  border: '#38383A',
-  borderLight: '#48484A',
-  success: '#30D158',
-  error: '#FF453A',
-  warning: '#FFD60A',
-  info: '#0A84FF',
+  primary: '#8b5cf6',      // violet-500 (mais claro pra contraste no dark, como --ring dark da web)
+  primaryDark: '#6d28d9',  // violet-700
+  primaryLight: '#a78bfa', // violet-400
+  background: '#0a0f1c',   // ~ hsl(222 30% 7%)
+  backgroundLight: '#0f172a', // slate-900 (card)
+  backgroundCard: '#1e293b',  // slate-800 (muted)
+  textPrimary: '#f1f5f9',  // slate-100
+  textSecondary: '#cbd5e1', // slate-300
+  textMuted: '#94a3b8',    // slate-400
+  border: '#334155',       // slate-700
+  borderLight: '#1e293b',  // slate-800
+  success: '#22c55e',      // green-500
+  error: '#ef4444',        // red-500
+  warning: '#f59e0b',      // amber-500
+  info: '#8b5cf6',         // violet-500
   white: '#FFFFFF',
   black: '#000000',
   transparent: 'transparent',
@@ -57,21 +59,21 @@ const darkColors: ThemeColors = {
 };
 
 const lightColors: ThemeColors = {
-  primary: '#007AFF',
-  primaryDark: '#0056B3',
-  primaryLight: '#409CFF',
-  background: '#F2F2F7',
-  backgroundLight: '#FFFFFF',
-  backgroundCard: '#FFFFFF',
-  textPrimary: '#000000',
-  textSecondary: '#3C3C43',
-  textMuted: '#8E8E93',
-  border: '#C6C6C8',
-  borderLight: '#E5E5EA',
-  success: '#34C759',
-  error: '#FF3B30',
-  warning: '#FFCC00',
-  info: '#007AFF',
+  primary: '#6d28d9',      // violet-700
+  primaryDark: '#5b21b6',  // violet-800
+  primaryLight: '#8b5cf6', // violet-500
+  background: '#f8fafc',   // slate-50 (--app-bg da web)
+  backgroundLight: '#ffffff',
+  backgroundCard: '#ffffff',
+  textPrimary: '#0f172a',  // slate-900
+  textSecondary: '#475569', // slate-600
+  textMuted: '#64748b',    // slate-500
+  border: '#e2e8f0',       // slate-200
+  borderLight: '#f1f5f9',  // slate-100
+  success: '#16a34a',      // green-600
+  error: '#dc2626',        // red-600
+  warning: '#f59e0b',      // amber-500
+  info: '#6d28d9',         // violet-700
   white: '#FFFFFF',
   black: '#000000',
   transparent: 'transparent',

@@ -10,6 +10,7 @@ import type {
   ResendVerificationRequest,
   ForgotPasswordRequest,
   ResetPasswordRequest,
+  User,
 } from '@/types';
 
 export const authService = {
@@ -47,5 +48,14 @@ export const authService = {
 
   async resetPassword(data: ResetPasswordRequest): Promise<void> {
     await apiClient.post(API_CONFIG.ENDPOINTS.AUTH.RESET_PASSWORD, data);
+  },
+
+  async me(): Promise<User> {
+    const res = await apiClient.get<User>(API_CONFIG.ENDPOINTS.AUTH.ME);
+    return res.data;
+  },
+
+  async logout(): Promise<void> {
+    await apiClient.post(API_CONFIG.ENDPOINTS.AUTH.LOGOUT);
   },
 };

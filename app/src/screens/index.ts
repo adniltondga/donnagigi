@@ -14,3 +14,6 @@ export { default as ProductsScreen } from './ProductsScreen';
 export { default as ProductDetailScreen } from './ProductDetailScreen';
 export { default as ScannerScreen } from './ScannerScreen';
 export { default as AnunciosScreen } from './AnunciosScreen';
+export { default as VendasScreen } from './VendasScreen';
+export { default as RelatoriosScreen } from './RelatoriosScreen';
+export { default as WaitlistScreen } from './WaitlistScreen';

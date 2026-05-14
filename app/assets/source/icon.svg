@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <rect width="1024" height="1024" fill="#6d28d9"/>
+  <text x="512" y="500"
+        text-anchor="middle"
+        font-family="Helvetica, Arial, sans-serif"
+        font-weight="900"
+        font-size="440"
+        fill="#ffffff"
+        letter-spacing="-20">AG</text>
+  <text x="512" y="780"
+        text-anchor="middle"
+        font-family="Helvetica, Arial, sans-serif"
+        font-weight="700"
+        font-size="200"
+        fill="#ffffff"
+        letter-spacing="2">livre</text>
+</svg>

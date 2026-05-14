@@ -22,11 +22,13 @@ export const API_CONFIG = {
   ENDPOINTS: {
     AUTH: {
       LOGIN: '/api/auth/login',
+      LOGOUT: '/api/auth/logout',
       REGISTER: '/api/auth/register',
       VERIFY_EMAIL: '/api/auth/verify-email',
       RESEND_VERIFICATION: '/api/auth/resend-verification',
       FORGOT_PASSWORD: '/api/auth/forgot-password',
       RESET_PASSWORD: '/api/auth/reset-password',
+      ME: '/api/auth/me',
     },
     BILLS: {
       LIST: '/api/bills',
@@ -53,6 +55,10 @@ export const API_CONFIG = {
       TOGGLE_ITEM: (mlListingId: string) =>
         `/api/ml/items/${mlListingId}/toggle`,
     },
+    RELATORIOS: {
+      V2: '/api/relatorios/v2',
+    },
+    WAITLIST: '/api/waitlist',
   },
 } as const;
 
@@ -67,26 +73,29 @@ export const STORAGE_KEYS = {
   BIOMETRIC_PROMPTED: 'aglivre_biometric_prompted',
 } as const;
 
+// Paleta espelha a do web (tailwind.config.ts + globals.css):
+// primary = roxo (violet 700), neutros = slate, dark = hsl(222 30% 7%).
+// COLORS é só o fallback estático — telas devem ler de useTheme().colors.
 export const COLORS = {
-  primary: '#007AFF',
-  primaryDark: '#0056B3',
-  primaryLight: '#409CFF',
+  primary: '#6d28d9',
+  primaryDark: '#5b21b6',
+  primaryLight: '#8b5cf6',
 
-  background: '#000000',
-  backgroundLight: '#1C1C1E',
-  backgroundCard: '#2C2C2E',
+  background: '#0a0f1c',
+  backgroundLight: '#0f172a',
+  backgroundCard: '#1e293b',
 
-  textPrimary: '#FFFFFF',
-  textSecondary: '#8E8E93',
-  textMuted: '#636366',
+  textPrimary: '#f1f5f9',
+  textSecondary: '#cbd5e1',
+  textMuted: '#94a3b8',
 
-  border: '#38383A',
-  borderLight: '#48484A',
+  border: '#334155',
+  borderLight: '#1e293b',
 
-  success: '#30D158',
-  error: '#FF453A',
-  warning: '#FFD60A',
-  info: '#0A84FF',
+  success: '#22c55e',
+  error: '#ef4444',
+  warning: '#f59e0b',
+  info: '#8b5cf6',
 
   white: '#FFFFFF',
   black: '#000000',

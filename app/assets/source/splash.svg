@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="2048" height="2048" viewBox="0 0 2048 2048">
+  <rect width="2048" height="2048" fill="#6d28d9"/>
+  <text x="1024" y="1080"
+        text-anchor="middle"
+        font-family="Helvetica, Arial, sans-serif"
+        font-weight="900"
+        font-size="320"
+        fill="#ffffff"
+        letter-spacing="-8">AGlivre</text>
+</svg>

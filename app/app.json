@@ -8,8 +8,9 @@
     "userInterfaceStyle": "automatic",
     "scheme": "aglivre",
     "splash": {
+      "image": "./assets/splash.png",
       "resizeMode": "contain",
-      "backgroundColor": "#000000"
+      "backgroundColor": "#6d28d9"
     },
     "updates": {
       "fallbackToCacheTimeout": 0
@@ -21,15 +22,23 @@
       "supportsTablet": true,
       "bundleIdentifier": "br.com.aglivre.app",
       "infoPlist": {
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSFaceIDUsageDescription": "Use Face ID pra entrar no AgLivre rapidamente sem digitar a senha."
       }
     },
     "android": {
       "package": "br.com.aglivre.app",
       "softwareKeyboardLayoutMode": "resize",
       "adaptiveIcon": {
-        "backgroundColor": "#000000"
-      }
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#6d28d9"
+      },
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.USE_BIOMETRIC",
+        "android.permission.USE_FINGERPRINT"
+      ]
     },
     "plugins": [
       "expo-router",
@@ -38,7 +47,7 @@
         "expo-notifications",
         {
           "icon": "./assets/icon.png",
-          "color": "#007AFF"
+          "color": "#6d28d9"
         }
       ],
       [
@@ -46,13 +55,23 @@
         {
           "cameraPermission": "Permite escanear códigos de barras dos produtos."
         }
+      ],
+      [
+        "expo-local-authentication",
+        {
+          "faceIDPermission": "Use Face ID pra entrar no AgLivre rapidamente sem digitar a senha."
+        }
       ]
     ],
     "experiments": {
       "typedRoutes": true
     },
     "extra": {
-      "router": {}
-    }
+      "router": {},
+      "eas": {
+        "projectId": "1e22b38a-eca9-442d-b72b-bfdeae9cbac8"
+      }
+    },
+    "owner": "adniltonweb"
   }
 }

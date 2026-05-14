@@ -40,6 +40,7 @@ export interface LoginResponse {
     isStaff: boolean;
   };
   tenant: Tenant;
+  token: string;
 }
 
 export interface RegisterPendingResponse {
@@ -61,6 +62,7 @@ export interface VerifyEmailResponse {
     username: string;
   };
   tenant: Tenant;
+  token: string;
 }
 
 export interface ResendVerificationRequest {
@@ -118,6 +120,7 @@ export interface Bill {
   notes?: string | null;
   productCost?: number | null;
   refundedAmount?: number;
+  quantity?: number;
   mlOrderId?: string | null;
   mlPackId?: string | null;
 }
@@ -135,8 +138,65 @@ export interface CashPools {
   lucroOperacional: number;
 }
 
+export interface RelatorioKPIs {
+  pedidos: number;
+  vendas: number;
+  bruto: number;
+  taxaVenda: number;
+  envio: number;
+  totalVenda: number;
+  custo: number;
+  lucro: number;
+}
+
+export interface RelatorioTopProduto {
+  productId: string | null;
+  mlListingId: string | null;
+  name: string;
+  variation: string | null;
+  vendas: number;
+  bruto: number;
+  totalVenda: number;
+  custo: number;
+  lucro: number;
+  margem: number;
+}
+
+export interface RelatorioV2Response {
+  periodo: { from: string; to: string };
+  periodoAnterior: { from: string; to: string };
+  kpisAtual: RelatorioKPIs;
+  kpisAnterior: RelatorioKPIs;
+  derivados: {
+    ticketMedio: number;
+    ticketMedioAnterior: number;
+    margemPct: number;
+    margemPctAnterior: number;
+  };
+  cancelamentos: {
+    vendas: number;
+    bruto: number;
+    totalVenda: number;
+    taxaPct: number;
+  };
+  timeline: Array<{
+    date: string;
+    pedidos: number;
+    vendas: number;
+    bruto: number;
+    totalVenda: number;
+    lucro: number;
+  }>;
+  topPorLucro: Array<RelatorioTopProduto>;
+  topPorBruto: Array<RelatorioTopProduto>;
+}
+
 export interface DashboardSummary {
-  vendasHoje: { total: number; count: number };
+  vendasHoje: {
+    pedidos: number;
+    bruto: number;
+    lucro: number;
+  };
   contasVencendo: { total: number; count: number; bills: Bill[] };
   caixa: CashPools | null;
 }

@@ -8,6 +8,8 @@ export interface BillListParams {
   page?: number;
   limit?: number;
   q?: string;
+  category?: string;
+  excludeCategory?: string;
   dueFrom?: string;
   dueTo?: string;
   paidFrom?: string;

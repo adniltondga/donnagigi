@@ -10,12 +10,6 @@ import type {
   Tenant,
 } from '@/types';
 
-// Token é persistido pelo interceptor de api.ts a partir do Set-Cookie.
-// Aqui só lemos de SecureStore depois da request pra confirmar que veio.
-async function readPersistedToken(): Promise<string | null> {
-  return secureStorage.getItem(STORAGE_KEYS.AUTH_TOKEN);
-}
-
 export const authOperations = {
   async performLogin(
     credentials: LoginCredentials,
@@ -30,7 +24,7 @@ export const authOperations = {
       }
 
       const response = await authService.login(credentials);
-      const token = await readPersistedToken();
+      const token = response.token;
 
       if (!token) {
         return {
@@ -51,6 +45,7 @@ export const authOperations = {
         tenantId: response.tenant.id,
       };
 
+      await secureStorage.setItem(STORAGE_KEYS.AUTH_TOKEN, token);
       await secureStorage.setObject(STORAGE_KEYS.USER_DATA, user);
 
       return { success: true, data: { user, token } };
@@ -87,11 +82,43 @@ export const authOperations = {
 
   async performLogout(): Promise<OperationResult<null>> {
     try {
+      // Avisa o backend pra revogar a Session (jti) — sem isso o JWT
+      // continua válido pelos 7 dias do TTL mesmo após "sair" no app.
+      // Falha de rede/401 não impede logout local.
+      try {
+        await authService.logout();
+      } catch {
+        // ignora — limpar local é o essencial
+      }
       await secureStorage.removeItem(STORAGE_KEYS.AUTH_TOKEN);
       await secureStorage.removeItem(STORAGE_KEYS.USER_DATA);
       return { success: true };
     } catch {
       return { success: false, error: 'Erro ao sair', code: 'LOGOUT_ERROR' };
+    }
+  },
+
+  async refreshUser(): Promise<OperationResult<User>> {
+    try {
+      const fresh = await authService.me();
+      const user: User = {
+        id: fresh.id,
+        name: fresh.name,
+        email: fresh.email,
+        username: fresh.username,
+        role: fresh.role,
+        isStaff: fresh.isStaff,
+        tenantId: fresh.tenantId ?? fresh.tenant?.id,
+        tenant: fresh.tenant,
+      };
+      await secureStorage.setObject(STORAGE_KEYS.USER_DATA, user);
+      return { success: true, data: user };
+    } catch (error) {
+      return {
+        success: false,
+        error: getErrorMessage(error),
+        code: 'REFRESH_FAILED',
+      };
     }
   },
 
