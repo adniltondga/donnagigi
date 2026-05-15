@@ -4,6 +4,7 @@ import { getMLIntegrationForTenant } from '@/lib/ml';
 import { getMPIntegrationForTenant } from '@/lib/mp';
 import { formatVariationLabel } from '@/lib/ml-format';
 import { resolveCostsBatch, costKey } from '@/lib/cost-resolver';
+import { normalizePackShipping } from '@/lib/ml-pack-shipping';
 import { NextRequest, NextResponse } from 'next/server';
 
 interface MLOrder {
@@ -371,6 +372,19 @@ Bruto: R$ ${order.total_amount.toFixed(2)} | Taxas: ${taxBreakdown} (Total: R$ $
         },
         include: { supplier: true },
       });
+
+      // Pack: reconcilia o frete entre as bills do pack (vide ml-order-sync.ts).
+      // Idempotente e sem efeito em venda avulsa (sem pack_id).
+      if (order.pack_id) {
+        try {
+          await normalizePackShipping({ tenantId, mlPackId: String(order.pack_id) });
+        } catch (err) {
+          console.error(
+            `[sync-orders] normalizePackShipping falhou para pack ${order.pack_id}:`,
+            err,
+          );
+        }
+      }
 
       created++;
       createdBills.push(saleBill);

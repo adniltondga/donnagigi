@@ -12,14 +12,30 @@ import { ProductLabel } from '@/components/ProductLabel';
 import { parseSaleDescription } from '@/lib/ml-format';
 import { PeriodFilter, resolvePreset, type PeriodPreset } from '@/components/admin/PeriodFilter';
 import { SummaryCard } from '@/components/ui/summary-card';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { computeSaleNumbers, type SaleBillLike, type SaleComputed } from '@/lib/sale-notes';
 
 /**
- * Rateia o frete entre as bills do mesmo pack pro-rata por bruto, só pra
- * exibição. O dado canônico continua com a anchor levando o frete inteiro
- * (ver backfill-pack-shipping) — agregadores que somam por bill não duplicam.
- * Aqui dividimos pra que cada item do pack mostre uma "Taxa de envio" justa
- * e um lucro proporcional ao seu bruto.
+ * Reparte frete, taxa de venda e estorno entre as bills do pack pra exibição,
+ * espelhando o que o ML mostra no painel "Detalhe do recebimento":
+ *
+ *  - **Taxa de venda**: usa a **taxa nominal** (maior `saleFee/bruto` observado
+ *    no pack) e aplica em todos. Necessário porque o ML às vezes consolida o
+ *    bônus de envio dentro do `sale_fee` de uma das bills (ex: 10,26 → 7,97),
+ *    o que assimetria. Exibindo a nominal, as bills ficam consistentes e o
+ *    estorno aparece como linha separada (igual ML mostra "Tarifa total" +
+ *    "Estorno" embaixo).
+ *  - **Frete**: rateado por bruto (item mais caro absorve mais frete).
+ *  - **Estorno** (crédito ML): dividido igual por produto, refletindo a linha
+ *    "Descontos e bônus" que o ML repete por item na breakdown.
+ *
+ * Estorno do pack = soma(amount) − (soma(bruto) − soma(saleFee_nominal) − envio).
+ * Captura tanto o bônus que ainda veio embutido em `amount` quanto o que já
+ * foi consolidado dentro de `sale_fee` de uma bill.
+ *
+ * Dado canônico continua com a anchor levando o frete inteiro nas notes (ver
+ * `ml-pack-shipping`) e o `bill.amount` per-pedido cru do MP — agregadores que
+ * somam por bill (DRE, v2) não passam por aqui.
  */
 function computeBillInPack(bill: SaleBillLike, packBills: SaleBillLike[]): SaleComputed {
   const billRaw = computeSaleNumbers(bill);
@@ -27,23 +43,49 @@ function computeBillInPack(bill: SaleBillLike, packBills: SaleBillLike[]): SaleC
     (acc, x) => {
       const sx = computeSaleNumbers(x);
       acc.bruto += sx.bruto;
+      acc.taxaVendaActual += sx.taxaVenda;
       acc.envio += sx.envio;
       acc.shippingBonus += sx.shippingBonus;
+      acc.amount += x.amount;
       return acc;
     },
-    { bruto: 0, envio: 0, shippingBonus: 0 },
+    { bruto: 0, taxaVendaActual: 0, envio: 0, shippingBonus: 0, amount: 0 },
   );
-  const ratio = sums.bruto > 0 ? billRaw.bruto / sums.bruto : 1 / packBills.length;
-  const envio = sums.envio * ratio;
-  const shippingBonus = sums.shippingBonus * ratio;
-  const totalVenda = billRaw.bruto - billRaw.taxaVenda - envio;
-  const totalTaxas = billRaw.taxaVenda + envio + billRaw.custo;
-  const liquido = billRaw.bruto - totalTaxas - (bill.refundedAmount ?? 0);
+
+  // Taxa nominal = maior saleFee/bruto rate observado entre as bills do pack.
+  // Resiste a consolidação de bônus em qualquer bill (que reduz o sale_fee
+  // real abaixo do nominal). Aplicado homogeneamente para exibição.
+  const rates = packBills.map((x) => {
+    const sx = computeSaleNumbers(x);
+    return sx.bruto > 0 ? sx.taxaVenda / sx.bruto : 0;
+  });
+  const nominalRate = Math.max(0, ...rates);
+  const taxaVenda = billRaw.bruto * nominalRate;
+  const nominalSumTaxaVenda = sums.bruto * nominalRate;
+
+  const ratioBruto = sums.bruto > 0 ? billRaw.bruto / sums.bruto : 1 / packBills.length;
+  const envio = sums.envio * ratioBruto;
+  const shippingBonus = sums.shippingBonus * ratioBruto;
+
+  const expectedPackNet = sums.bruto - nominalSumTaxaVenda - sums.envio;
+  const packEstornoRaw = sums.amount - expectedPackNet;
+  // Cap apertado: estorno = envio_total (max refund de frete) + bônus de
+  // tarifa consolidado (nominal − actual). Acima disso é bug de sync.
+  const consolidatedTaxaBonus = Math.max(0, nominalSumTaxaVenda - sums.taxaVendaActual);
+  const packCap = sums.envio + consolidatedTaxaBonus + 0.5;
+  const packEstorno =
+    packEstornoRaw > 0.5 && packEstornoRaw <= packCap ? packEstornoRaw : 0;
+  const estorno = packEstorno / packBills.length;
+
+  const totalVenda = billRaw.bruto - taxaVenda - envio;
+  const totalTaxas = taxaVenda + envio + billRaw.custo;
+  const liquido = billRaw.bruto - totalTaxas + estorno - (bill.refundedAmount ?? 0);
   return {
     bruto: billRaw.bruto,
-    taxaVenda: billRaw.taxaVenda,
+    taxaVenda,
     envio,
     shippingBonus,
+    estorno,
     custo: billRaw.custo,
     totalVenda,
     totalTaxas,
@@ -793,31 +835,60 @@ export default function VendasMLPage() {
                       <span className="font-medium">💵 Bruto:</span>
                       <span className="font-semibold">{formatCurrency(s.bruto)}</span>
                     </div>
-                    <div className="flex justify-between text-amber-700">
-                      <span>  • Taxa de venda:</span>
-                      <span>{formatCurrency(s.taxaVenda)}</span>
-                    </div>
-                    <div
-                      className="text-[10px] text-muted-foreground italic pl-4 -mt-1"
-                      title="A API do ML consolida o estorno do bônus de envio dentro da taxa de venda após a liquidação. Se houve bônus, ele já foi descontado deste valor."
-                    >
-                      ℹ️ bônus de envio (quando houver) já está incluso
-                    </div>
-                    <div className="flex justify-between text-amber-700">
-                      <span>  • Taxa de envio{isInPack ? ' (rateada)' : ''}:</span>
-                      <span>{formatCurrency(s.envio + s.shippingBonus)}</span>
-                    </div>
-                    {s.shippingBonus > 0 && (
-                      <div className="flex justify-between text-emerald-600 text-xs pl-6">
-                        <span>↳ Bônus envio ML:</span>
-                        <span>-{formatCurrency(s.shippingBonus)}</span>
+                    <TooltipProvider delayDuration={150}>
+                      <div className="flex justify-between text-amber-700">
+                        <span className="flex items-center gap-1">
+                          {'  • Taxa de venda'}
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <button
+                                type="button"
+                                className="text-muted-foreground hover:text-foreground"
+                                aria-label="Sobre a taxa de venda"
+                              >
+                                <Info className="w-3.5 h-3.5" />
+                              </button>
+                            </TooltipTrigger>
+                            <TooltipContent className="text-xs max-w-xs p-3 leading-snug">
+                              A API do ML consolida o estorno do bônus de envio dentro da taxa de venda após a liquidação.
+                              Se houve bônus, ele já foi descontado deste valor.
+                            </TooltipContent>
+                          </Tooltip>
+                          :
+                        </span>
+                        <span>{formatCurrency(s.taxaVenda)}</span>
                       </div>
-                    )}
-                    {isInPack && (
-                      <div className="text-xs text-muted-foreground -mt-1 pl-4">
-                        Frete único do pack rateado entre {packBills!.length} produtos por bruto
+                      <div className="flex justify-between text-amber-700">
+                        <span className="flex items-center gap-1">
+                          {`  • Taxa de envio${isInPack ? ' (rateada)' : ''}`}
+                          {isInPack && (
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <button
+                                  type="button"
+                                  className="text-muted-foreground hover:text-foreground"
+                                  aria-label="Sobre o rateio de frete"
+                                >
+                                  <Info className="w-3.5 h-3.5" />
+                                </button>
+                              </TooltipTrigger>
+                              <TooltipContent className="text-xs max-w-xs p-3 leading-snug">
+                                Frete único do pack rateado entre {packBills!.length} produtos por bruto.
+                                O ML cobra um frete por pack; aqui dividimos proporcional ao valor de cada item.
+                              </TooltipContent>
+                            </Tooltip>
+                          )}
+                          :
+                        </span>
+                        <span>{formatCurrency(s.envio + s.shippingBonus)}</span>
                       </div>
-                    )}
+                      {s.shippingBonus > 0 && (
+                        <div className="flex justify-between text-emerald-600 text-xs pl-6">
+                          <span>↳ Bônus envio ML:</span>
+                          <span>-{formatCurrency(s.shippingBonus)}</span>
+                        </div>
+                      )}
+                    </TooltipProvider>
                     {s.custo > 0 && (
                       <div className="flex justify-between text-rose-600">
                         <span>  • 💰 Custo mercadoria:</span>
@@ -828,9 +899,38 @@ export default function VendasMLPage() {
                       <span className="font-medium">Total taxas + custo:</span>
                       <span className="font-semibold text-red-600">{formatCurrency(s.totalTaxas)}</span>
                     </div>
+                    {s.estorno > 0 && (
+                      <TooltipProvider delayDuration={150}>
+                        <div className="flex justify-between text-emerald-600">
+                          <span className="flex items-center gap-1">
+                            {'  • Estorno ML'}
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <button
+                                  type="button"
+                                  className="text-muted-foreground hover:text-foreground"
+                                  aria-label="Sobre o estorno"
+                                >
+                                  <Info className="w-3.5 h-3.5" />
+                                </button>
+                              </TooltipTrigger>
+                              <TooltipContent className="text-xs max-w-xs p-3 leading-snug">
+                                Crédito que o ML aplica no pagamento — estorno do bônus de envio
+                                ou desconto promocional. Vem embutido no valor recebido do MP
+                                {isInPack
+                                  ? ` como linha por-produto na breakdown ("Descontos e bônus" repete por item), então é divididido igual entre os ${packBills!.length} produtos do pack.`
+                                  : '.'}
+                              </TooltipContent>
+                            </Tooltip>
+                            :
+                          </span>
+                          <span>+{formatCurrency(s.estorno)}</span>
+                        </div>
+                      </TooltipProvider>
+                    )}
                     {b.refundedAmount > 0 && (
                       <div className="flex justify-between text-orange-600">
-                        <span>  • Estorno ML:</span>
+                        <span>  • Devolução / refund:</span>
                         <span>-{formatCurrency(b.refundedAmount)}</span>
                       </div>
                     )}

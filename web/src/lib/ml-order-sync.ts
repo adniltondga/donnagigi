@@ -5,6 +5,7 @@ import { createNotification } from "@/lib/notifications"
 import { captureError } from "@/lib/sentry"
 import { sendPushToTenant } from "@/lib/push"
 import { loggedFetch } from "@/lib/api-log"
+import { normalizePackShipping } from "@/lib/ml-pack-shipping"
 
 interface MLOrderItem {
   item: {
@@ -306,6 +307,21 @@ Bruto: R$ ${order.total_amount.toFixed(2)} | Taxas: ${taxBreakdown} (Total: R$ $
           mlPaymentId: null,
         },
       })
+    }
+
+    // Pack: reconcilia o frete entre todas as bills do pack (race-safe).
+    // Se 2 webhooks concorrentes viram âncora ao mesmo tempo, ambos gravam o
+    // frete inteiro; essa chamada idempotente força o modelo âncora correto.
+    // Sem efeito em venda avulsa (sem pack_id).
+    if (order.pack_id) {
+      try {
+        await normalizePackShipping({ tenantId, mlPackId: String(order.pack_id) })
+      } catch (err) {
+        console.error(
+          `[ml-order-sync] normalizePackShipping falhou para pack ${order.pack_id}:`,
+          err,
+        )
+      }
     }
 
     if (!isCancelled) {
