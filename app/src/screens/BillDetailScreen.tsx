@@ -181,8 +181,13 @@ export default function BillDetailScreen({ billId }: Props) {
               </View>
             </View>
             <Text style={[styles.heroAmount, { color: colors.textPrimary }]}>
-              {formatCurrency(bill.amount)}
+              {formatCurrency(isVenda && sale ? sale.bruto : bill.amount)}
             </Text>
+            {isVenda && sale ? (
+              <Text style={[styles.heroCaption, { color: colors.textMuted }]}>
+                Bruto · líquido {formatCurrency(sale.liquido)}
+              </Text>
+            ) : null}
           </View>
 
           {/* ── Descrição (ou Produto, quando venda) ── */}
@@ -678,6 +683,7 @@ const styles = StyleSheet.create({
   },
   heroType: { fontSize: FONT_SIZE.xs, fontWeight: '500' },
   heroAmount: { fontSize: FONT_SIZE.xxl, fontWeight: '700' },
+  heroCaption: { fontSize: FONT_SIZE.xs, fontWeight: '500' },
 
   // Badge
   badge: {

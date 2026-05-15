@@ -1,4 +1,4 @@
-import { cookies } from 'next/headers';
+import { cookies, headers } from 'next/headers';
 import { jwtVerify } from 'jose';
 import type { UserRole } from '@prisma/client';
 import prisma from './prisma';
@@ -6,6 +6,13 @@ import prisma from './prisma';
 const JWT_SECRET = new TextEncoder().encode(
   process.env.JWT_SECRET || 'seu_jwt_secret_super_seguro'
 );
+
+function readBearerToken(): string | null {
+  const auth = headers().get('authorization') || headers().get('Authorization');
+  if (!auth) return null;
+  const m = /^Bearer\s+(.+)$/i.exec(auth.trim());
+  return m ? m[1].trim() : null;
+}
 
 export interface SessionPayload {
   id: string;
@@ -19,7 +26,8 @@ export interface SessionPayload {
 }
 
 /**
- * Lê o JWT do cookie `token` e retorna o payload.
+ * Lê o JWT do cookie `token` (web) ou do header `Authorization: Bearer`
+ * (mobile) e retorna o payload.
  * Retorna null se não logado, token inválido, ou a Session foi revogada/expirou.
  *
  * Tokens antigos (pré-roles) não têm `role` — nesse caso consultamos
@@ -31,7 +39,7 @@ export interface SessionPayload {
  * de getSession, que rejeita por falta de jti.
  */
 export async function getSession(): Promise<SessionPayload | null> {
-  const token = cookies().get('token')?.value;
+  const token = cookies().get('token')?.value || readBearerToken();
   if (!token) return null;
 
   try {

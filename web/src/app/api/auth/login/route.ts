@@ -94,6 +94,8 @@ export async function POST(request: NextRequest) {
         isStaff: user.isStaff,
       },
       tenant: user.tenant,
+      // Retornado também no body pra mobile (Bearer). Web ignora e usa o cookie.
+      token,
     })
     setAuthCookie(response, token)
     return response
