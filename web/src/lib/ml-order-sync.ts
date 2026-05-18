@@ -329,7 +329,7 @@ Bruto: R$ ${order.total_amount.toFixed(2)} | Taxas: ${taxBreakdown} (Total: R$ $
         style: "currency",
         currency: "BRL",
       }).format
-      const title = `Venda nova: ${formatBRL(order.total_amount)}`
+      const title = `💜 Venda nova: ${formatBRL(order.total_amount)}`
       const body = `${displayTitle} · ${order.buyer.nickname}`
       const link = `/admin/relatorios/vendas-ml`
 
