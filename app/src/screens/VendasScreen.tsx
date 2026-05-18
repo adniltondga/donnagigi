@@ -332,6 +332,21 @@ function rowTitle(bill: Bill): string {
   return title || bill.description;
 }
 
+function CancelBadge({ colors }: { colors: ThemeColors }) {
+  return (
+    <View
+      style={[
+        styles.cancelBadge,
+        { backgroundColor: colors.error + '22', borderColor: colors.error + '55' },
+      ]}
+    >
+      <Text style={[styles.cancelBadgeText, { color: colors.error }]}>
+        Cancelado
+      </Text>
+    </View>
+  );
+}
+
 function SingleRow({
   bill,
   onPress,
@@ -343,6 +358,7 @@ function SingleRow({
 }) {
   const s = computeSaleNumbers(bill);
   const time = timeOf(bill.paidDate);
+  const cancelled = bill.status === 'cancelled';
   return (
     <TouchableOpacity
       activeOpacity={0.7}
@@ -351,14 +367,25 @@ function SingleRow({
         styles.row,
         {
           backgroundColor: colors.backgroundCard,
-          borderColor: colors.border,
+          borderColor: cancelled ? colors.error + '55' : colors.border,
         },
       ]}
     >
       <View
-        style={[styles.iconWrap, { backgroundColor: colors.success + '1F' }]}
+        style={[
+          styles.iconWrap,
+          {
+            backgroundColor: cancelled
+              ? colors.error + '1F'
+              : colors.success + '1F',
+          },
+        ]}
       >
-        <Ionicons name="cart-outline" size={18} color={colors.success} />
+        <Ionicons
+          name={cancelled ? 'close-circle-outline' : 'cart-outline'}
+          size={18}
+          color={cancelled ? colors.error : colors.success}
+        />
       </View>
       <View style={styles.rowBody}>
         <Text
@@ -367,19 +394,34 @@ function SingleRow({
         >
           {rowTitle(bill)}
         </Text>
-        {time ? (
-          <Text style={[styles.rowMeta, { color: colors.textMuted }]}>
-            {time}
-          </Text>
-        ) : null}
+        <View style={styles.rowMetaLine}>
+          {time ? (
+            <Text style={[styles.rowMeta, { color: colors.textMuted }]}>
+              {time}
+            </Text>
+          ) : null}
+          {cancelled ? <CancelBadge colors={colors} /> : null}
+        </View>
       </View>
       <View style={styles.rowRight}>
-        <Text style={[styles.rowAmount, { color: colors.textPrimary }]}>
+        <Text
+          style={[
+            styles.rowAmount,
+            {
+              color: cancelled ? colors.textMuted : colors.textPrimary,
+              textDecorationLine: cancelled ? 'line-through' : 'none',
+            },
+          ]}
+        >
           {formatCurrency(s.bruto)}
         </Text>
-        <Text style={[styles.rowLucro, { color: lucroColor(s.lucro, colors) }]}>
-          {lucroLabel(s.lucro)}
-        </Text>
+        {!cancelled ? (
+          <Text
+            style={[styles.rowLucro, { color: lucroColor(s.lucro, colors) }]}
+          >
+            {lucroLabel(s.lucro)}
+          </Text>
+        ) : null}
       </View>
     </TouchableOpacity>
   );
@@ -411,6 +453,7 @@ function PackHeaderRow({
   );
   const time = timeOf(bills[0]?.paidDate);
   const packShort = packId.length > 6 ? `#…${packId.slice(-6)}` : `#${packId}`;
+  const allCancelled = bills.every((b) => b.status === 'cancelled');
   return (
     <TouchableOpacity
       activeOpacity={0.7}
@@ -419,17 +462,24 @@ function PackHeaderRow({
         styles.row,
         {
           backgroundColor: colors.backgroundCard,
-          borderColor: colors.primary + '40',
+          borderColor: allCancelled ? colors.error + '55' : colors.primary + '40',
         },
       ]}
     >
       <View
-        style={[styles.iconWrap, { backgroundColor: colors.primary + '1F' }]}
+        style={[
+          styles.iconWrap,
+          {
+            backgroundColor: allCancelled
+              ? colors.error + '1F'
+              : colors.primary + '1F',
+          },
+        ]}
       >
         <Ionicons
           name={expanded ? 'chevron-down' : 'chevron-forward'}
           size={18}
-          color={colors.primary}
+          color={allCancelled ? colors.error : colors.primary}
         />
       </View>
       <View style={styles.rowBody}>
@@ -439,20 +489,36 @@ function PackHeaderRow({
         >
           Pack com {bills.length} produtos
         </Text>
-        <Text style={[styles.rowMeta, { color: colors.textMuted }]}>
-          {time ? `${time} • ` : ''}
-          {packShort}
-        </Text>
+        <View style={styles.rowMetaLine}>
+          <Text style={[styles.rowMeta, { color: colors.textMuted }]}>
+            {time ? `${time} • ` : ''}
+            {packShort}
+          </Text>
+          {allCancelled ? <CancelBadge colors={colors} /> : null}
+        </View>
       </View>
       <View style={styles.rowRight}>
-        <Text style={[styles.rowAmount, { color: colors.textPrimary }]}>
+        <Text
+          style={[
+            styles.rowAmount,
+            {
+              color: allCancelled ? colors.textMuted : colors.textPrimary,
+              textDecorationLine: allCancelled ? 'line-through' : 'none',
+            },
+          ]}
+        >
           {formatCurrency(totals.bruto)}
         </Text>
-        <Text
-          style={[styles.rowLucro, { color: lucroColor(totals.lucro, colors) }]}
-        >
-          {lucroLabel(totals.lucro)}
-        </Text>
+        {!allCancelled ? (
+          <Text
+            style={[
+              styles.rowLucro,
+              { color: lucroColor(totals.lucro, colors) },
+            ]}
+          >
+            {lucroLabel(totals.lucro)}
+          </Text>
+        ) : null}
       </View>
     </TouchableOpacity>
   );
@@ -470,6 +536,7 @@ function PackChildRow({
   colors: ThemeColors;
 }) {
   const s = computeBillInPack(bill, packBills);
+  const cancelled = bill.status === 'cancelled';
   return (
     <TouchableOpacity
       activeOpacity={0.7}
@@ -478,11 +545,20 @@ function PackChildRow({
         styles.childRow,
         {
           backgroundColor: colors.backgroundCard,
-          borderColor: colors.border,
+          borderColor: cancelled ? colors.error + '55' : colors.border,
         },
       ]}
     >
-      <View style={[styles.childBar, { backgroundColor: colors.primary + '60' }]} />
+      <View
+        style={[
+          styles.childBar,
+          {
+            backgroundColor: cancelled
+              ? colors.error + '80'
+              : colors.primary + '60',
+          },
+        ]}
+      />
       <View style={styles.rowBody}>
         <Text
           style={[styles.rowDesc, { color: colors.textPrimary }]}
@@ -490,17 +566,32 @@ function PackChildRow({
         >
           {rowTitle(bill)}
         </Text>
-        <Text style={[styles.rowMeta, { color: colors.textMuted }]}>
-          frete rateado {formatCurrency(s.envio)}
-        </Text>
+        <View style={styles.rowMetaLine}>
+          <Text style={[styles.rowMeta, { color: colors.textMuted }]}>
+            frete rateado {formatCurrency(s.envio)}
+          </Text>
+          {cancelled ? <CancelBadge colors={colors} /> : null}
+        </View>
       </View>
       <View style={styles.rowRight}>
-        <Text style={[styles.rowAmount, { color: colors.textPrimary }]}>
+        <Text
+          style={[
+            styles.rowAmount,
+            {
+              color: cancelled ? colors.textMuted : colors.textPrimary,
+              textDecorationLine: cancelled ? 'line-through' : 'none',
+            },
+          ]}
+        >
           {formatCurrency(s.bruto)}
         </Text>
-        <Text style={[styles.rowLucro, { color: lucroColor(s.lucro, colors) }]}>
-          {lucroLabel(s.lucro)}
-        </Text>
+        {!cancelled ? (
+          <Text
+            style={[styles.rowLucro, { color: lucroColor(s.lucro, colors) }]}
+          >
+            {lucroLabel(s.lucro)}
+          </Text>
+        ) : null}
       </View>
     </TouchableOpacity>
   );
@@ -567,7 +658,15 @@ const styles = StyleSheet.create({
   rowBody: { flex: 1, gap: 2 },
   rowDesc: { fontSize: FONT_SIZE.sm, fontWeight: '600', lineHeight: 18 },
   rowMeta: { fontSize: FONT_SIZE.xs },
+  rowMetaLine: { flexDirection: 'row', alignItems: 'center', gap: SPACING.sm },
   rowRight: { alignItems: 'flex-end', gap: 2, minWidth: 90 },
   rowAmount: { fontSize: FONT_SIZE.sm, fontWeight: '700' },
   rowLucro: { fontSize: FONT_SIZE.xs, fontWeight: '600' },
+  cancelBadge: {
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    borderRadius: BORDER_RADIUS.sm,
+    borderWidth: 1,
+  },
+  cancelBadgeText: { fontSize: 10, fontWeight: '700', letterSpacing: 0.3 },
 });
