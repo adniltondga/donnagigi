@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
+  Alert,
   View,
   Text,
   StyleSheet,
@@ -249,6 +250,66 @@ export default function HomeScreen() {
               </View>
             </SlideUpView>
 
+            {summary.mpDisputed ? (
+              <SlideUpView delay={175}>
+                <TouchableOpacity
+                  activeOpacity={0.7}
+                  onPress={() =>
+                    Alert.alert(
+                      'Reclamações no Mercado Pago',
+                      `${summary.mpDisputed!.count} ${
+                        summary.mpDisputed!.count === 1
+                          ? 'pagamento está retido'
+                          : 'pagamentos estão retidos'
+                      } no Mercado Pago, somando ${formatCurrency(
+                        summary.mpDisputed!.total,
+                      )}.\n\nResponda no app do Mercado Pago pra destravar — se a reclamação for resolvida em favor do comprador, vira devolução.`,
+                      [{ text: 'OK' }],
+                    )
+                  }
+                  style={[
+                    styles.disputeCard,
+                    {
+                      backgroundColor: colors.backgroundCard,
+                      borderColor: colors.error + '80',
+                    },
+                  ]}
+                >
+                  <View
+                    style={[
+                      styles.disputeIcon,
+                      { backgroundColor: colors.error + '1F' },
+                    ]}
+                  >
+                    <Ionicons
+                      name="alert-circle"
+                      size={22}
+                      color={colors.error}
+                    />
+                  </View>
+                  <View style={styles.disputeBody}>
+                    <Text
+                      style={[styles.disputeTitle, dynamicStyles.title]}
+                      numberOfLines={1}
+                    >
+                      {summary.mpDisputed.count}{' '}
+                      {summary.mpDisputed.count === 1
+                        ? 'reclamação aberta'
+                        : 'reclamações abertas'}
+                    </Text>
+                    <Text style={[styles.disputeSub, dynamicStyles.muted]}>
+                      Mercado Pago retendo pagamentos
+                    </Text>
+                  </View>
+                  <Text
+                    style={[styles.disputeAmount, { color: colors.error }]}
+                  >
+                    {formatCurrency(summary.mpDisputed.total)}
+                  </Text>
+                </TouchableOpacity>
+              </SlideUpView>
+            ) : null}
+
             <SlideUpView delay={200}>
               <TouchableOpacity
                 onPress={() => router.push('/contas' as never)}
@@ -453,6 +514,26 @@ const styles = StyleSheet.create({
     padding: SPACING.md,
     marginBottom: SPACING.md,
   },
+  disputeCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.md,
+    borderWidth: 1,
+    borderRadius: BORDER_RADIUS.lg,
+    padding: SPACING.md,
+    marginBottom: SPACING.md,
+  },
+  disputeIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  disputeBody: { flex: 1 },
+  disputeTitle: { fontSize: FONT_SIZE.sm, fontWeight: '700' },
+  disputeSub: { fontSize: FONT_SIZE.xs, marginTop: 2 },
+  disputeAmount: { fontSize: FONT_SIZE.md, fontWeight: '700' },
   warningText: { fontSize: FONT_SIZE.xs, flex: 1, lineHeight: 18 },
   empty: { fontSize: FONT_SIZE.sm, textAlign: 'center', padding: SPACING.md },
   footer: { alignItems: 'center', paddingVertical: SPACING.md },

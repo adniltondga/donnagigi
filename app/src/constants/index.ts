@@ -38,6 +38,9 @@ export const API_CONFIG = {
     FINANCEIRO: {
       CASH_POOLS: '/api/financeiro/cash-pools',
     },
+    MP: {
+      SNAPSHOT: '/api/mp/snapshot',
+    },
     NOTIFICATIONS: {
       LIST: '/api/notifications',
       READ_ALL: '/api/notifications/read-all',

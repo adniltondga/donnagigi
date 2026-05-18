@@ -4,6 +4,7 @@ import type {
   Bill,
   CashPools,
   DashboardSummary,
+  MPSnapshot,
   Paginated,
   RelatorioV2Response,
 } from '@/types';
@@ -33,7 +34,7 @@ export const dashboardService = {
     const hoje = todayBR();
     const em7dias = addDaysBR(7);
 
-    const [kpisRes, contasRes, caixaRes] = await Promise.all([
+    const [kpisRes, contasRes, caixaRes, mpRes] = await Promise.all([
       apiCall<RelatorioV2Response>(() =>
         apiClient.get(API_CONFIG.ENDPOINTS.RELATORIOS.V2, {
           params: { from: hoje, to: hoje },
@@ -55,6 +56,9 @@ export const dashboardService = {
       apiCall<CashPools>(() =>
         apiClient.get(API_CONFIG.ENDPOINTS.FINANCEIRO.CASH_POOLS),
       ),
+      apiCall<MPSnapshot>(() =>
+        apiClient.get(API_CONFIG.ENDPOINTS.MP.SNAPSHOT),
+      ),
     ]);
 
     if (!kpisRes.success) return { success: false, error: kpisRes.error };
@@ -74,12 +78,21 @@ export const dashboardService = {
       bills: contasBills,
     };
 
+    const mpDisputed =
+      mpRes.success && mpRes.data.configured && mpRes.data.disputedCount > 0
+        ? {
+            count: mpRes.data.disputedCount,
+            total: mpRes.data.disputedTotal,
+          }
+        : null;
+
     return {
       success: true,
       data: {
         vendasHoje,
         contasVencendo,
         caixa: caixaRes.success ? caixaRes.data : null,
+        mpDisputed,
       },
     };
   },

@@ -191,6 +191,13 @@ export interface RelatorioV2Response {
   topPorBruto: Array<RelatorioTopProduto>;
 }
 
+export interface MPSnapshot {
+  configured: boolean;
+  disputedCount: number;
+  disputedTotal: number;
+  cachedSyncedAt: string | null;
+}
+
 export interface DashboardSummary {
   vendasHoje: {
     pedidos: number;
@@ -199,6 +206,7 @@ export interface DashboardSummary {
   };
   contasVencendo: { total: number; count: number; bills: Bill[] };
   caixa: CashPools | null;
+  mpDisputed: { count: number; total: number } | null;
 }
 
 export type NotificationType = 'sale' | 'refund' | 'mp_release' | 'system';

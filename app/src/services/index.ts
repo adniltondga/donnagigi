@@ -10,3 +10,4 @@ export { productsService } from './productsService';
 export { mlAdsService } from './mlAdsService';
 export { relatoriosService } from './relatoriosService';
 export { waitlistService } from './waitlistService';
+export { mpService } from './mpService';
