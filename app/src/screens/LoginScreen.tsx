@@ -13,7 +13,7 @@ import { StatusBar } from 'expo-status-bar';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { Input, Button, Checkbox, FadeInView, SlideUpView, Logo } from '@/components';
+import { Input, Button, Checkbox, FadeInView, SlideUpView, Logo, AppFooterVersion } from '@/components';
 import { useAuth, useTheme } from '@/contexts';
 import { biometricService } from '@/services';
 import { secureStorage } from '@/utils/storage';
@@ -411,9 +411,9 @@ export default function LoginScreen() {
           </SlideUpView>
 
           <FadeInView delay={400} style={styles.footerContainer}>
-            <Text style={[styles.footerText, dynamicStyles.footerText]}>
-              AgLivre • v0.1.0
-            </Text>
+            <AppFooterVersion
+              style={[styles.footerText, dynamicStyles.footerText]}
+            />
           </FadeInView>
         </ScrollView>
       </KeyboardAvoidingView>

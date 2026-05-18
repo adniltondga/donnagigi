@@ -5,3 +5,4 @@ export { Checkbox } from './Checkbox';
 export { Logo } from './Logo';
 export { FadeInView, SlideUpView } from './Animated';
 export { ConfirmDialog } from './ConfirmDialog';
+export { AppFooterVersion } from './AppFooterVersion';

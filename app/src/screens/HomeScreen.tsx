@@ -13,7 +13,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useAuth, useTheme } from '@/contexts';
-import { FadeInView, SlideUpView, Logo } from '@/components';
+import { FadeInView, SlideUpView, Logo, AppFooterVersion } from '@/components';
 import { SPACING, COLORS, FONT_SIZE, BORDER_RADIUS } from '@/constants';
 import { toast } from '@/utils/toast';
 import { formatCurrency, formatDate } from '@/utils/format';
@@ -337,9 +337,7 @@ export default function HomeScreen() {
       </ScrollView>
 
       <FadeInView delay={500} style={styles.footer}>
-        <Text style={[styles.footerText, dynamicStyles.muted]}>
-          AgLivre • v0.1.0
-        </Text>
+        <AppFooterVersion style={[styles.footerText, dynamicStyles.muted]} />
       </FadeInView>
     </SafeAreaView>
   );
