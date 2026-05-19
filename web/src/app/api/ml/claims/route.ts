@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getTenantIdOrDefault } from '@/lib/tenant';
 import { getMLIntegrationForTenant } from '@/lib/ml';
-import { listClaims, MLClaimsError } from '@/lib/ml-claims';
+import { listClaims, listClaimsEnriched, MLClaimsError } from '@/lib/ml-claims';
 
 export const dynamic = 'force-dynamic';
 
@@ -26,8 +26,11 @@ export async function GET(req: NextRequest) {
     const status = sp.get('status') === 'closed' ? 'closed' : 'opened';
     const limit = Math.min(Number(sp.get('limit') || 50), 100);
     const offset = Math.max(Number(sp.get('offset') || 0), 0);
+    const enrich = sp.get('enrich') === 'last_message';
 
-    const result = await listClaims(integration, { status, limit, offset });
+    const result = enrich
+      ? await listClaimsEnriched(integration, { status, limit, offset })
+      : await listClaims(integration, { status, limit, offset });
     return NextResponse.json(result);
   } catch (err) {
     if (err instanceof MLClaimsError) {

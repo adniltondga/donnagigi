@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -68,6 +68,7 @@ export default function ReclamacoesListScreen() {
     const res = await mlClaimsService.list({
       status: 'opened',
       limit: PAGE_SIZE,
+      enrich: true,
     });
     if (res.success) {
       setItems(res.data.data);
@@ -76,6 +77,26 @@ export default function ReclamacoesListScreen() {
       toast.error('Erro ao carregar reclamações', res.error);
     }
   }, []);
+
+  // "Aguardando você" no topo; depois ordena por última atividade desc.
+  const sorted = useMemo(() => {
+    const copy = [...items];
+    copy.sort((a, b) => {
+      const aNeed = a.needsResponse ? 0 : 1;
+      const bNeed = b.needsResponse ? 0 : 1;
+      if (aNeed !== bNeed) return aNeed - bNeed;
+      const aT = a.lastMessageAt || a.lastUpdated;
+      const bT = b.lastMessageAt || b.lastUpdated;
+      return bT.localeCompare(aT);
+    });
+    return copy;
+  }, [items]);
+
+  const pending = useMemo(
+    () => items.filter((i) => i.needsResponse).length,
+    [items],
+  );
+  const answered = items.length - pending;
 
   useEffect(() => {
     (async () => {
@@ -117,7 +138,12 @@ export default function ReclamacoesListScreen() {
           </Text>
           {!loading && total > 0 ? (
             <Text style={[styles.headerSub, { color: colors.textMuted }]}>
-              {total} em aberto
+              <Text style={{ color: colors.error, fontWeight: '700' }}>
+                {pending} aguardando você
+              </Text>
+              {answered > 0 ? ` · ${answered} já respondida${
+                answered === 1 ? '' : 's'
+              }` : ''}
             </Text>
           ) : null}
         </View>
@@ -130,7 +156,7 @@ export default function ReclamacoesListScreen() {
         </View>
       ) : (
         <FlatList
-          data={items}
+          data={sorted}
           keyExtractor={(item) => String(item.id)}
           contentContainerStyle={styles.list}
           refreshControl={
@@ -152,59 +178,82 @@ export default function ReclamacoesListScreen() {
               </Text>
             </View>
           }
-          renderItem={({ item }) => (
-            <TouchableOpacity
-              activeOpacity={0.7}
-              onPress={() =>
-                router.push({
-                  pathname: '/reclamacoes/[id]',
-                  params: { id: String(item.id) },
-                } as never)
-              }
-              style={[
-                styles.row,
-                {
-                  backgroundColor: colors.backgroundCard,
-                  borderColor: colors.error + '55',
-                },
-              ]}
-            >
-              <View
+          renderItem={({ item }) => {
+            // needsResponse pode vir undefined em listagens sem enrich;
+            // nesses casos preferimos não suposicionar — tratamos como
+            // "já respondida" pra não gerar falso alarme.
+            const needs = item.needsResponse === true;
+            const accent = needs ? colors.error : colors.textMuted;
+            const lastWhen = item.lastMessageAt || item.lastUpdated;
+            return (
+              <TouchableOpacity
+                activeOpacity={0.7}
+                onPress={() =>
+                  router.push({
+                    pathname: '/reclamacoes/[id]',
+                    params: { id: String(item.id) },
+                  } as never)
+                }
                 style={[
-                  styles.iconWrap,
-                  { backgroundColor: colors.error + '1F' },
+                  styles.row,
+                  {
+                    backgroundColor: colors.backgroundCard,
+                    borderColor: needs ? colors.error + '55' : colors.border,
+                  },
                 ]}
               >
-                <Ionicons
-                  name="alert-circle-outline"
-                  size={20}
-                  color={colors.error}
-                />
-              </View>
-              <View style={styles.rowBody}>
-                <Text
-                  style={[styles.rowTitle, { color: colors.textPrimary }]}
-                  numberOfLines={1}
+                <View
+                  style={[styles.iconWrap, { backgroundColor: accent + '1F' }]}
                 >
-                  {typeLabel(item.type)} #{item.id}
-                </Text>
-                <Text style={[styles.rowMeta, { color: colors.textMuted }]}>
-                  {stageLabel(item.stage)} ·{' '}
-                  {formatDateTime(item.lastUpdated)}
-                </Text>
-                {item.reasonId ? (
+                  <Ionicons
+                    name={
+                      needs ? 'alert-circle-outline' : 'checkmark-done-outline'
+                    }
+                    size={20}
+                    color={accent}
+                  />
+                </View>
+                <View style={styles.rowBody}>
+                  <View style={styles.rowTitleLine}>
+                    <Text
+                      style={[styles.rowTitle, { color: colors.textPrimary }]}
+                      numberOfLines={1}
+                    >
+                      {typeLabel(item.type)} #{item.id}
+                    </Text>
+                    <View
+                      style={[
+                        styles.statusBadge,
+                        {
+                          backgroundColor: accent + '22',
+                          borderColor: accent + '55',
+                        },
+                      ]}
+                    >
+                      <Text
+                        style={[styles.statusBadgeText, { color: accent }]}
+                      >
+                        {needs ? 'Aguardando você' : 'Já respondida'}
+                      </Text>
+                    </View>
+                  </View>
                   <Text style={[styles.rowMeta, { color: colors.textMuted }]}>
-                    Motivo: {item.reasonId}
+                    {stageLabel(item.stage)} · {formatDateTime(lastWhen)}
                   </Text>
-                ) : null}
-              </View>
-              <Ionicons
-                name="chevron-forward"
-                size={18}
-                color={colors.textMuted}
-              />
-            </TouchableOpacity>
-          )}
+                  {item.reasonId ? (
+                    <Text style={[styles.rowMeta, { color: colors.textMuted }]}>
+                      Motivo: {item.reasonId}
+                    </Text>
+                  ) : null}
+                </View>
+                <Ionicons
+                  name="chevron-forward"
+                  size={18}
+                  color={colors.textMuted}
+                />
+              </TouchableOpacity>
+            );
+          }}
         />
       )}
     </SafeAreaView>
@@ -248,6 +297,18 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   rowBody: { flex: 1, gap: 2 },
-  rowTitle: { fontSize: FONT_SIZE.sm, fontWeight: '700' },
+  rowTitleLine: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.sm,
+  },
+  rowTitle: { fontSize: FONT_SIZE.sm, fontWeight: '700', flexShrink: 1 },
   rowMeta: { fontSize: FONT_SIZE.xs },
+  statusBadge: {
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    borderRadius: BORDER_RADIUS.sm,
+    borderWidth: 1,
+  },
+  statusBadgeText: { fontSize: 10, fontWeight: '700' },
 });

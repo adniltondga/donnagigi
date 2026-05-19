@@ -211,6 +211,10 @@ export interface MLClaimListItem {
   quantityType: string | null;
   dateCreated: string;
   lastUpdated: string;
+  // Presentes quando o backend é chamado com ?enrich=last_message.
+  lastMessageRole?: string | null;
+  lastMessageAt?: string | null;
+  needsResponse?: boolean;
 }
 
 export interface MLClaimDetail extends MLClaimListItem {

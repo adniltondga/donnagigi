@@ -10,12 +10,19 @@ type ListParams = {
   status?: 'opened' | 'closed';
   limit?: number;
   offset?: number;
+  /** Default true: o backend enriquece com lastMessageRole/needsResponse. */
+  enrich?: boolean;
 };
 
 export const mlClaimsService = {
-  list: (params: ListParams = {}) =>
+  list: ({ enrich = true, ...params }: ListParams = {}) =>
     apiCall<MLClaimsListResponse>(() =>
-      apiClient.get(API_CONFIG.ENDPOINTS.ML.CLAIMS_LIST, { params }),
+      apiClient.get(API_CONFIG.ENDPOINTS.ML.CLAIMS_LIST, {
+        params: {
+          ...params,
+          ...(enrich ? { enrich: 'last_message' } : {}),
+        },
+      }),
     ),
 
   detail: (id: string | number) =>

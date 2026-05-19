@@ -57,6 +57,8 @@ export const dashboardService = {
         apiClient.get(API_CONFIG.ENDPOINTS.FINANCEIRO.CASH_POOLS),
       ),
       apiCall<MLClaimsListResponse>(() =>
+        // Sem enrich aqui — só precisamos do paging.total. Enrich custaria
+        // N+1 requests ao ML pra um número que a gente vai jogar fora.
         apiClient.get(API_CONFIG.ENDPOINTS.ML.CLAIMS_LIST, {
           params: { status: 'opened', limit: 1 },
         }),

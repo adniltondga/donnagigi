@@ -176,8 +176,20 @@ export type ListClaimsParams = {
   offset?: number;
 };
 
-export type ListClaimsResponse = {
-  data: MLClaimListItem[];
+/** Item enriquecido com sinal de "bola na mão de quem". */
+export type MLClaimListItemEnriched = MLClaimListItem & {
+  /** Quem mandou a última mensagem da thread, ou null se sem mensagens. */
+  lastMessageRole: string | null;
+  lastMessageAt: string | null;
+  /**
+   * true quando a última mensagem NÃO foi do seller (respondent). Cobre
+   * tanto "comprador respondeu" quanto "ML te chamou" quanto "thread vazia".
+   */
+  needsResponse: boolean;
+};
+
+export type ListClaimsResponse<T extends MLClaimListItem = MLClaimListItem> = {
+  data: T[];
   paging: { total: number; offset: number; limit: number };
 };
 
@@ -201,6 +213,51 @@ export async function listClaims(
     data: raw.data.map(normalizeListItem),
     paging: raw.paging,
   };
+}
+
+/**
+ * Pega a thread de mensagens e devolve só o que precisamos pra sinalizar
+ * "aguardando você". Falha silenciosa: se uma mensagem específica não
+ * vier (claim recém aberta, rate limit, etc), retorna campos null em
+ * vez de derrubar a lista inteira.
+ */
+async function fetchLastMessageInfo(
+  integration: Integration,
+  claimId: number,
+): Promise<{ role: string | null; at: string | null }> {
+  try {
+    const msgs = await getClaimMessages(integration, claimId);
+    if (msgs.length === 0) return { role: null, at: null };
+    const last = msgs[msgs.length - 1];
+    return { role: last.senderRole, at: last.dateCreated ?? null };
+  } catch {
+    return { role: null, at: null };
+  }
+}
+
+/**
+ * Lista claims abertas e enriquece cada item com info da última mensagem.
+ * Faz N+1 requests (paralelo). Pra N≤50 isso é aceitável (~1-2s); pra
+ * N maior considerar cache em memória ou webhook do tópico `claims`.
+ */
+export async function listClaimsEnriched(
+  integration: Integration,
+  params: ListClaimsParams = {},
+): Promise<ListClaimsResponse<MLClaimListItemEnriched>> {
+  const base = await listClaims(integration, params);
+  const enriched = await Promise.all(
+    base.data.map(async (c) => {
+      const last = await fetchLastMessageInfo(integration, c.id);
+      const needsResponse = !last.role || last.role !== 'respondent';
+      return {
+        ...c,
+        lastMessageRole: last.role,
+        lastMessageAt: last.at,
+        needsResponse,
+      } satisfies MLClaimListItemEnriched;
+    }),
+  );
+  return { data: enriched, paging: base.paging };
 }
 
 export async function countOpenedClaims(
