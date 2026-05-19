@@ -4,7 +4,7 @@ import type {
   Bill,
   CashPools,
   DashboardSummary,
-  MPSnapshot,
+  MLClaimsListResponse,
   Paginated,
   RelatorioV2Response,
 } from '@/types';
@@ -34,7 +34,7 @@ export const dashboardService = {
     const hoje = todayBR();
     const em7dias = addDaysBR(7);
 
-    const [kpisRes, contasRes, caixaRes, mpRes] = await Promise.all([
+    const [kpisRes, contasRes, caixaRes, claimsRes] = await Promise.all([
       apiCall<RelatorioV2Response>(() =>
         apiClient.get(API_CONFIG.ENDPOINTS.RELATORIOS.V2, {
           params: { from: hoje, to: hoje },
@@ -56,8 +56,10 @@ export const dashboardService = {
       apiCall<CashPools>(() =>
         apiClient.get(API_CONFIG.ENDPOINTS.FINANCEIRO.CASH_POOLS),
       ),
-      apiCall<MPSnapshot>(() =>
-        apiClient.get(API_CONFIG.ENDPOINTS.MP.SNAPSHOT),
+      apiCall<MLClaimsListResponse>(() =>
+        apiClient.get(API_CONFIG.ENDPOINTS.ML.CLAIMS_LIST, {
+          params: { status: 'opened', limit: 1 },
+        }),
       ),
     ]);
 
@@ -78,12 +80,9 @@ export const dashboardService = {
       bills: contasBills,
     };
 
-    const mpDisputed =
-      mpRes.success && mpRes.data.configured && mpRes.data.disputedCount > 0
-        ? {
-            count: mpRes.data.disputedCount,
-            total: mpRes.data.disputedTotal,
-          }
+    const mlClaims =
+      claimsRes.success && claimsRes.data.paging.total > 0
+        ? { count: claimsRes.data.paging.total }
         : null;
 
     return {
@@ -92,7 +91,7 @@ export const dashboardService = {
         vendasHoje,
         contasVencendo,
         caixa: caixaRes.success ? caixaRes.data : null,
-        mpDisputed,
+        mlClaims,
       },
     };
   },

@@ -191,11 +191,53 @@ export interface RelatorioV2Response {
   topPorBruto: Array<RelatorioTopProduto>;
 }
 
-export interface MPSnapshot {
-  configured: boolean;
-  disputedCount: number;
-  disputedTotal: number;
-  cachedSyncedAt: string | null;
+export interface MLClaimPlayer {
+  role: 'complainant' | 'respondent' | 'mediator';
+  type: 'buyer' | 'seller' | 'internal';
+  userId: number;
+  availableActions: string[];
+}
+
+export interface MLClaimListItem {
+  id: number;
+  resourceId: number;
+  resource: string;
+  status: string;
+  type: string;
+  stage: string;
+  reasonId: string | null;
+  parentId: number | null;
+  fulfilled: boolean;
+  quantityType: string | null;
+  dateCreated: string;
+  lastUpdated: string;
+}
+
+export interface MLClaimDetail extends MLClaimListItem {
+  claimedQuantity: number;
+  claimVersion: number;
+  players: MLClaimPlayer[];
+  resolution: unknown | null;
+  siteId: string;
+  relatedEntities: string[];
+}
+
+export interface MLClaimMessage {
+  senderRole: string;
+  receiverRole: string;
+  message: string;
+  dateCreated?: string;
+  attachments?: unknown[];
+}
+
+export interface MLClaimsListResponse {
+  data: MLClaimListItem[];
+  paging: { total: number; offset: number; limit: number };
+}
+
+export interface MLClaimDetailResponse {
+  claim: MLClaimDetail;
+  messages: MLClaimMessage[];
 }
 
 export interface DashboardSummary {
@@ -206,7 +248,7 @@ export interface DashboardSummary {
   };
   contasVencendo: { total: number; count: number; bills: Bill[] };
   caixa: CashPools | null;
-  mpDisputed: { count: number; total: number } | null;
+  mlClaims: { count: number } | null;
 }
 
 export type NotificationType = 'sale' | 'refund' | 'mp_release' | 'system';

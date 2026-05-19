@@ -17,3 +17,5 @@ export { default as AnunciosScreen } from './AnunciosScreen';
 export { default as VendasScreen } from './VendasScreen';
 export { default as RelatoriosScreen } from './RelatoriosScreen';
 export { default as WaitlistScreen } from './WaitlistScreen';
+export { default as ReclamacoesListScreen } from './ReclamacoesListScreen';
+export { default as ReclamacaoDetailScreen } from './ReclamacaoDetailScreen';

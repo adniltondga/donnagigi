@@ -38,9 +38,6 @@ export const API_CONFIG = {
     FINANCEIRO: {
       CASH_POOLS: '/api/financeiro/cash-pools',
     },
-    MP: {
-      SNAPSHOT: '/api/mp/snapshot',
-    },
     NOTIFICATIONS: {
       LIST: '/api/notifications',
       READ_ALL: '/api/notifications/read-all',
@@ -57,6 +54,10 @@ export const API_CONFIG = {
     ML: {
       TOGGLE_ITEM: (mlListingId: string) =>
         `/api/ml/items/${mlListingId}/toggle`,
+      CLAIMS_LIST: '/api/ml/claims',
+      CLAIM_DETAIL: (id: string | number) => `/api/ml/claims/${id}`,
+      CLAIM_MESSAGES: (id: string | number) =>
+        `/api/ml/claims/${id}/messages`,
     },
     RELATORIOS: {
       V2: '/api/relatorios/v2',
