@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Alert,
   View,
@@ -93,6 +93,20 @@ export default function ReclamacaoDetailScreen({ claimId }: Props) {
   const [refreshing, setRefreshing] = useState(false);
   const [draft, setDraft] = useState('');
   const [sending, setSending] = useState(false);
+
+  const scrollRef = useRef<ScrollView>(null);
+  // Padrão chat: antiga em cima, recente embaixo. A API ML não garante
+  // ordem, então sort por dateCreated asc (mensagens sem timestamp ficam
+  // por último — improvável, mas evita NaN no compare).
+  const orderedMessages = useMemo(() => {
+    const copy = [...messages];
+    copy.sort((a, b) => {
+      const at = a.dateCreated ?? '';
+      const bt = b.dateCreated ?? '';
+      return at.localeCompare(bt);
+    });
+    return copy;
+  }, [messages]);
 
   const load = useCallback(async () => {
     const res = await mlClaimsService.detail(claimId);
@@ -191,7 +205,11 @@ export default function ReclamacaoDetailScreen({ claimId }: Props) {
           </View>
         ) : (
           <ScrollView
+            ref={scrollRef}
             contentContainerStyle={styles.scroll}
+            onContentSizeChange={() =>
+              scrollRef.current?.scrollToEnd({ animated: false })
+            }
             refreshControl={
               <RefreshControl
                 refreshing={refreshing}
@@ -228,12 +246,12 @@ export default function ReclamacaoDetailScreen({ claimId }: Props) {
               </View>
             ) : null}
 
-            {messages.length === 0 ? (
+            {orderedMessages.length === 0 ? (
               <Text style={[styles.empty, { color: colors.textMuted }]}>
                 Sem mensagens ainda. Você pode iniciar a conversa abaixo.
               </Text>
             ) : (
-              messages.map((m, idx) => {
+              orderedMessages.map((m, idx) => {
                 const mine = senderIsMe(m.senderRole);
                 return (
                   <View
