@@ -1,7 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getTenantIdOrDefault } from '@/lib/tenant';
 import { getMLIntegrationForTenant } from '@/lib/ml';
-import { getClaim, getClaimMessages, MLClaimsError } from '@/lib/ml-claims';
+import {
+  getClaim,
+  getClaimEvidences,
+  getClaimExpectedResolutions,
+  getClaimMessages,
+  getClaimReturn,
+  MLClaimsError,
+} from '@/lib/ml-claims';
 
 export const dynamic = 'force-dynamic';
 
@@ -30,12 +37,22 @@ export async function GET(
       );
     }
 
-    const [claim, messages] = await Promise.all([
-      getClaim(integration, claimId),
-      getClaimMessages(integration, claimId),
-    ]);
+    const [claim, messages, expectedResolutions, ret, evidences] =
+      await Promise.all([
+        getClaim(integration, claimId),
+        getClaimMessages(integration, claimId),
+        getClaimExpectedResolutions(integration, claimId),
+        getClaimReturn(integration, claimId),
+        getClaimEvidences(integration, claimId),
+      ]);
 
-    return NextResponse.json({ claim, messages });
+    return NextResponse.json({
+      claim,
+      messages,
+      expectedResolutions,
+      return: ret,
+      evidences,
+    });
   } catch (err) {
     if (err instanceof MLClaimsError) {
       return NextResponse.json(

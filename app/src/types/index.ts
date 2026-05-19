@@ -234,6 +234,39 @@ export interface MLClaimMessage {
   attachments?: unknown[];
 }
 
+export interface MLClaimExpectedResolution {
+  playerRole: string;
+  expectedResolution: string;
+  status: string;
+  dateCreated: string;
+  lastUpdated: string;
+}
+
+export interface MLClaimReturnShipment {
+  id: number;
+  status: string;
+  trackingNumber: string | null;
+  destinationName: string | null;
+  destinationCity: string | null;
+  destinationState: string | null;
+}
+
+export interface MLClaimReturn {
+  id: number;
+  status: string;
+  statusMoney: string;
+  refundAt: string | null;
+  subtype: string;
+  dateCreated: string;
+  dateClosed: string | null;
+  shipments: MLClaimReturnShipment[];
+  orders: Array<{
+    orderId: number;
+    itemId: string | null;
+    returnQuantity: string;
+  }>;
+}
+
 export interface MLClaimsListResponse {
   data: MLClaimListItem[];
   paging: { total: number; offset: number; limit: number };
@@ -242,6 +275,9 @@ export interface MLClaimsListResponse {
 export interface MLClaimDetailResponse {
   claim: MLClaimDetail;
   messages: MLClaimMessage[];
+  expectedResolutions: MLClaimExpectedResolution[];
+  return: MLClaimReturn | null;
+  evidences: unknown[];
 }
 
 export interface DashboardSummary {

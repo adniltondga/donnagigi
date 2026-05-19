@@ -20,7 +20,12 @@ import { useTheme } from '@/contexts';
 import { mlClaimsService } from '@/services';
 import { toast } from '@/utils/toast';
 import { SPACING, FONT_SIZE, BORDER_RADIUS } from '@/constants';
-import type { MLClaimDetail, MLClaimMessage } from '@/types';
+import type {
+  MLClaimDetail,
+  MLClaimExpectedResolution,
+  MLClaimMessage,
+  MLClaimReturn,
+} from '@/types';
 
 const MAX_CHARS = 2000;
 
@@ -83,12 +88,67 @@ function stageLabel(stage: string): string {
   return map[stage] ?? stage;
 }
 
+function expectedResolutionLabel(key: string): string {
+  const map: Record<string, string> = {
+    return_product: 'Devolução do produto',
+    refund: 'Reembolso',
+    change_product: 'Troca do produto',
+    product_not_received: 'Produto não recebido',
+  };
+  return map[key] ?? key;
+}
+
+function returnStatusLabel(status: string): string {
+  const map: Record<string, string> = {
+    to_be_agreed: 'A combinar',
+    pending: 'Pendente',
+    shipped: 'Em trânsito',
+    delivered: 'Entregue ao vendedor',
+    not_delivered: 'Não entregue',
+    cancelled: 'Cancelado',
+  };
+  return map[status] ?? status;
+}
+
+function statusMoneyLabel(status: string): string {
+  const map: Record<string, string> = {
+    retained: 'Retido',
+    released: 'Liberado',
+    refunded: 'Estornado ao comprador',
+    available: 'Disponível',
+  };
+  return map[status] ?? status;
+}
+
+function refundAtLabel(at: string | null): string {
+  if (!at) return '—';
+  const map: Record<string, string> = {
+    delivered: 'Quando o produto chegar ao vendedor',
+    shipped: 'Quando o produto for postado',
+    accepted: 'Quando o vendedor aceitar',
+  };
+  return map[at] ?? at;
+}
+
+function subtypeLabel(key: string): string {
+  const map: Record<string, string> = {
+    return_total: 'Devolução total',
+    return_partial: 'Devolução parcial',
+  };
+  return map[key] ?? key;
+}
+
 export default function ReclamacaoDetailScreen({ claimId }: Props) {
   const { colors, isDark } = useTheme();
   const router = useRouter();
 
   const [claim, setClaim] = useState<MLClaimDetail | null>(null);
   const [messages, setMessages] = useState<MLClaimMessage[]>([]);
+  const [expectedResolutions, setExpectedResolutions] = useState<
+    MLClaimExpectedResolution[]
+  >([]);
+  const [returnInfo, setReturnInfo] = useState<MLClaimReturn | null>(null);
+  const [evidencesCount, setEvidencesCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [draft, setDraft] = useState('');
@@ -113,6 +173,9 @@ export default function ReclamacaoDetailScreen({ claimId }: Props) {
     if (res.success) {
       setClaim(res.data.claim);
       setMessages(res.data.messages);
+      setExpectedResolutions(res.data.expectedResolutions);
+      setReturnInfo(res.data.return);
+      setEvidencesCount(res.data.evidences?.length ?? 0);
     } else {
       toast.error('Erro ao carregar', res.error);
     }
@@ -243,6 +306,154 @@ export default function ReclamacaoDetailScreen({ claimId }: Props) {
                   value={formatDateTime(claim.dateCreated)}
                   colors={colors}
                 />
+              </View>
+            ) : null}
+
+            {expectedResolutions.length > 0 ? (
+              <View
+                style={[
+                  styles.sectionCard,
+                  {
+                    backgroundColor: colors.backgroundCard,
+                    borderColor: colors.border,
+                  },
+                ]}
+              >
+                <Text
+                  style={[styles.sectionTitle, { color: colors.textPrimary }]}
+                >
+                  O que o comprador pediu
+                </Text>
+                {expectedResolutions.map((r, i) => (
+                  <View key={`${i}-${r.dateCreated}`} style={styles.bulletRow}>
+                    <Ionicons
+                      name="ellipse"
+                      size={6}
+                      color={colors.textMuted}
+                      style={{ marginTop: 7 }}
+                    />
+                    <View style={{ flex: 1 }}>
+                      <Text
+                        style={[styles.bulletText, { color: colors.textPrimary }]}
+                      >
+                        {expectedResolutionLabel(r.expectedResolution)}
+                      </Text>
+                      <Text style={[styles.bulletSub, { color: colors.textMuted }]}>
+                        Status: {r.status}
+                      </Text>
+                    </View>
+                  </View>
+                ))}
+              </View>
+            ) : null}
+
+            {returnInfo ? (
+              <View
+                style={[
+                  styles.sectionCard,
+                  {
+                    backgroundColor: colors.backgroundCard,
+                    borderColor: colors.primary + '55',
+                  },
+                ]}
+              >
+                <View style={styles.sectionHeaderRow}>
+                  <Ionicons
+                    name="cube-outline"
+                    size={18}
+                    color={colors.primary}
+                  />
+                  <Text
+                    style={[styles.sectionTitle, { color: colors.textPrimary }]}
+                  >
+                    Devolução
+                  </Text>
+                </View>
+                <InfoRow
+                  label="Status"
+                  value={returnStatusLabel(returnInfo.status)}
+                  colors={colors}
+                />
+                <InfoRow
+                  label="Tipo"
+                  value={subtypeLabel(returnInfo.subtype)}
+                  colors={colors}
+                />
+                <InfoRow
+                  label="Pagamento"
+                  value={statusMoneyLabel(returnInfo.statusMoney)}
+                  colors={colors}
+                />
+                <InfoRow
+                  label="Estorno"
+                  value={refundAtLabel(returnInfo.refundAt)}
+                  colors={colors}
+                />
+                {returnInfo.shipments.map((s) => (
+                  <View key={s.id} style={styles.shipmentBlock}>
+                    {s.trackingNumber ? (
+                      <>
+                        <Text
+                          style={[styles.shipmentLabel, { color: colors.textMuted }]}
+                        >
+                          Rastreio (toque e segure pra copiar)
+                        </Text>
+                        <Text
+                          selectable
+                          style={[
+                            styles.trackingValue,
+                            {
+                              color: colors.textPrimary,
+                              backgroundColor: colors.primary + '14',
+                              borderColor: colors.primary + '33',
+                            },
+                          ]}
+                        >
+                          {s.trackingNumber}
+                        </Text>
+                      </>
+                    ) : null}
+                    {s.destinationCity ? (
+                      <Text
+                        style={[styles.shipmentSub, { color: colors.textMuted }]}
+                      >
+                        Destino: {s.destinationCity}
+                        {s.destinationState ? ` · ${s.destinationState}` : ''}
+                      </Text>
+                    ) : null}
+                  </View>
+                ))}
+              </View>
+            ) : null}
+
+            {evidencesCount > 0 ? (
+              <View
+                style={[
+                  styles.sectionCard,
+                  {
+                    backgroundColor: colors.backgroundCard,
+                    borderColor: colors.border,
+                  },
+                ]}
+              >
+                <View style={styles.sectionHeaderRow}>
+                  <Ionicons
+                    name="document-attach-outline"
+                    size={18}
+                    color={colors.textMuted}
+                  />
+                  <Text
+                    style={[styles.sectionTitle, { color: colors.textPrimary }]}
+                  >
+                    {evidencesCount}{' '}
+                    {evidencesCount === 1
+                      ? 'evidência anexada'
+                      : 'evidências anexadas'}
+                  </Text>
+                </View>
+                <Text style={[styles.bulletSub, { color: colors.textMuted }]}>
+                  Veja os anexos no app do Mercado Livre.
+                </Text>
               </View>
             ) : null}
 
@@ -386,6 +597,39 @@ const styles = StyleSheet.create({
   infoRow: { flexDirection: 'row', justifyContent: 'space-between', gap: SPACING.md },
   infoLabel: { fontSize: FONT_SIZE.xs },
   infoValue: { fontSize: FONT_SIZE.xs, fontWeight: '600', flexShrink: 1, textAlign: 'right' },
+  sectionCard: {
+    borderRadius: BORDER_RADIUS.lg,
+    borderWidth: 1,
+    padding: SPACING.md,
+    marginBottom: SPACING.md,
+    gap: SPACING.xs,
+  },
+  sectionHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.sm,
+    marginBottom: SPACING.xs,
+  },
+  sectionTitle: { fontSize: FONT_SIZE.sm, fontWeight: '700' },
+  bulletRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: SPACING.sm,
+  },
+  bulletText: { fontSize: FONT_SIZE.sm, fontWeight: '600' },
+  bulletSub: { fontSize: FONT_SIZE.xs, marginTop: 2 },
+  shipmentBlock: { marginTop: SPACING.sm, gap: 4 },
+  shipmentLabel: { fontSize: 10, fontWeight: '600', textTransform: 'uppercase' },
+  trackingValue: {
+    fontSize: FONT_SIZE.sm,
+    fontFamily: Platform.select({ ios: 'Menlo', android: 'monospace' }),
+    fontWeight: '700',
+    paddingHorizontal: SPACING.sm,
+    paddingVertical: SPACING.xs,
+    borderRadius: BORDER_RADIUS.sm,
+    borderWidth: 1,
+  },
+  shipmentSub: { fontSize: FONT_SIZE.xs },
   empty: { textAlign: 'center', paddingVertical: SPACING.lg, fontSize: FONT_SIZE.sm },
   msgRow: { flexDirection: 'row', marginBottom: SPACING.sm },
   msgBubble: {

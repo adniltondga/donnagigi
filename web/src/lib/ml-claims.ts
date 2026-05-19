@@ -60,6 +60,46 @@ export type MLClaimMessage = {
   attachments?: unknown[];
 };
 
+/** O que o comprador pediu como resolução. */
+export type MLClaimExpectedResolution = {
+  playerRole: string;
+  /** return_product | refund | change_product | etc. */
+  expectedResolution: string;
+  status: string; // pending | accepted | etc
+  dateCreated: string;
+  lastUpdated: string;
+};
+
+export type MLClaimReturnShipment = {
+  id: number;
+  /** shipped | delivered | to_be_agreed | cancelled | etc. */
+  status: string;
+  trackingNumber: string | null;
+  destinationName: string | null;
+  destinationCity: string | null;
+  destinationState: string | null;
+};
+
+export type MLClaimReturn = {
+  id: number;
+  /** Status agregado do return (geralmente bate com shipments[0].status). */
+  status: string;
+  /** retained | released | refunded | etc. — sinaliza o dinheiro. */
+  statusMoney: string;
+  /** delivered = ML estorna quando o produto chegar no vendedor. */
+  refundAt: string | null;
+  /** return_total | return_partial. */
+  subtype: string;
+  dateCreated: string;
+  dateClosed: string | null;
+  shipments: MLClaimReturnShipment[];
+  orders: Array<{
+    orderId: number;
+    itemId: string | null;
+    returnQuantity: string;
+  }>;
+};
+
 type RawClaim = {
   id: number;
   resource_id: number;
@@ -286,6 +326,124 @@ export async function getClaimMessages(
   // API retorna array direto (não envolve em {data:[...]})
   if (!Array.isArray(raw)) return [];
   return raw.map(normalizeMessage);
+}
+
+type RawExpectedResolution = {
+  player_role: string;
+  expected_resolution: string;
+  status: string;
+  date_created: string;
+  last_updated: string;
+};
+
+export async function getClaimExpectedResolutions(
+  integration: Integration,
+  claimId: number | string,
+): Promise<MLClaimExpectedResolution[]> {
+  try {
+    const url = `${ML_BASE}/post-purchase/v1/claims/${claimId}/expected-resolutions`;
+    const raw = await mlFetch<RawExpectedResolution[]>(url, integration);
+    if (!Array.isArray(raw)) return [];
+    return raw.map((r) => ({
+      playerRole: r.player_role,
+      expectedResolution: r.expected_resolution,
+      status: r.status,
+      dateCreated: r.date_created,
+      lastUpdated: r.last_updated,
+    }));
+  } catch {
+    return [];
+  }
+}
+
+type RawReturnShipment = {
+  shipment_id: number;
+  status: string;
+  tracking_number?: string | null;
+  destination?: {
+    name?: string | null;
+    shipping_address?: {
+      city?: { name?: string | null } | null;
+      state?: { name?: string | null } | null;
+    } | null;
+  } | null;
+};
+
+type RawReturn = {
+  id: number;
+  status: string;
+  status_money: string;
+  refund_at: string | null;
+  subtype: string;
+  date_created: string;
+  date_closed: string | null;
+  shipments?: RawReturnShipment[];
+  orders?: Array<{
+    order_id: number;
+    item_id?: string | null;
+    return_quantity?: string;
+  }>;
+};
+
+/**
+ * Pra um subset das claims (geralmente as que já viraram return formal),
+ * o ML cria um recurso em /post-purchase/v2/claims/{id}/returns. Quando
+ * a claim ainda está só em dispute sem return formalizado, esse endpoint
+ * dá 404 — tratamos como `null` em vez de erro.
+ */
+export async function getClaimReturn(
+  integration: Integration,
+  claimId: number | string,
+): Promise<MLClaimReturn | null> {
+  try {
+    const url = `${ML_BASE}/post-purchase/v2/claims/${claimId}/returns`;
+    const raw = await mlFetch<RawReturn>(url, integration);
+    return {
+      id: raw.id,
+      status: raw.status,
+      statusMoney: raw.status_money,
+      refundAt: raw.refund_at,
+      subtype: raw.subtype,
+      dateCreated: raw.date_created,
+      dateClosed: raw.date_closed,
+      shipments: (raw.shipments ?? []).map((s) => ({
+        id: s.shipment_id,
+        status: s.status,
+        trackingNumber: s.tracking_number ?? null,
+        destinationName: s.destination?.name ?? null,
+        destinationCity: s.destination?.shipping_address?.city?.name ?? null,
+        destinationState:
+          s.destination?.shipping_address?.state?.name ?? null,
+      })),
+      orders: (raw.orders ?? []).map((o) => ({
+        orderId: o.order_id,
+        itemId: o.item_id ?? null,
+        returnQuantity: o.return_quantity ?? '0',
+      })),
+    };
+  } catch (err) {
+    if (err instanceof MLClaimsError && (err.status === 404 || err.status === 400)) {
+      return null;
+    }
+    throw err;
+  }
+}
+
+/**
+ * Lista evidências (fotos, comprovantes) anexadas à claim. Vazio quando
+ * ninguém anexou nada ainda.
+ */
+export async function getClaimEvidences(
+  integration: Integration,
+  claimId: number | string,
+): Promise<unknown[]> {
+  try {
+    const url = `${ML_BASE}/post-purchase/v1/claims/${claimId}/evidences`;
+    const raw = await mlFetch<unknown[]>(url, integration);
+    return Array.isArray(raw) ? raw : [];
+  } catch {
+    return [];
+  }
 }
 
 export async function sendClaimMessage(
