@@ -280,6 +280,26 @@ export interface MLClaimDetailResponse {
   evidences: unknown[];
 }
 
+export interface MLReturnListItem {
+  claimId: number;
+  orderId: number;
+  itemId: string | null;
+  returnId: number;
+  status: string;
+  statusMoney: string;
+  refundAt: string | null;
+  subtype: string;
+  dateCreated: string;
+  trackingNumber: string | null;
+  destinationCity: string | null;
+  destinationState: string | null;
+}
+
+export interface MLReturnsListResponse {
+  data: MLReturnListItem[];
+  total: number;
+}
+
 export interface DashboardSummary {
   vendasHoje: {
     pedidos: number;
@@ -289,6 +309,7 @@ export interface DashboardSummary {
   contasVencendo: { total: number; count: number; bills: Bill[] };
   caixa: CashPools | null;
   mlClaims: { count: number } | null;
+  mlReturns: { count: number } | null;
 }
 
 export type NotificationType = 'sale' | 'refund' | 'mp_release' | 'system';

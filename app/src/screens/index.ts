@@ -19,3 +19,4 @@ export { default as RelatoriosScreen } from './RelatoriosScreen';
 export { default as WaitlistScreen } from './WaitlistScreen';
 export { default as ReclamacoesListScreen } from './ReclamacoesListScreen';
 export { default as ReclamacaoDetailScreen } from './ReclamacaoDetailScreen';
+export { default as DevolucoesListScreen } from './DevolucoesListScreen';

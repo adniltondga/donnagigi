@@ -300,6 +300,72 @@ export async function listClaimsEnriched(
   return { data: enriched, paging: base.paging };
 }
 
+/**
+ * Item de listagem de devolução. Cada um vem de uma claim aberta que
+ * já virou return formal (i.e. /post-purchase/v2/claims/{id}/returns
+ * retornou 200). `claimId` é o que permite o app navegar pra tela do
+ * chat (reutiliza ReclamacaoDetailScreen).
+ */
+export type MLReturnListItem = {
+  claimId: number;
+  orderId: number;
+  itemId: string | null;
+  returnId: number;
+  status: string; // do return
+  statusMoney: string;
+  refundAt: string | null;
+  subtype: string;
+  dateCreated: string;
+  trackingNumber: string | null;
+  destinationCity: string | null;
+  destinationState: string | null;
+};
+
+/**
+ * Lista devoluções em andamento do tenant. Como o ML não expõe um
+ * endpoint próprio pra returns standalone (vide
+ * scripts/probe-ml-returns-standalone.ts), derivamos das claims abertas:
+ * pra cada uma, batemos em /returns; as que tiverem return formal viram
+ * itens de devolução.
+ */
+export async function listReturns(
+  integration: Integration,
+  params: { limit?: number } = {},
+): Promise<{ data: MLReturnListItem[]; total: number }> {
+  const claims = await listClaims(integration, {
+    status: 'opened',
+    limit: params.limit ?? 50,
+  });
+
+  const returns = await Promise.all(
+    claims.data.map(async (c) => {
+      const ret = await getClaimReturn(integration, c.id);
+      if (!ret) return null;
+      const ship = ret.shipments[0] ?? null;
+      const order = ret.orders[0] ?? null;
+      return {
+        claimId: c.id,
+        orderId: order?.orderId ?? c.resourceId,
+        itemId: order?.itemId ?? null,
+        returnId: ret.id,
+        status: ret.status,
+        statusMoney: ret.statusMoney,
+        refundAt: ret.refundAt,
+        subtype: ret.subtype,
+        dateCreated: ret.dateCreated,
+        trackingNumber: ship?.trackingNumber ?? null,
+        destinationCity: ship?.destinationCity ?? null,
+        destinationState: ship?.destinationState ?? null,
+      } satisfies MLReturnListItem;
+    }),
+  );
+
+  const data = returns.filter((r): r is MLReturnListItem => r !== null);
+  // Mais recente primeiro (data de criação do return).
+  data.sort((a, b) => b.dateCreated.localeCompare(a.dateCreated));
+  return { data, total: data.length };
+}
+
 export async function countOpenedClaims(
   integration: Integration,
 ): Promise<number> {

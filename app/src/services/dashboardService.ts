@@ -5,6 +5,7 @@ import type {
   CashPools,
   DashboardSummary,
   MLClaimsListResponse,
+  MLReturnsListResponse,
   Paginated,
   RelatorioV2Response,
 } from '@/types';
@@ -34,36 +35,42 @@ export const dashboardService = {
     const hoje = todayBR();
     const em7dias = addDaysBR(7);
 
-    const [kpisRes, contasRes, caixaRes, claimsRes] = await Promise.all([
-      apiCall<RelatorioV2Response>(() =>
-        apiClient.get(API_CONFIG.ENDPOINTS.RELATORIOS.V2, {
-          params: { from: hoje, to: hoje },
-        }),
-      ),
-      apiCall<Paginated<Bill>>(() =>
-        apiClient.get(API_CONFIG.ENDPOINTS.BILLS.LIST, {
-          params: {
-            type: 'payable',
-            status: 'pending',
-            dueFrom: hoje,
-            dueTo: em7dias,
-            orderBy: 'dueDate_asc',
-            excludeAportes: true,
-            limit: 5,
-          },
-        }),
-      ),
-      apiCall<CashPools>(() =>
-        apiClient.get(API_CONFIG.ENDPOINTS.FINANCEIRO.CASH_POOLS),
-      ),
-      apiCall<MLClaimsListResponse>(() =>
-        // Sem enrich aqui — só precisamos do paging.total. Enrich custaria
-        // N+1 requests ao ML pra um número que a gente vai jogar fora.
-        apiClient.get(API_CONFIG.ENDPOINTS.ML.CLAIMS_LIST, {
-          params: { status: 'opened', limit: 1 },
-        }),
-      ),
-    ]);
+    const [kpisRes, contasRes, caixaRes, claimsRes, returnsRes] =
+      await Promise.all([
+        apiCall<RelatorioV2Response>(() =>
+          apiClient.get(API_CONFIG.ENDPOINTS.RELATORIOS.V2, {
+            params: { from: hoje, to: hoje },
+          }),
+        ),
+        apiCall<Paginated<Bill>>(() =>
+          apiClient.get(API_CONFIG.ENDPOINTS.BILLS.LIST, {
+            params: {
+              type: 'payable',
+              status: 'pending',
+              dueFrom: hoje,
+              dueTo: em7dias,
+              orderBy: 'dueDate_asc',
+              excludeAportes: true,
+              limit: 5,
+            },
+          }),
+        ),
+        apiCall<CashPools>(() =>
+          apiClient.get(API_CONFIG.ENDPOINTS.FINANCEIRO.CASH_POOLS),
+        ),
+        apiCall<MLClaimsListResponse>(() =>
+          // Sem enrich aqui — só precisamos do paging.total. Enrich custaria
+          // N+1 requests ao ML pra um número que a gente vai jogar fora.
+          apiClient.get(API_CONFIG.ENDPOINTS.ML.CLAIMS_LIST, {
+            params: { status: 'opened', limit: 1 },
+          }),
+        ),
+        apiCall<MLReturnsListResponse>(() =>
+          // Returns precisa da listagem inteira pra contar (não tem
+          // count separado). Backend lida com o paralelismo.
+          apiClient.get(API_CONFIG.ENDPOINTS.ML.RETURNS_LIST),
+        ),
+      ]);
 
     if (!kpisRes.success) return { success: false, error: kpisRes.error };
     if (!contasRes.success) return { success: false, error: contasRes.error };
@@ -87,6 +94,11 @@ export const dashboardService = {
         ? { count: claimsRes.data.paging.total }
         : null;
 
+    const mlReturns =
+      returnsRes.success && returnsRes.data.total > 0
+        ? { count: returnsRes.data.total }
+        : null;
+
     return {
       success: true,
       data: {
@@ -94,6 +106,7 @@ export const dashboardService = {
         contasVencendo,
         caixa: caixaRes.success ? caixaRes.data : null,
         mlClaims,
+        mlReturns,
       },
     };
   },

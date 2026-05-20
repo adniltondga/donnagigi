@@ -297,6 +297,54 @@ export default function HomeScreen() {
               </SlideUpView>
             ) : null}
 
+            {summary.mlReturns ? (
+              <SlideUpView delay={190}>
+                <TouchableOpacity
+                  activeOpacity={0.7}
+                  onPress={() => router.push('/devolucoes' as never)}
+                  style={[
+                    styles.disputeCard,
+                    {
+                      backgroundColor: colors.backgroundCard,
+                      borderColor: colors.warning + '80',
+                    },
+                  ]}
+                >
+                  <View
+                    style={[
+                      styles.disputeIcon,
+                      { backgroundColor: colors.warning + '1F' },
+                    ]}
+                  >
+                    <Ionicons
+                      name="cube-outline"
+                      size={22}
+                      color={colors.warning}
+                    />
+                  </View>
+                  <View style={styles.disputeBody}>
+                    <Text
+                      style={[styles.disputeTitle, dynamicStyles.title]}
+                      numberOfLines={1}
+                    >
+                      {summary.mlReturns.count}{' '}
+                      {summary.mlReturns.count === 1
+                        ? 'devolução em andamento'
+                        : 'devoluções em andamento'}
+                    </Text>
+                    <Text style={[styles.disputeSub, dynamicStyles.muted]}>
+                      Produto vindo de volta · acompanhe
+                    </Text>
+                  </View>
+                  <Ionicons
+                    name="chevron-forward"
+                    size={20}
+                    color={colors.textMuted}
+                  />
+                </TouchableOpacity>
+              </SlideUpView>
+            ) : null}
+
             <SlideUpView delay={200}>
               <TouchableOpacity
                 onPress={() => router.push('/contas' as never)}

@@ -58,6 +58,7 @@ export const API_CONFIG = {
       CLAIM_DETAIL: (id: string | number) => `/api/ml/claims/${id}`,
       CLAIM_MESSAGES: (id: string | number) =>
         `/api/ml/claims/${id}/messages`,
+      RETURNS_LIST: '/api/ml/returns',
     },
     RELATORIOS: {
       V2: '/api/relatorios/v2',

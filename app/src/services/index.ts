@@ -11,3 +11,4 @@ export { mlAdsService } from './mlAdsService';
 export { relatoriosService } from './relatoriosService';
 export { waitlistService } from './waitlistService';
 export { mlClaimsService } from './mlClaimsService';
+export { mlReturnsService } from './mlReturnsService';
