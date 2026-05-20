@@ -26,13 +26,18 @@ import type { Bill, RelatorioKPIs } from '@/types';
 
 const PAGE_SIZE = 30;
 
-function todayBR(): string {
+/** YYYY-MM-DD em fuso local, com offset em dias (0=hoje, -1=ontem). */
+function dateBR(dayOffset: number = 0): string {
   const d = new Date();
+  d.setDate(d.getDate() + dayOffset);
   const y = d.getFullYear();
   const m = String(d.getMonth() + 1).padStart(2, '0');
   const day = String(d.getDate()).padStart(2, '0');
   return `${y}-${m}-${day}`;
 }
+
+type DayKey = 'today' | 'yesterday';
+const DAY_OFFSET: Record<DayKey, number> = { today: 0, yesterday: -1 };
 
 function timeOf(iso: string | null | undefined): string {
   if (!iso) return '';
@@ -104,19 +109,20 @@ export default function VendasScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [expandedPacks, setExpandedPacks] = useState<Set<string>>(new Set());
+  const [day, setDay] = useState<DayKey>('today');
 
   const load = useCallback(async () => {
-    const hoje = todayBR();
+    const dia = dateBR(DAY_OFFSET[day]);
     const [billsRes, kpisRes] = await Promise.all([
       billsService.list({
         type: 'receivable',
         category: 'venda',
-        paidFrom: hoje,
-        paidTo: hoje,
+        paidFrom: dia,
+        paidTo: dia,
         orderBy: 'paidDate_desc',
         limit: PAGE_SIZE,
       }),
-      relatoriosService.v2(hoje, hoje),
+      relatoriosService.v2(dia, dia),
     ]);
 
     if (billsRes.success) {
@@ -128,7 +134,7 @@ export default function VendasScreen() {
     if (kpisRes.success) {
       setKpis(kpisRes.data.kpisAtual);
     }
-  }, []);
+  }, [day]);
 
   useEffect(() => {
     (async () => {
@@ -185,9 +191,44 @@ export default function VendasScreen() {
         >
           <Ionicons name="chevron-back" size={26} color={colors.textPrimary} />
         </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>
-          Vendas de hoje
-        </Text>
+
+        <View
+          style={[
+            styles.segment,
+            {
+              backgroundColor: colors.backgroundCard,
+              borderColor: colors.border,
+            },
+          ]}
+        >
+          {(['today', 'yesterday'] as DayKey[]).map((k) => {
+            const active = day === k;
+            return (
+              <TouchableOpacity
+                key={k}
+                onPress={() => setDay(k)}
+                activeOpacity={0.7}
+                style={[
+                  styles.segmentBtn,
+                  active && { backgroundColor: colors.primary },
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.segmentText,
+                    {
+                      color: active ? '#fff' : colors.textSecondary,
+                      fontWeight: active ? '700' : '500',
+                    },
+                  ]}
+                >
+                  {k === 'today' ? 'Hoje' : 'Ontem'}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+
         <View style={styles.headerIcon} />
       </View>
 
@@ -253,7 +294,7 @@ export default function VendasScreen() {
                 color={colors.textMuted}
               />
               <Text style={[styles.emptyText, { color: colors.textMuted }]}>
-                Nenhuma venda hoje
+                {day === 'today' ? 'Nenhuma venda hoje' : 'Nenhuma venda ontem'}
               </Text>
             </View>
           }
@@ -608,6 +649,21 @@ const styles = StyleSheet.create({
   },
   headerIcon: { padding: SPACING.sm, minWidth: 42 },
   headerTitle: { fontSize: FONT_SIZE.lg, fontWeight: '700' },
+  segment: {
+    flexDirection: 'row',
+    borderWidth: 1,
+    borderRadius: BORDER_RADIUS.lg,
+    padding: 2,
+    gap: 2,
+  },
+  segmentBtn: {
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.xs,
+    borderRadius: BORDER_RADIUS.md,
+    minWidth: 64,
+    alignItems: 'center',
+  },
+  segmentText: { fontSize: FONT_SIZE.sm },
   loading: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   list: { padding: SPACING.lg, gap: SPACING.sm },
   kpiBox: {
