@@ -352,6 +352,13 @@ export default function VendasMLPage() {
               </div>
             )}
             <div className="min-w-0 flex-1">
+              {b.isExchange ? (
+                <div className="mb-1">
+                  <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-200">
+                    🔄 Troca
+                  </span>
+                </div>
+              ) : null}
               <ProductLabel description={b.description} quantity={b.quantity} />
               {b.mlPackId && !isPackChild && (
                 <div className="text-xs text-muted-foreground font-mono mt-0.5">Pack #{b.mlPackId}</div>
@@ -373,26 +380,19 @@ export default function VendasMLPage() {
           {formatCurrency(s.lucro)}
         </TableCell>
         <TableCell>
-          <div className="flex items-center gap-1 flex-wrap">
-            <span
-              className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold ${
-                b.status === 'paid'
-                  ? 'bg-green-100 text-green-800'
-                  : b.status === 'cancelled'
-                  ? 'bg-red-100 text-red-700 line-through'
-                  : b.status === 'overdue'
-                  ? 'bg-orange-100 text-orange-800'
-                  : 'bg-blue-100 text-blue-800'
-              }`}
-            >
-              {statusLabel[b.status] || b.status}
-            </span>
-            {b.isExchange ? (
-              <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-200">
-                🔄 Troca
-              </span>
-            ) : null}
-          </div>
+          <span
+            className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold ${
+              b.status === 'paid'
+                ? 'bg-green-100 text-green-800'
+                : b.status === 'cancelled'
+                ? 'bg-red-100 text-red-700 line-through'
+                : b.status === 'overdue'
+                ? 'bg-orange-100 text-orange-800'
+                : 'bg-blue-100 text-blue-800'
+            }`}
+          >
+            {statusLabel[b.status] || b.status}
+          </span>
         </TableCell>
       </TableRow>
     );
@@ -686,6 +686,13 @@ export default function VendasMLPage() {
                             )}
                           </div>
                           <div className="min-w-0 flex-1">
+                            {hasExchange && !allCancelled ? (
+                              <div className="mb-1">
+                                <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-200">
+                                  🔄 Troca
+                                </span>
+                              </div>
+                            ) : null}
                             <div className="font-semibold text-foreground flex items-center gap-2 flex-wrap">
                               <Package className="w-4 h-4 text-amber-700 dark:text-amber-300 shrink-0" />
                               <span>Pack com {g.bills.length} produtos</span>
@@ -708,7 +715,6 @@ export default function VendasMLPage() {
                         {formatCurrency(packLucro)}
                       </TableCell>
                       <TableCell>
-                        <div className="flex items-center gap-1 flex-wrap">
                         <span
                           className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold ${
                             allCancelled
@@ -718,12 +724,6 @@ export default function VendasMLPage() {
                         >
                           {allCancelled ? 'Cancelado' : `${g.bills.length} itens`}
                         </span>
-                        {hasExchange && !allCancelled ? (
-                          <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-200">
-                            🔄 Troca
-                          </span>
-                        ) : null}
-                        </div>
                       </TableCell>
                     </TableRow>
                     {expanded && g.bills.map((b) => renderBillRow(b, g.bills))}
