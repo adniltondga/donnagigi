@@ -110,6 +110,7 @@ interface Bill {
   mlPackId: string | null;
   quantity: number;
   refundedAmount: number;
+  isExchange?: boolean;
 }
 
 const statusLabel: Record<string, string> = {
@@ -372,19 +373,26 @@ export default function VendasMLPage() {
           {formatCurrency(s.lucro)}
         </TableCell>
         <TableCell>
-          <span
-            className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold ${
-              b.status === 'paid'
-                ? 'bg-green-100 text-green-800'
-                : b.status === 'cancelled'
-                ? 'bg-red-100 text-red-700 line-through'
-                : b.status === 'overdue'
-                ? 'bg-orange-100 text-orange-800'
-                : 'bg-blue-100 text-blue-800'
-            }`}
-          >
-            {statusLabel[b.status] || b.status}
-          </span>
+          <div className="flex items-center gap-1 flex-wrap">
+            <span
+              className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold ${
+                b.status === 'paid'
+                  ? 'bg-green-100 text-green-800'
+                  : b.status === 'cancelled'
+                  ? 'bg-red-100 text-red-700 line-through'
+                  : b.status === 'overdue'
+                  ? 'bg-orange-100 text-orange-800'
+                  : 'bg-blue-100 text-blue-800'
+              }`}
+            >
+              {statusLabel[b.status] || b.status}
+            </span>
+            {b.isExchange ? (
+              <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-200">
+                🔄 Troca
+              </span>
+            ) : null}
+          </div>
         </TableCell>
       </TableRow>
     );
@@ -650,6 +658,7 @@ export default function VendasMLPage() {
                 const first = g.bills[0];
                 const meta = parseNotes(first.notes);
                 const allCancelled = g.bills.every((x) => x.status === 'cancelled');
+                const hasExchange = g.bills.some((x) => x.isExchange);
                 return (
                   <Fragment key={`pack-${g.packId}`}>
                     <TableRow
@@ -699,6 +708,7 @@ export default function VendasMLPage() {
                         {formatCurrency(packLucro)}
                       </TableCell>
                       <TableCell>
+                        <div className="flex items-center gap-1 flex-wrap">
                         <span
                           className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold ${
                             allCancelled
@@ -708,6 +718,12 @@ export default function VendasMLPage() {
                         >
                           {allCancelled ? 'Cancelado' : `${g.bills.length} itens`}
                         </span>
+                        {hasExchange && !allCancelled ? (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-200">
+                            🔄 Troca
+                          </span>
+                        ) : null}
+                        </div>
                       </TableCell>
                     </TableRow>
                     {expanded && g.bills.map((b) => renderBillRow(b, g.bills))}
