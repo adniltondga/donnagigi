@@ -7,7 +7,10 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   RefreshControl,
+  Modal,
+  Pressable,
 } from 'react-native';
+import { Calendar, LocaleConfig } from 'react-native-calendars';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -38,6 +41,29 @@ function dateBR(dayOffset: number = 0): string {
 
 type DayKey = 'today' | 'yesterday';
 const DAY_OFFSET: Record<DayKey, number> = { today: 0, yesterday: -1 };
+
+LocaleConfig.locales['pt-br'] = {
+  monthNames: [
+    'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+    'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro',
+  ],
+  monthNamesShort: [
+    'Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun',
+    'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez',
+  ],
+  dayNames: [
+    'Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado',
+  ],
+  dayNamesShort: ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'],
+  today: 'Hoje',
+};
+LocaleConfig.defaultLocale = 'pt-br';
+
+/** Converte YYYY-MM-DD pra DD/MM curto. */
+function shortDate(iso: string): string {
+  const [, m, d] = iso.split('-');
+  return `${d}/${m}`;
+}
 
 function timeOf(iso: string | null | undefined): string {
   if (!iso) return '';
@@ -110,9 +136,17 @@ export default function VendasScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [expandedPacks, setExpandedPacks] = useState<Set<string>>(new Set());
   const [day, setDay] = useState<DayKey>('today');
+  // Data custom escolhida no calendário. Quando definida, prevalece sobre
+  // o segmento Hoje/Ontem. Limpar = voltar pro segmento ativo.
+  const [customDate, setCustomDate] = useState<string | null>(null);
+  const [calendarOpen, setCalendarOpen] = useState(false);
+
+  const today = dateBR(0);
+  const activeDate = customDate ?? dateBR(DAY_OFFSET[day]);
+  const isCustom = customDate !== null;
 
   const load = useCallback(async () => {
-    const dia = dateBR(DAY_OFFSET[day]);
+    const dia = activeDate;
     const [billsRes, kpisRes] = await Promise.all([
       billsService.list({
         type: 'receivable',
@@ -134,7 +168,7 @@ export default function VendasScreen() {
     if (kpisRes.success) {
       setKpis(kpisRes.data.kpisAtual);
     }
-  }, [day]);
+  }, [activeDate]);
 
   useEffect(() => {
     (async () => {
@@ -202,11 +236,14 @@ export default function VendasScreen() {
           ]}
         >
           {(['today', 'yesterday'] as DayKey[]).map((k) => {
-            const active = day === k;
+            const active = !isCustom && day === k;
             return (
               <TouchableOpacity
                 key={k}
-                onPress={() => setDay(k)}
+                onPress={() => {
+                  setCustomDate(null);
+                  setDay(k);
+                }}
                 activeOpacity={0.7}
                 style={[
                   styles.segmentBtn,
@@ -227,6 +264,31 @@ export default function VendasScreen() {
               </TouchableOpacity>
             );
           })}
+          <TouchableOpacity
+            onPress={() => setCalendarOpen(true)}
+            activeOpacity={0.7}
+            style={[
+              styles.segmentBtn,
+              styles.segmentBtnIcon,
+              isCustom && { backgroundColor: colors.primary },
+            ]}
+          >
+            <Ionicons
+              name="calendar-outline"
+              size={16}
+              color={isCustom ? '#fff' : colors.textSecondary}
+            />
+            {isCustom ? (
+              <Text
+                style={[
+                  styles.segmentText,
+                  { color: '#fff', fontWeight: '700', marginLeft: 4 },
+                ]}
+              >
+                {shortDate(activeDate)}
+              </Text>
+            ) : null}
+          </TouchableOpacity>
         </View>
 
         <View style={styles.headerIcon} />
@@ -294,7 +356,11 @@ export default function VendasScreen() {
                 color={colors.textMuted}
               />
               <Text style={[styles.emptyText, { color: colors.textMuted }]}>
-                {day === 'today' ? 'Nenhuma venda hoje' : 'Nenhuma venda ontem'}
+                {isCustom
+                  ? `Nenhuma venda em ${shortDate(activeDate)}`
+                  : day === 'today'
+                  ? 'Nenhuma venda hoje'
+                  : 'Nenhuma venda ontem'}
               </Text>
             </View>
           }
@@ -330,6 +396,76 @@ export default function VendasScreen() {
           }}
         />
       )}
+
+      <Modal
+        visible={calendarOpen}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setCalendarOpen(false)}
+      >
+        <Pressable
+          onPress={() => setCalendarOpen(false)}
+          style={styles.modalBackdrop}
+        >
+          <Pressable
+            onPress={(e) => e.stopPropagation()}
+            style={[
+              styles.modalSheet,
+              {
+                backgroundColor: colors.backgroundCard,
+                borderColor: colors.border,
+              },
+            ]}
+          >
+            <View style={styles.modalHeader}>
+              <Text style={[styles.modalTitle, { color: colors.textPrimary }]}>
+                Escolha um dia
+              </Text>
+              <TouchableOpacity
+                onPress={() => setCalendarOpen(false)}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
+                <Ionicons name="close" size={22} color={colors.textPrimary} />
+              </TouchableOpacity>
+            </View>
+            <Calendar
+              current={activeDate}
+              maxDate={today}
+              onDayPress={(d) => {
+                const picked = d.dateString;
+                // Se escolheu hoje ou ontem, prefere o estado limpo (segmento)
+                if (picked === dateBR(0)) {
+                  setCustomDate(null);
+                  setDay('today');
+                } else if (picked === dateBR(-1)) {
+                  setCustomDate(null);
+                  setDay('yesterday');
+                } else {
+                  setCustomDate(picked);
+                }
+                setCalendarOpen(false);
+              }}
+              markedDates={{
+                [activeDate]: {
+                  selected: true,
+                  selectedColor: colors.primary,
+                },
+              }}
+              theme={{
+                calendarBackground: colors.backgroundCard,
+                dayTextColor: colors.textPrimary,
+                textDisabledColor: colors.textMuted + '66',
+                monthTextColor: colors.textPrimary,
+                arrowColor: colors.primary,
+                todayTextColor: colors.primary,
+                textSectionTitleColor: colors.textMuted,
+                selectedDayBackgroundColor: colors.primary,
+                selectedDayTextColor: '#fff',
+              }}
+            />
+          </Pressable>
+        </Pressable>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -663,7 +799,36 @@ const styles = StyleSheet.create({
     minWidth: 64,
     alignItems: 'center',
   },
+  segmentBtnIcon: {
+    minWidth: 0,
+    paddingHorizontal: SPACING.sm,
+    flexDirection: 'row',
+    justifyContent: 'center',
+  },
   segmentText: { fontSize: FONT_SIZE.sm },
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: SPACING.lg,
+  },
+  modalSheet: {
+    width: '100%',
+    maxWidth: 380,
+    borderRadius: BORDER_RADIUS.lg,
+    borderWidth: 1,
+    paddingBottom: SPACING.md,
+    overflow: 'hidden',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.md,
+  },
+  modalTitle: { fontSize: FONT_SIZE.md, fontWeight: '700' },
   loading: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   list: { padding: SPACING.lg, gap: SPACING.sm },
   kpiBox: {
