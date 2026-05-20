@@ -524,6 +524,24 @@ function CancelBadge({ colors }: { colors: ThemeColors }) {
   );
 }
 
+function ExchangeBadge({ colors }: { colors: ThemeColors }) {
+  return (
+    <View
+      style={[
+        styles.cancelBadge,
+        {
+          backgroundColor: colors.warning + '22',
+          borderColor: colors.warning + '55',
+        },
+      ]}
+    >
+      <Text style={[styles.cancelBadgeText, { color: colors.warning }]}>
+        🔄 Troca
+      </Text>
+    </View>
+  );
+}
+
 function SingleRow({
   bill,
   onPress,
@@ -577,7 +595,11 @@ function SingleRow({
               {time}
             </Text>
           ) : null}
-          {cancelled ? <CancelBadge colors={colors} /> : null}
+          {cancelled ? (
+            <CancelBadge colors={colors} />
+          ) : bill.isExchange ? (
+            <ExchangeBadge colors={colors} />
+          ) : null}
         </View>
       </View>
       <View style={styles.rowRight}>
@@ -631,6 +653,7 @@ function PackHeaderRow({
   const time = timeOf(bills[0]?.paidDate);
   const packShort = packId.length > 6 ? `#…${packId.slice(-6)}` : `#${packId}`;
   const allCancelled = bills.every((b) => b.status === 'cancelled');
+  const hasExchange = bills.some((b) => b.isExchange);
   return (
     <TouchableOpacity
       activeOpacity={0.7}
@@ -671,7 +694,11 @@ function PackHeaderRow({
             {time ? `${time} • ` : ''}
             {packShort}
           </Text>
-          {allCancelled ? <CancelBadge colors={colors} /> : null}
+          {allCancelled ? (
+            <CancelBadge colors={colors} />
+          ) : hasExchange ? (
+            <ExchangeBadge colors={colors} />
+          ) : null}
         </View>
       </View>
       <View style={styles.rowRight}>
@@ -747,7 +774,11 @@ function PackChildRow({
           <Text style={[styles.rowMeta, { color: colors.textMuted }]}>
             frete rateado {formatCurrency(s.envio)}
           </Text>
-          {cancelled ? <CancelBadge colors={colors} /> : null}
+          {cancelled ? (
+            <CancelBadge colors={colors} />
+          ) : bill.isExchange ? (
+            <ExchangeBadge colors={colors} />
+          ) : null}
         </View>
       </View>
       <View style={styles.rowRight}>

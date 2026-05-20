@@ -559,6 +559,7 @@ model Bill {
   mlOrderId      String?       @unique // evita duplicatas de pedidos ML
   mlPackId       String? // pack_id do ML (ID que aparece no painel "vendas" do seller)
   mlVariationId  String? // variation_id do ML no item vendido (usado pelo cost-resolver)
+  isExchange     Boolean       @default(false) // venda de troca (ML order com tag "change"): produto vai ao comprador agora, ele devolve o original via return
   tenantId       String
   tenant         Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   refunds        BillRefund[]

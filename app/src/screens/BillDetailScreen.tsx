@@ -166,6 +166,20 @@ export default function BillDetailScreen({ billId }: Props) {
               <Text style={[styles.heroType, { color: colors.textSecondary }]}>
                 {typeLabel}
               </Text>
+              {bill.isExchange ? (
+                <View
+                  style={[
+                    styles.badge,
+                    {
+                      backgroundColor: colors.warning + '20',
+                    },
+                  ]}
+                >
+                  <Text style={[styles.badgeLabel, { color: colors.warning }]}>
+                    🔄 Troca
+                  </Text>
+                </View>
+              ) : null}
               <View
                 style={[
                   styles.badge,

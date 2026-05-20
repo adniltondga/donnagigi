@@ -34,6 +34,7 @@ interface MLOrder {
   buyer: { id: number; nickname: string }
   order_items: MLOrderItem[]
   payments?: Array<{ id: number | string }>
+  tags?: string[]
 }
 
 export type SyncOrderAction =
@@ -95,6 +96,12 @@ export async function syncMLOrder(params: {
     const order = (await orderRes.json()) as MLOrder
 
     const isCancelled = order.status === "cancelled"
+    // ML marca venda de troca (reposição do produto pra cliente que abriu
+    // claim de change_product) com tag "change" e context.flows=["change"].
+    // O produto original vai voltar via /returns da claim — separado deste
+    // bill, que registra o NOVO envio.
+    const isExchange =
+      Array.isArray(order.tags) && order.tags.includes("change")
     const mlOrderId = `order_${order.id}`
 
     const existing = await prisma.bill.findUnique({
@@ -285,6 +292,7 @@ Bruto: R$ ${order.total_amount.toFixed(2)} | Taxas: ${taxBreakdown} (Total: R$ $
         mlOrderId,
         mlPackId: order.pack_id ? String(order.pack_id) : null,
         mlVariationId: firstVariationId,
+        isExchange,
         notes: `PRODUTO ML ID: ${itemId || "SEM ID"}\n\n${notesContent}`,
         productId: null,
         productCost,
@@ -329,7 +337,9 @@ Bruto: R$ ${order.total_amount.toFixed(2)} | Taxas: ${taxBreakdown} (Total: R$ $
         style: "currency",
         currency: "BRL",
       }).format
-      const title = `💜 Venda nova: ${formatBRL(order.total_amount)}`
+      const title = isExchange
+        ? `🔄 Troca recebida: ${formatBRL(order.total_amount)}`
+        : `💜 Venda nova: ${formatBRL(order.total_amount)}`
       const body = `${displayTitle} · ${order.buyer.nickname}`
       const link = `/admin/relatorios/vendas-ml`
 

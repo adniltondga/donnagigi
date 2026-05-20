@@ -123,6 +123,7 @@ export interface Bill {
   quantity?: number;
   mlOrderId?: string | null;
   mlPackId?: string | null;
+  isExchange?: boolean;
 }
 
 export interface CashPools {
