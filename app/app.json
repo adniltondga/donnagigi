@@ -6,6 +6,7 @@
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
+    "platforms": ["ios", "android"],
     "scheme": "aglivre",
     "splash": {
       "image": "./assets/splash.png",
