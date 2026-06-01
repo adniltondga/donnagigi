@@ -8,10 +8,12 @@ export const cashPoolService = {
       apiClient.get(API_CONFIG.ENDPOINTS.FINANCEIRO.CASH_POOLS),
     ),
 
-  range: (start: string, end: string) =>
+  // end é opcional: sem ele, o backend usa "agora" como fim do período
+  // (igual ao painel web, que chama /cash-pools?start=... sem end).
+  range: (start: string, end?: string) =>
     apiCall<CashPools>(() =>
       apiClient.get(API_CONFIG.ENDPOINTS.FINANCEIRO.CASH_POOLS, {
-        params: { start, end },
+        params: end ? { start, end } : { start },
       }),
     ),
 };
