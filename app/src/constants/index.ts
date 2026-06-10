@@ -62,6 +62,7 @@ export const API_CONFIG = {
     },
     RELATORIOS: {
       V2: '/api/relatorios/v2',
+      DRE_ANUAL: '/api/relatorios/dre-anual',
     },
     WAITLIST: '/api/waitlist',
   },

@@ -22,7 +22,7 @@ import type { DashboardSummary } from '@/types';
 
 export default function HomeScreen() {
   const { user } = useAuth();
-  const { colors, isDark } = useTheme();
+  const { colors, isDark, toggleTheme } = useTheme();
   const router = useRouter();
 
   const [summary, setSummary] = useState<DashboardSummary | null>(null);
@@ -112,11 +112,11 @@ export default function HomeScreen() {
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.headerIcon}
-            onPress={() => router.push('/settings' as never)}
+            onPress={toggleTheme}
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           >
             <Ionicons
-              name="settings-outline"
+              name={isDark ? 'sunny-outline' : 'moon-outline'}
               size={22}
               color={colors.textPrimary}
             />
@@ -205,45 +205,6 @@ export default function HomeScreen() {
                   </Text>
                   <Text style={[styles.kpiFootSm, dynamicStyles.muted]}>
                     sobre vendas
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            </SlideUpView>
-
-            <SlideUpView delay={150}>
-              <View style={styles.row}>
-                <TouchableOpacity
-                  style={[styles.kpiCardHalf, dynamicStyles.card]}
-                  onPress={() => router.push('/caixas' as never)}
-                  activeOpacity={0.7}
-                >
-                  <Ionicons
-                    name="wallet-outline"
-                    size={22}
-                    color={colors.primary}
-                  />
-                  <Text style={[styles.kpiLabelSm, dynamicStyles.subtitle]}>
-                    Caixa de reposição
-                  </Text>
-                  <Text style={[styles.kpiValueSm, dynamicStyles.title]}>
-                    {formatCurrency(summary.caixa?.caixaReposicao ?? 0)}
-                  </Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[styles.kpiCardHalf, dynamicStyles.card]}
-                  onPress={() => router.push('/caixas' as never)}
-                  activeOpacity={0.7}
-                >
-                  <Ionicons
-                    name="bar-chart-outline"
-                    size={22}
-                    color={colors.info}
-                  />
-                  <Text style={[styles.kpiLabelSm, dynamicStyles.subtitle]}>
-                    Lucro do mês
-                  </Text>
-                  <Text style={[styles.kpiValueSm, dynamicStyles.title]}>
-                    {formatCurrency(summary.caixa?.lucroOperacional ?? 0)}
                   </Text>
                 </TouchableOpacity>
               </View>

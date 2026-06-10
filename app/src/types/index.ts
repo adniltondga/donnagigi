@@ -192,6 +192,42 @@ export interface RelatorioV2Response {
   topPorBruto: Array<RelatorioTopProduto>;
 }
 
+export type DreBasis = 'caixa' | 'competencia';
+
+export interface DreDespesaCategoria {
+  name: string;
+  total: number;
+}
+
+export interface DreResult {
+  receitaBrutaML: number;
+  receitaBrutaOutras: number;
+  receitaBruta: number;
+  taxaVendaML: number;
+  taxaEnvioML: number;
+  totalTaxas: number;
+  receitaLiquida: number;
+  cmv: number;
+  lucroBruto: number;
+  despesasPorCategoria: DreDespesaCategoria[];
+  totalDespesas: number;
+  lucroLiquido: number;
+  margemLiquidaPct: number;
+}
+
+export interface DreAnualMonth {
+  month: number;
+  dre: DreResult;
+}
+
+export interface DreAnualResponse {
+  year: number;
+  basis: DreBasis;
+  availableYears: number[];
+  months: DreAnualMonth[];
+  total: DreResult;
+}
+
 export interface MLClaimPlayer {
   role: 'complainant' | 'respondent' | 'mediator';
   type: 'buyer' | 'seller' | 'internal';

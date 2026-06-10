@@ -291,7 +291,41 @@ export default function VendasScreen() {
           </TouchableOpacity>
         </View>
 
-        <View style={styles.headerIcon} />
+        <View style={styles.headerActions}>
+          <TouchableOpacity
+            onPress={() => router.push('/anuncios' as never)}
+            hitSlop={{ top: 8, bottom: 8, left: 6, right: 6 }}
+            style={styles.headerActionBtn}
+          >
+            <Ionicons
+              name="pricetag-outline"
+              size={20}
+              color={colors.textPrimary}
+            />
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={() => router.push('/reclamacoes' as never)}
+            hitSlop={{ top: 8, bottom: 8, left: 6, right: 6 }}
+            style={styles.headerActionBtn}
+          >
+            <Ionicons
+              name="chatbubble-ellipses-outline"
+              size={20}
+              color={colors.textPrimary}
+            />
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={() => router.push('/devolucoes' as never)}
+            hitSlop={{ top: 8, bottom: 8, left: 6, right: 6 }}
+            style={styles.headerActionBtn}
+          >
+            <Ionicons
+              name="arrow-undo-outline"
+              size={20}
+              color={colors.textPrimary}
+            />
+          </TouchableOpacity>
+        </View>
       </View>
 
       {loading ? (
@@ -815,6 +849,8 @@ const styles = StyleSheet.create({
     paddingVertical: SPACING.sm,
   },
   headerIcon: { padding: SPACING.sm, minWidth: 42 },
+  headerActions: { flexDirection: 'row', gap: 2, alignItems: 'center' },
+  headerActionBtn: { padding: SPACING.xs },
   headerTitle: { fontSize: FONT_SIZE.lg, fontWeight: '700' },
   segment: {
     flexDirection: 'row',
