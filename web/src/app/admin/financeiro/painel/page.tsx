@@ -7,6 +7,7 @@ import {
   Wallet,
   Package,
   TrendingUp,
+  Coins,
   HandCoins,
   AlertTriangle,
   ArrowRight,
@@ -82,13 +83,23 @@ interface ProLaboreResp {
   reinvestimento: { pct: number; sugerido: number }
   proLaboreDireto: number
   proLaboreSeguro: number
+  proLaboreLifetime: number
   proLaborePct: number
   saidasParaSocioMes: number
+  proLaboresPagosMes: number
   aportesPagosMes: number
   amortizacoesPagasMes: number
   saidasParaSocioYTD: number
   aportesPagosYTD: number
   amortizacoesPagasYTD: number
+  mpReleasedLifetime: number
+  cmvLifetime: number
+  cmvLiberadoLifetime: number
+  lucroLiberadoLifetime: number
+  reposicaoPagaLifetime: number
+  despesasPagasLifetime: number
+  saidasParaSocioLifetime: number
+  proLaboresPagosLifetime: number
   billsCorrespondentesSemCusto: number
   paymentsSemMatch: number
 }
@@ -823,16 +834,36 @@ export default function PainelPage() {
   const lucroMes = dreAnual?.months[currentMonth0]?.dre.lucroLiquido ?? 0
   const lucroYTD = dreAnual?.total.lucroLiquido ?? 0
 
-  // Pró-labore disponível — calculado a partir do LUCRO DRE (mesma fonte
-  // do card Lucro). Garante que os 2 cards têm a mesma base.
-  // Mês:  (lucro DRE do mês − pagamentos pra sócio no mês) × pct
-  // YTD:  (lucro DRE acumulado − pagamentos pra sócio YTD)   × pct
-  const proLaborePct = pro?.proLaborePct ?? 100
-  const saidasMes = pro?.saidasParaSocioMes ?? 0
-  const saidasYTD = pro?.saidasParaSocioYTD ?? 0
-  const proLaboreMes = Math.max(0, (lucroMes - saidasMes) * proLaborePct / 100)
-  const proLaboreGeral = Math.max(0, (lucroYTD - saidasYTD) * proLaborePct / 100)
+  // Lucro liberado (caixa real do MP) — o LÍQUIDO que o Mercado Pago já
+  // soltou (net_received_amount: já sem taxa de venda e envio do ML),
+  // menos o custo da mercadoria vendida e as despesas operacionais pagas
+  // (pró-labore fora: retirada do sócio não é despesa do negócio).
+  //   Mês:   líquido liberado − CMV do mês − (despesas − pró-labore do mês)
+  //   Geral: lucro liberado lifetime − (despesas lifetime − pró-labore lifetime)
+  const brutoLiberadoMes = pro?.receitaBruta ?? 0
+  const custoMercadoriaMes = pro?.cmvDoMes ?? 0
+  const despesaOperacionalMes = (pro?.despesasPagas ?? 0) - (pro?.proLaboresPagosMes ?? 0)
+  const lucroLiberadoMes = brutoLiberadoMes - custoMercadoriaMes - despesaOperacionalMes
 
+  const brutoLiberadoGeral = pro?.mpReleasedLifetime ?? 0
+  const custoMercadoriaGeral = pro?.cmvLiberadoLifetime ?? 0
+  const despesaOperacionalGeral =
+    (pro?.despesasPagasLifetime ?? 0) - (pro?.proLaboresPagosLifetime ?? 0)
+  const lucroLiberadoGeral =
+    (pro?.lucroLiberadoLifetime ?? 0) - despesaOperacionalGeral
+
+  const lucroLiberado = mode === "mes" ? lucroLiberadoMes : lucroLiberadoGeral
+  const brutoLiberado = mode === "mes" ? brutoLiberadoMes : brutoLiberadoGeral
+  const custoMercadoria = mode === "mes" ? custoMercadoriaMes : custoMercadoriaGeral
+  const despesaOperacional = mode === "mes" ? despesaOperacionalMes : despesaOperacionalGeral
+
+  // Pró-labore disponível — base de CAIXA (não competência).
+  // Mês:  MP liberado no mês − reposição/despesas/saídas sócio do mês.
+  // Geral: MP liberado lifetime − reposição/despesas/saídas sócio lifetime.
+  // (despesasPagas já inclui pró-labores anteriores como bills paid, então o
+  // valor exibido representa o que AINDA pode ser retirado.)
+  const proLaboreMes = pro?.proLaboreSeguro ?? 0
+  const proLaboreGeral = pro?.proLaboreLifetime ?? 0
 
   // Decide o "valor disponível pra retirar"
   const disponivelRetirar = mode === "mes" ? proLaboreMes : proLaboreGeral
@@ -1032,11 +1063,46 @@ export default function PainelPage() {
               />
             </MetricCard>
 
-            {/* Card 3 — Lucro */}
+            {/* Card 3 — Lucro liberado (caixa real do MP) */}
+            <MetricCard
+              icon={<Coins className="w-5 h-5" />}
+              iconColor="bg-teal-50 text-teal-700"
+              title={mode === "mes" ? "Lucro liberado no mês" : "Lucro liberado"}
+              tooltip="Lucro de caixa real: o líquido que o Mercado Pago já liberou (já sem as taxas de venda e envio do ML) menos o custo da mercadoria vendida e as despesas operacionais pagas (sem contar pró-labore). Diferente do Lucro (DRE), que é contábil."
+            >
+              <PrimaryValue value={lucroLiberado} negative />
+              <StatsGrid
+                items={[
+                  { label: "Líquido liberado", value: formatCurrency(brutoLiberado) },
+                  {
+                    label: "(−) Custo merc.",
+                    value: formatCurrency(custoMercadoria),
+                    tone: "amber",
+                  },
+                  {
+                    label: "(−) Despesas",
+                    value: formatCurrency(despesaOperacional),
+                    tone: "amber",
+                  },
+                ]}
+              />
+              <CardFooter
+                primary={
+                  <Link
+                    href="/admin/financeiro/mercado-pago"
+                    className="text-xs text-primary-600 font-semibold inline-flex items-center gap-1 hover:underline"
+                  >
+                    Ver liberações <ArrowRight className="w-3 h-3" />
+                  </Link>
+                }
+              />
+            </MetricCard>
+
+            {/* Card 4 — Lucro (DRE) */}
             <MetricCard
               icon={<TrendingUp className="w-5 h-5" />}
               iconColor="bg-primary-50 text-primary-700"
-              title={mode === "mes" ? "Lucro do mês" : "Lucro acumulado"}
+              title={mode === "mes" ? "Lucro do mês (DRE)" : "Lucro acumulado (DRE)"}
               tooltip="Lucro líquido do DRE — receita bruta menos taxas, custo de mercadoria, despesas e pró-labore retirado."
             >
               <PrimaryValue value={mode === "mes" ? lucroMes : lucroYTD} negative />
@@ -1059,27 +1125,49 @@ export default function PainelPage() {
               title="Pró-labore disponível"
               tooltip={
                 pro
-                  ? `Lucro × ${pro.proLaborePct}% menos pagamentos pra sócio no período. Clique 'Ajustar %' pra mudar.`
+                  ? mode === "mes"
+                    ? `Caixa do mês − saídas pra sócio, aplicando ${pro.proLaborePct}%. Clique 'Ajustar %' pra mudar.`
+                    : `Lucro de cada payment liberado (net − CMV) menos despesas pagas e saídas sócio, aplicando ${pro.proLaborePct}%. Inclui valor convertido em estoque — pode ficar maior que o saldo MP atual.`
                   : "Quanto você pode retirar de pró-labore."
               }
             >
               <PrimaryValue value={disponivelRetirar} />
-              {pro && (
+              {pro && mode === "geral" && (
                 <StatsGrid
                   items={[
                     {
-                      label: "Lucro",
-                      value: formatCurrency(mode === "mes" ? lucroMes : lucroYTD),
+                      label: "Lucro liberado",
+                      value: formatCurrency(pro.lucroLiberadoLifetime),
                     },
-                    ...((mode === "mes" ? pro.saidasParaSocioMes : pro.saidasParaSocioYTD) > 0
+                    {
+                      label: "(−) Despesas",
+                      value: formatCurrency(pro.despesasPagasLifetime),
+                      tone: "amber" as const,
+                    },
+                    ...(pro.saidasParaSocioLifetime > 0
+                      ? [
+                          {
+                            label: "(−) Pagamentos sócio",
+                            value: formatCurrency(pro.saidasParaSocioLifetime),
+                            tone: "amber" as const,
+                          },
+                        ]
+                      : []),
+                  ]}
+                />
+              )}
+              {pro && mode === "mes" && (
+                <StatsGrid
+                  items={[
+                    {
+                      label: "MP liberado",
+                      value: formatCurrency(pro.mpReleasedNoMes),
+                    },
+                    ...(pro.saidasParaSocioMes > 0
                       ? [
                           {
                             label: "Pagamentos sócio",
-                            value: formatCurrency(
-                              mode === "mes"
-                                ? pro.saidasParaSocioMes
-                                : pro.saidasParaSocioYTD,
-                            ),
+                            value: formatCurrency(pro.saidasParaSocioMes),
                             tone: "amber" as const,
                           },
                         ]

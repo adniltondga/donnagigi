@@ -449,6 +449,24 @@ export async function GET(req: NextRequest) {
     const amortizacoesPagasMes = amortizacoesPagasNoMes.reduce((s, b) => s + b.amount, 0)
     const saidasParaSocioMes = aportesPagosMes + amortizacoesPagasMes
 
+    // Pró-labore pago no mês (paidDate no mês) — usado pelo card "Lucro
+    // liberado" do painel pra descontar pró-labore da despesa operacional
+    // (a retirada do sócio não é despesa do negócio, não derruba o lucro).
+    // Mesma base (paidDate + status=paid) que despesasPagas, pra subtrair certinho.
+    const proLaboresPagosNoMesQ = proLaboreSub
+      ? await prisma.bill.findMany({
+          where: {
+            tenantId,
+            type: "payable",
+            status: "paid",
+            billCategoryId: proLaboreSub.id,
+            paidDate: { gte: start, lt: end },
+          },
+          select: { amount: true },
+        })
+      : []
+    const proLaboresPagosMes = proLaboresPagosNoMesQ.reduce((s, b) => s + b.amount, 0)
+
     // Saídas pra sócio YTD — usado pelo modo Geral do Painel pra descontar
     // do lucro acumulado do DRE (que não inclui essas movimentações de balanço).
     const aportesPagosYTDQuery = aporteOriginalIds.length > 0
@@ -480,6 +498,146 @@ export async function GET(req: NextRequest) {
     const amortizacoesPagasYTD = amortizacoesPagasYTDQuery.reduce((s, b) => s + b.amount, 0)
     const saidasParaSocioYTD = aportesPagosYTD + amortizacoesPagasYTD
 
+    // ---- CAIXA LIFETIME — base do pró-labore no modo Geral do painel ----
+    // Tudo que o MP já liberou desde sempre, descontando reposição, despesas
+    // (que já incluem pró-labores anteriores como bills paid) e saídas pra
+    // sócio. Independente do mês selecionado — é cumulativo de verdade.
+    const mpReleasedLifetime = releasedDays.reduce((s, d) => s + d.total, 0)
+    const [
+      receitasLifetime,
+      reposicoesLifetime,
+      despesasLifetime,
+      aportesPagosLifetimeQ,
+      amortizacoesPagasLifetimeQ,
+    ] = await Promise.all([
+      // Receivable lifetime — pra CMV. Inclui pending (mesma fonte da
+      // tela de Reposição em cash-pools.ts) pra max(CMV, repo) ser
+      // consistente. Excluímos cancelled. Trazemos status + mlOrderId pra
+      // separar quem foi LIBERADO pelo MP (via matching) de quem ainda não.
+      prisma.bill.findMany({
+        where: {
+          tenantId,
+          type: "receivable",
+          category: "venda",
+          NOT: { status: "cancelled" },
+        },
+        select: { productCost: true, status: true, mlOrderId: true },
+      }),
+      // Reposição paga lifetime
+      prisma.bill.findMany({
+        where: {
+          tenantId,
+          type: "payable",
+          status: "paid",
+          category: "reposicao_estoque",
+        },
+        select: { amount: true },
+      }),
+      // Despesas pagas lifetime (exclui aporte e reposição; INCLUI pró-labore
+      // pago — é exatamente o que abate do disponível).
+      prisma.bill.findMany({
+        where: {
+          tenantId,
+          type: "payable",
+          status: "paid",
+          category: { not: "reposicao_estoque" },
+          NOT: [
+            { billCategoryId: { in: aporteIds.length > 0 ? aporteIds : ["__none__"] } },
+          ],
+        },
+        select: { amount: true },
+      }),
+      aporteOriginalIds.length > 0
+        ? prisma.bill.findMany({
+            where: {
+              tenantId,
+              type: "payable",
+              status: "paid",
+              billCategoryId: { in: aporteOriginalIds },
+            },
+            select: { amount: true },
+          })
+        : Promise.resolve([]),
+      amortizacaoSubId
+        ? prisma.bill.findMany({
+            where: {
+              tenantId,
+              type: "payable",
+              status: "paid",
+              billCategoryId: amortizacaoSubId,
+              NOT: { notes: { startsWith: "[migrated]" } },
+            },
+            select: { amount: true },
+          })
+        : Promise.resolve([]),
+    ])
+    // CMV total lifetime (paid + pending) — usado pra "Reposição pendente"
+    // na tela de Reposição (cash-pools.ts).
+    const cmvLifetime = receitasLifetime.reduce(
+      (s, b) => s + (b.productCost ?? 0),
+      0,
+    )
+    // CMV LIBERADO lifetime — CMV das vendas cujo pagamento o MP já liberou.
+    // Casamos via matching MP↔bill (externalReference ↔ mlOrderId), igual o
+    // modo Mês. NÃO usamos status="paid": o cron release-and-refunds tem lag
+    // e deixa vendas já liberadas como pending, o que subestimaria o CMV e
+    // inflaria o lucro liberado (gap visto: ~R$ 2k). Só cai pro filtro de
+    // status como fallback se o cache do MP não tiver os order IDs.
+    const releasedOrderIdSet = new Set<string>()
+    for (const d of releasedDays) {
+      for (const p of d.payments ?? []) {
+        if (p.externalReference) {
+          releasedOrderIdSet.add(p.externalReference)
+          releasedOrderIdSet.add(`order_${p.externalReference}`)
+        }
+      }
+    }
+    const cmvLiberadoMatched = releasedOrderIdSet.size > 0
+      ? receitasLifetime
+          .filter((b) => b.mlOrderId && releasedOrderIdSet.has(b.mlOrderId))
+          .reduce((s, b) => s + (b.productCost ?? 0), 0)
+      : null
+    const cmvLiberadoLifetime =
+      cmvLiberadoMatched != null
+        ? cmvLiberadoMatched
+        : receitasLifetime
+            .filter((b) => b.status === "paid")
+            .reduce((s, b) => s + (b.productCost ?? 0), 0)
+    const reposicaoPagaLifetime = reposicoesLifetime.reduce((s, b) => s + b.amount, 0)
+    const despesasPagasLifetimeTotal = despesasLifetime.reduce((s, b) => s + b.amount, 0)
+    const aportesPagosLifetime = aportesPagosLifetimeQ.reduce((s, b) => s + b.amount, 0)
+    const amortizacoesPagasLifetime = amortizacoesPagasLifetimeQ.reduce(
+      (s, b) => s + b.amount,
+      0,
+    )
+    const saidasParaSocioLifetime = aportesPagosLifetime + amortizacoesPagasLifetime
+    // Lucro liberado lifetime = soma do "net − CMV" de cada payment liberado.
+    // Como mpReleasedLifetime já é soma dos net, basta subtrair o CMV das
+    // vendas liberadas (via matching MP↔bill — ver cmvLiberadoLifetime acima).
+    const lucroLiberadoLifetime = mpReleasedLifetime - cmvLiberadoLifetime
+    // Pró-labore lifetime = lucro liberado − despesas pagas − saídas sócio.
+    // NÃO desconta reposição paga: ela é considerada "investimento em
+    // estoque" (ativo), não saída de lucro. Resultado representa: caixa +
+    // estoque (patrimônio total disponível). Maior que saldo MP real
+    // pq parte virou mercadoria.
+    const baseCaixaLifetime =
+      lucroLiberadoLifetime - despesasPagasLifetimeTotal - saidasParaSocioLifetime
+
+    // proLaboresPagosLifetime — só pra exibição (já está embutido em despesas).
+    const proLaboresPagosLifetime = proLaboreSub
+      ? (
+          await prisma.bill.findMany({
+            where: {
+              tenantId,
+              type: "payable",
+              status: "paid",
+              billCategoryId: proLaboreSub.id,
+            },
+            select: { amount: true },
+          })
+        ).reduce((s, b) => s + b.amount, 0)
+      : 0
+
     // PRÓ-LABORE FINAL — modelo simplificado a pedido do usuário:
     //  caixa do mês − saídas reais pra sócio (no mês) → aplica proLaborePct
     // Removidos do desconto:
@@ -495,6 +653,10 @@ export async function GET(req: NextRequest) {
       Math.round((baseCaixa * proLaborePct / 100) * 100) / 100,
     )
     const proLaboreDireto = Math.max(0, Math.round(baseCaixa * 100) / 100)
+    const proLaboreLifetime = Math.max(
+      0,
+      Math.round((baseCaixaLifetime * proLaborePct / 100) * 100) / 100,
+    )
 
     // Histórico últimos 6 meses de pró-labore lançado
     let historico: Array<{ month: string; total: number }> = []
@@ -582,13 +744,23 @@ export async function GET(req: NextRequest) {
       },
       proLaboreDireto,
       proLaboreSeguro,
+      proLaboreLifetime,
       proLaborePct: proLaborePct,
       saidasParaSocioMes: Math.round(saidasParaSocioMes * 100) / 100,
+      proLaboresPagosMes: Math.round(proLaboresPagosMes * 100) / 100,
       aportesPagosMes: Math.round(aportesPagosMes * 100) / 100,
       amortizacoesPagasMes: Math.round(amortizacoesPagasMes * 100) / 100,
       saidasParaSocioYTD: Math.round(saidasParaSocioYTD * 100) / 100,
       aportesPagosYTD: Math.round(aportesPagosYTD * 100) / 100,
       amortizacoesPagasYTD: Math.round(amortizacoesPagasYTD * 100) / 100,
+      mpReleasedLifetime: Math.round(mpReleasedLifetime * 100) / 100,
+      cmvLifetime: Math.round(cmvLifetime * 100) / 100,
+      cmvLiberadoLifetime: Math.round(cmvLiberadoLifetime * 100) / 100,
+      lucroLiberadoLifetime: Math.round(lucroLiberadoLifetime * 100) / 100,
+      reposicaoPagaLifetime: Math.round(reposicaoPagaLifetime * 100) / 100,
+      despesasPagasLifetime: Math.round(despesasPagasLifetimeTotal * 100) / 100,
+      saidasParaSocioLifetime: Math.round(saidasParaSocioLifetime * 100) / 100,
+      proLaboresPagosLifetime: Math.round(proLaboresPagosLifetime * 100) / 100,
       proLaboreSubcategoryId: proLaboreSub?.id ?? null,
       historicoPorMes: historico,
       saldoCaixa: {
